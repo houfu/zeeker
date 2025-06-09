@@ -80,9 +80,9 @@ class ZeekerValidator:
 
         # Check naming conventions
         if template_name.startswith("database-") or template_name.startswith("table-"):
-            if not template_name.startswith(f"database-{database_name}") and not template_name.startswith(
-                    f"table-{database_name}"
-            ):
+            if not template_name.startswith(
+                f"database-{database_name}"
+            ) and not template_name.startswith(f"table-{database_name}"):
                 result.warnings.append(
                     f"Template '{template_name}' should include database name "
                     f"for clarity: 'database-{database_name}.html'"
@@ -137,7 +137,9 @@ class ZeekerValidator:
 
         return result
 
-    def validate_file_structure(self, customization_path: Path, database_name: str) -> ValidationResult:
+    def validate_file_structure(
+        self, customization_path: Path, database_name: str
+    ) -> ValidationResult:
         """Validate the file structure of a customization."""
         result = ValidationResult(is_valid=True)
 
@@ -200,13 +202,13 @@ class ZeekerGenerator:
             dir_path.mkdir(parents=True, exist_ok=True)
 
     def generate_metadata_template(
-            self,
-            title: str,
-            description: str,
-            license_type: str = "CC-BY-4.0",
-            source_url: Optional[str] = None,
-            extra_css: Optional[List[str]] = None,
-            extra_js: Optional[List[str]] = None,
+        self,
+        title: str,
+        description: str,
+        license_type: str = "CC-BY-4.0",
+        source_url: Optional[str] = None,
+        extra_css: Optional[List[str]] = None,
+        extra_js: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Generate a complete metadata.json template."""
         metadata = {
@@ -226,20 +228,20 @@ class ZeekerGenerator:
             ]
 
         if extra_js:
-            metadata["extra_js_urls"] = [f"/static/databases/{self.sanitized_name}/{js}" for js in extra_js]
+            metadata["extra_js_urls"] = [
+                f"/static/databases/{self.sanitized_name}/{js}" for js in extra_js
+            ]
 
         # Add database-specific metadata
-        metadata["databases"] = {
-            self.database_name: {"description": description, "title": title}
-        }
+        metadata["databases"] = {self.database_name: {"description": description, "title": title}}
 
         return metadata
 
     def generate_css_template(
-            self,
-            primary_color: str = "#3498db",
-            accent_color: str = "#e74c3c",
-            include_examples: bool = True,
+        self,
+        primary_color: str = "#3498db",
+        accent_color: str = "#e74c3c",
+        include_examples: bool = True,
     ) -> str:
         """Generate a CSS template with best practices."""
         css_template = f"""/* Custom styles for {self.database_name} database */
@@ -415,11 +417,11 @@ console.log('Database template loaded for {self.database_name}');
 """
 
     def save_customization(
-            self,
-            metadata: Optional[Dict[str, Any]] = None,
-            css_content: Optional[str] = None,
-            js_content: Optional[str] = None,
-            templates: Optional[Dict[str, str]] = None,
+        self,
+        metadata: Optional[Dict[str, Any]] = None,
+        css_content: Optional[str] = None,
+        js_content: Optional[str] = None,
+        templates: Optional[Dict[str, str]] = None,
     ) -> None:
         """Save all customization files to disk."""
         self.create_base_structure()
@@ -464,7 +466,9 @@ class ZeekerDeployer:
         secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
         if not access_key or not secret_key:
-            raise ValueError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are required")
+            raise ValueError(
+                "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are required"
+            )
 
         # Create S3 client with custom endpoint if specified
         client_kwargs = {
@@ -477,7 +481,7 @@ class ZeekerDeployer:
         self.s3_client = boto3.client("s3", **client_kwargs)
 
     def upload_customization(
-            self, local_path: Path, database_name: str, dry_run: bool = False
+        self, local_path: Path, database_name: str, dry_run: bool = False
     ) -> ValidationResult:
         """Upload customization files to S3."""
         result = ValidationResult(is_valid=True)
@@ -495,11 +499,15 @@ class ZeekerDeployer:
                 s3_key = s3_prefix + str(relative_path).replace("\\", "/")
 
                 if dry_run:
-                    result.info.append(f"Would upload: {file_path} -> s3://{self.bucket_name}/{s3_key}")
+                    result.info.append(
+                        f"Would upload: {file_path} -> s3://{self.bucket_name}/{s3_key}"
+                    )
                 else:
                     try:
                         self.s3_client.upload_file(str(file_path), self.bucket_name, s3_key)
-                        result.info.append(f"Uploaded: {file_path} -> s3://{self.bucket_name}/{s3_key}")
+                        result.info.append(
+                            f"Uploaded: {file_path} -> s3://{self.bucket_name}/{s3_key}"
+                        )
                     except Exception as e:
                         result.errors.append(f"Failed to upload {file_path}: {e}")
                         result.is_valid = False

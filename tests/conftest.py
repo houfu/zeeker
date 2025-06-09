@@ -31,22 +31,27 @@ def sample_database_structure(temp_dir):
     images_dir.mkdir()
 
     # Create template files
-    (templates_dir / "database-testdb.html").write_text("""
+    (templates_dir / "database-testdb.html").write_text(
+        """
     {% extends "default:database.html" %}
     {% block content %}
     <h1>Test Database</h1>
     {{ super() }}
     {% endblock %}
-    """)
+    """
+    )
 
-    (templates_dir / "custom-header.html").write_text("""
+    (templates_dir / "custom-header.html").write_text(
+        """
     <header class="custom-header">
         <h1>Custom Header</h1>
     </header>
-    """)
+    """
+    )
 
     # Create static files
-    (static_dir / "custom.css").write_text("""
+    (static_dir / "custom.css").write_text(
+        """
     :root {
         --primary-color: #3498db;
         --accent-color: #e74c3c;
@@ -57,9 +62,11 @@ def sample_database_structure(temp_dir):
         color: white;
         padding: 1rem;
     }
-    """)
+    """
+    )
 
-    (static_dir / "custom.js").write_text("""
+    (static_dir / "custom.js").write_text(
+        """
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Custom JS loaded for testdb');
 
@@ -69,7 +76,8 @@ def sample_database_structure(temp_dir):
             table.classList.add('enhanced-table');
         });
     });
-    """)
+    """
+    )
 
     # Create metadata file
     metadata = {
@@ -82,12 +90,13 @@ def sample_database_structure(temp_dir):
         "databases": {
             "testdb": {
                 "title": "Test Database",
-                "description": "A sample test database for validation"
+                "description": "A sample test database for validation",
             }
-        }
+        },
     }
 
     import json
+
     (temp_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
 
     return temp_dir

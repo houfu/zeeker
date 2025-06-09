@@ -149,9 +149,7 @@ class TestZeekerValidator:
             (base_path / "static" / "images").mkdir()
 
             # Create valid files
-            (base_path / "templates" / "database-testdb.html").write_text(
-                "<h1>Test Template</h1>"
-            )
+            (base_path / "templates" / "database-testdb.html").write_text("<h1>Test Template</h1>")
             (base_path / "static" / "custom.css").write_text("body { color: red; }")
 
             # Create valid metadata
@@ -622,9 +620,7 @@ class TestDatabaseCustomization:
 
     def test_initialization(self):
         """Test DatabaseCustomization initialization."""
-        customization = DatabaseCustomization(
-            database_name="test_db", base_path=Path("/test")
-        )
+        customization = DatabaseCustomization(database_name="test_db", base_path=Path("/test"))
 
         assert customization.database_name == "test_db"
         assert customization.base_path == Path("/test")
