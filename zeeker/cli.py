@@ -5,17 +5,15 @@ A Python library to help database developers create compliant customizations
 for Zeeker databases following the three-pass asset system.
 """
 
+import boto3
+import click
+import hashlib
 import json
 import os
 import re
-import hashlib
-from pathlib import Path
-from typing import Dict, List, Optional, Union, Any
 from dataclasses import dataclass, field
-import boto3
-from jinja2 import Environment, FileSystemLoader, Template
-import click
-import yaml
+from pathlib import Path
+from typing import Dict, List, Optional, Any
 
 
 @dataclass
@@ -81,7 +79,7 @@ class ZeekerValidator:
         # Check naming conventions
         if template_name.startswith("database-") or template_name.startswith("table-"):
             if not template_name.startswith(
-                f"database-{database_name}"
+                    f"database-{database_name}"
             ) and not template_name.startswith(f"table-{database_name}"):
                 result.warnings.append(
                     f"Template '{template_name}' should include database name "
@@ -138,7 +136,7 @@ class ZeekerValidator:
         return result
 
     def validate_file_structure(
-        self, customization_path: Path, database_name: str
+            self, customization_path: Path, database_name: str
     ) -> ValidationResult:
         """Validate the file structure of a customization."""
         result = ValidationResult(is_valid=True)
@@ -202,13 +200,13 @@ class ZeekerGenerator:
             dir_path.mkdir(parents=True, exist_ok=True)
 
     def generate_metadata_template(
-        self,
-        title: str,
-        description: str,
-        license_type: str = "CC-BY-4.0",
-        source_url: Optional[str] = None,
-        extra_css: Optional[List[str]] = None,
-        extra_js: Optional[List[str]] = None,
+            self,
+            title: str,
+            description: str,
+            license_type: str = "CC-BY-4.0",
+            source_url: Optional[str] = None,
+            extra_css: Optional[List[str]] = None,
+            extra_js: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Generate a complete metadata.json template."""
         metadata = {
@@ -238,10 +236,10 @@ class ZeekerGenerator:
         return metadata
 
     def generate_css_template(
-        self,
-        primary_color: str = "#3498db",
-        accent_color: str = "#e74c3c",
-        include_examples: bool = True,
+            self,
+            primary_color: str = "#3498db",
+            accent_color: str = "#e74c3c",
+            include_examples: bool = True,
     ) -> str:
         """Generate a CSS template with best practices."""
         css_template = f"""/* Custom styles for {self.database_name} database */
@@ -417,11 +415,11 @@ console.log('Database template loaded for {self.database_name}');
 """
 
     def save_customization(
-        self,
-        metadata: Optional[Dict[str, Any]] = None,
-        css_content: Optional[str] = None,
-        js_content: Optional[str] = None,
-        templates: Optional[Dict[str, str]] = None,
+            self,
+            metadata: Optional[Dict[str, Any]] = None,
+            css_content: Optional[str] = None,
+            js_content: Optional[str] = None,
+            templates: Optional[Dict[str, str]] = None,
     ) -> None:
         """Save all customization files to disk."""
         self.create_base_structure()
@@ -474,6 +472,8 @@ class ZeekerDeployer:
         client_kwargs = {
             "aws_access_key_id": access_key,
             "aws_secret_access_key": secret_key,
+            "response_checksum_validation": "when_required",
+            "request_checksum_calculation": "when_required"
         }
         if self.endpoint_url:
             client_kwargs["endpoint_url"] = self.endpoint_url
@@ -481,7 +481,7 @@ class ZeekerDeployer:
         self.s3_client = boto3.client("s3", **client_kwargs)
 
     def upload_customization(
-        self, local_path: Path, database_name: str, dry_run: bool = False
+            self, local_path: Path, database_name: str, dry_run: bool = False
     ) -> ValidationResult:
         """Upload customization files to S3."""
         result = ValidationResult(is_valid=True)
