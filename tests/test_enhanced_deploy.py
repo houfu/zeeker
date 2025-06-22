@@ -1,4 +1,3 @@
-
 import hashlib
 import json
 import pytest
@@ -105,7 +104,10 @@ class TestZeekerDeployerHelpers:
         expected_hash = hashlib.md5(css_content.encode()).hexdigest()
         assert files["static/custom.css"] == expected_hash
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_get_existing_files_empty_s3(self, mock_s3_client):
         """Test getting existing files when S3 is empty."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -119,7 +121,10 @@ class TestZeekerDeployerHelpers:
 
             assert files == {}
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_get_existing_files_with_content(self, mock_s3_client):
         """Test getting existing files when S3 has content."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -212,9 +217,16 @@ class TestZeekerDeployerHelpers:
         assert set(changes.uploads) == {"static/new.css", "static/existing.js"}
         assert changes.updates == []
         assert changes.unchanged == []
-        assert set(changes.deletions) == {"static/existing.js", "static/old.css", "static/another_old.js"}
+        assert set(changes.deletions) == {
+            "static/existing.js",
+            "static/old.css",
+            "static/another_old.js",
+        }
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_execute_deployment_success(self, mock_s3_client, temp_customization):
         """Test successful deployment execution."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -238,7 +250,10 @@ class TestZeekerDeployerHelpers:
             mock_s3_client.delete_object.assert_called_once()
             assert mock_s3_client.upload_file.call_count == 2
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_execute_deployment_s3_error(self, mock_s3_client, temp_customization):
         """Test deployment with S3 errors."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -258,7 +273,10 @@ class TestZeekerDeployerHelpers:
 class TestCLI:
     """Test the CLI deploy command."""
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_deploy_dry_run(self, mock_s3_client, temp_customization):
         """Test deploy with dry-run flag."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -268,9 +286,7 @@ class TestCLI:
             mock_s3_client.get_paginator.return_value = mock_paginator
 
             runner = CliRunner()
-            result = runner.invoke(
-                cli, ["deploy", str(temp_customization), "test_db", "--dry-run"]
-            )
+            result = runner.invoke(cli, ["deploy", str(temp_customization), "test_db", "--dry-run"])
 
             assert result.exit_code == 0
             assert "Dry run completed" in result.output
@@ -278,7 +294,10 @@ class TestCLI:
             # Verify S3 upload methods were NOT called
             mock_s3_client.upload_file.assert_not_called()
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_deploy_sync_with_confirmation(self, mock_s3_client, temp_customization):
         """Test deploy with sync flag and user confirmation."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -308,7 +327,10 @@ class TestCLI:
             assert "Deployment cancelled" in result.output
             mock_s3_client.upload_file.assert_not_called()
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_deploy_sync_with_yes_flag(self, mock_s3_client, temp_customization):
         """Test deploy with sync and --yes flag (skip confirmation)."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -344,9 +366,7 @@ class TestCLI:
             # Add this line to create a valid path
             Path("fake_path").mkdir()
 
-            result = runner.invoke(
-                cli, ["deploy", "fake_path", "test_db", "--sync", "--clean"]
-            )
+            result = runner.invoke(cli, ["deploy", "fake_path", "test_db", "--sync", "--clean"])
 
             assert result.exit_code == 0  # Changed from expecting error
             assert "Cannot use both --clean and --sync flags" in result.output
@@ -359,7 +379,10 @@ class TestCLI:
         assert result.exit_code == 0
         assert "Configuration error" in result.output
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_deploy_no_changes(self, mock_s3_client, temp_customization):
         """Test deploy when no changes are needed."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -391,7 +414,10 @@ class TestCLI:
                 assert "No changes needed" in result.output
                 mock_s3_client.upload_file.assert_not_called()
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_deploy_with_diff_flag(self, mock_s3_client, temp_customization):
         """Test deploy with --diff flag shows detailed changes."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -423,7 +449,10 @@ class TestCLI:
 class TestIntegration:
     """Integration tests for the complete workflow."""
 
-    @patch.dict("os.environ", {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"})
+    @patch.dict(
+        "os.environ",
+        {"S3_BUCKET": "test-bucket", "AWS_ACCESS_KEY_ID": "key", "AWS_SECRET_ACCESS_KEY": "secret"},
+    )
     def test_full_deployment_workflow(self, mock_s3_client, temp_customization):
         """Test a complete deployment workflow."""
         with patch("zeeker.cli.boto3.client", return_value=mock_s3_client):
@@ -437,7 +466,9 @@ class TestIntegration:
             # Test the complete workflow
             existing_files = deployer.get_existing_files("test_db")
             local_files = deployer.get_local_files(temp_customization)
-            changes = deployer.calculate_changes(local_files, existing_files, sync=False, clean=False)
+            changes = deployer.calculate_changes(
+                local_files, existing_files, sync=False, clean=False
+            )
 
             assert len(changes.uploads) == 4  # metadata, template, css, js
             assert len(changes.updates) == 0

@@ -43,8 +43,8 @@ class DatabaseCustomization:
 class DeploymentChanges:
     """Represents the changes to be made during deployment."""
 
-    uploads: List[str] = field(default_factory=list)    # New files
-    updates: List[str] = field(default_factory=list)    # Modified files
+    uploads: List[str] = field(default_factory=list)  # New files
+    updates: List[str] = field(default_factory=list)  # Modified files
     deletions: List[str] = field(default_factory=list)  # Files to remove
     unchanged: List[str] = field(default_factory=list)  # No changes needed
 
@@ -507,14 +507,14 @@ class ZeekerDeployer:
         files = {}
         try:
             s3_prefix = f"assets/databases/{database_name}/"
-            paginator = self.s3_client.get_paginator('list_objects_v2')
+            paginator = self.s3_client.get_paginator("list_objects_v2")
             pages = paginator.paginate(Bucket=self.bucket_name, Prefix=s3_prefix)
 
             for page in pages:
-                for obj in page.get('Contents', []):
-                    relative_path = obj['Key'][len(s3_prefix):]
+                for obj in page.get("Contents", []):
+                    relative_path = obj["Key"][len(s3_prefix) :]
                     # S3 ETag is MD5 hash for single-part uploads
-                    files[relative_path] = obj['ETag'].strip('"')
+                    files[relative_path] = obj["ETag"].strip('"')
         except Exception as e:
             # Log error but don't fail - treat as empty S3
             click.echo(f"Warning: Could not list S3 files: {e}", err=True)
@@ -531,8 +531,9 @@ class ZeekerDeployer:
                 files[relative_path] = md5_hash
         return files
 
-    def calculate_changes(self, local_files: Dict[str, str], existing_files: Dict[str, str],
-                         sync: bool, clean: bool) -> DeploymentChanges:
+    def calculate_changes(
+        self, local_files: Dict[str, str], existing_files: Dict[str, str], sync: bool, clean: bool
+    ) -> DeploymentChanges:
         """Calculate what changes need to be made."""
         changes = DeploymentChanges()
 
@@ -558,8 +559,13 @@ class ZeekerDeployer:
 
         return changes
 
-    def show_deployment_summary(self, changes: DeploymentChanges, database_name: str,
-                               local_files: Dict[str, str], existing_files: Dict[str, str]):
+    def show_deployment_summary(
+        self,
+        changes: DeploymentChanges,
+        database_name: str,
+        local_files: Dict[str, str],
+        existing_files: Dict[str, str],
+    ):
         """Show a summary of what will be deployed."""
         click.echo(f"\n📋 Deployment Summary for '{database_name}':")
         click.echo(f"   Local files: {len(local_files)}")
@@ -611,8 +617,9 @@ class ZeekerDeployer:
             else:
                 click.echo(f"   ({len(changes.unchanged)} files)")
 
-    def execute_deployment(self, changes: DeploymentChanges, local_path: Path,
-                          database_name: str) -> ValidationResult:
+    def execute_deployment(
+        self, changes: DeploymentChanges, local_path: Path, database_name: str
+    ) -> ValidationResult:
         """Execute the deployment based on calculated changes."""
         result = ValidationResult(is_valid=True)
         s3_prefix = f"assets/databases/{database_name}/"
@@ -800,7 +807,6 @@ def deploy(local_path, database_name, dry_run, sync, clean, yes, diff):
         click.echo("  - AWS_SECRET_ACCESS_KEY")
         click.echo("  - S3_ENDPOINT_URL (optional)")
         return
-
 
     # Get current state
     local_path_obj = Path(local_path)

@@ -533,6 +533,7 @@ class TestCLICommands:
         mock_deployer.get_local_files.return_value = {"test.txt": "hash123"}
 
         from zeeker.cli import DeploymentChanges
+
         mock_changes = DeploymentChanges(uploads=["test.txt"])
         mock_deployer.calculate_changes.return_value = mock_changes
         mock_deployer.show_deployment_summary = MagicMock()
