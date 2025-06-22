@@ -12,14 +12,6 @@ on:
           - patch
           - minor
           - major
-      schema_update:
-        description: 'Update schema versions'
-        type: 'boolean'
-        default: false
-      schema_tables:
-        description: 'Tables to bump schema versions (comma-separated)'
-        required: false
-        default: ''
       create_release:
         description: 'Create GitHub release'
         type: 'boolean'
@@ -35,7 +27,7 @@ jobs:
     outputs:
       new_version: ${{ steps.bump_version.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -45,10 +37,14 @@ jobs:
         with:
           python-version: '>=3.12'
 
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install toml
+          uv sync
 
       - name: Bump package version
         id: bump_version
@@ -57,6 +53,7 @@ jobs:
           import toml
           import re
           import os
+          from pathlib import Path
           
           # Read current version from pyproject.toml
           with open('pyproject.toml', 'r') as f:
@@ -84,76 +81,41 @@ jobs:
           with open('pyproject.toml', 'w') as f:
               toml.dump(config, f)
           
-          # Update __init__.py
-          with open('sglawwatch_to_sqlite/__init__.py', 'r') as f:
-              init_content = f.read()
-          
-          new_init_content = re.sub(r'__version__ = ".*"', f'__version__ = "{new_version}"', init_content)
-          
-          with open('sglawwatch_to_sqlite/__init__.py', 'w') as f:
-              f.write(new_init_content)
+          # Update zeeker/__init__.py (create if doesn't exist)
+          init_file = Path('zeeker/__init__.py')
+          if init_file.exists():
+              with open(init_file, 'r') as f:
+                  init_content = f.read()
+              
+              # Add __version__ if it doesn't exist
+              if '__version__' not in init_content:
+                  init_content = f'__version__ = "{new_version}"\n' + init_content
+              else:
+                  init_content = re.sub(r'__version__ = ".*"', f'__version__ = "{new_version}"', init_content)
+              
+              with open(init_file, 'w') as f:
+                  f.write(init_content)
+          else:
+              # Create __init__.py with version
+              with open(init_file, 'w') as f:
+                  f.write(f'__version__ = "{new_version}"\n')
           
           # Set output for GitHub Actions
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"new_version={new_version}\n")
+          
+          print(f"Bumped version from {current_version} to {new_version}")
           EOF
-          echo "Bumped version to $(grep -oP '__version__ = "\K[^"]+' sglawwatch_to_sqlite/__init__.py)"
 
-      - name: Update schema versions
-        if: ${{ github.event.inputs.schema_update == 'true' }}
+      - name: Run tests
         run: |
-          python - <<EOF
-          import re
-          
-          tables = "${{ github.event.inputs.schema_tables }}".split(',')
-          tables = [t.strip() for t in tables if t.strip()]
-          
-          if not tables:
-              print("No tables specified for schema version update. Using default tables.")
-              tables = ["headlines", "metadata"]
-          
-          with open('sglawwatch_to_sqlite/db_manager.py', 'r') as f:
-              content = f.read()
-          
-          # Extract TABLE_VERSIONS dictionary
-          table_versions_match = re.search(r'TABLE_VERSIONS = {([^}]+)}', content, re.DOTALL)
-          if not table_versions_match:
-              print("Could not find TABLE_VERSIONS dictionary. Exiting.")
-              exit(1)
-          
-          table_versions_str = table_versions_match.group(1)
-          
-          # Update version for each specified table
-          for table in tables:
-              table_pattern = rf'"{table}":\s*(\d+)'
-              version_match = re.search(table_pattern, table_versions_str)
-              if version_match:
-                  current_version = int(version_match.group(1))
-                  new_version = current_version + 1
-                  table_versions_str = re.sub(
-                      table_pattern, 
-                      f'"{table}": {new_version}', 
-                      table_versions_str
-                  )
-                  print(f"Bumped schema version for {table} from {current_version} to {new_version}")
-              else:
-                  print(f"Table {table} not found in TABLE_VERSIONS")
-          
-          # Update the content with new TABLE_VERSIONS
-          new_content = content.replace(
-              table_versions_match.group(0), 
-              f"TABLE_VERSIONS = {{{table_versions_str}}}"
-          )
-          
-          with open('sglawwatch_to_sqlite/db_manager.py', 'w') as f:
-              f.write(new_content)
-          EOF
+          uv run pytest
 
       - name: Commit changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add pyproject.toml sglawwatch_to_sqlite/__init__.py sglawwatch_to_sqlite/db_manager.py
+          git add pyproject.toml zeeker/__init__.py
           git commit -m "Bump version to ${{ steps.bump_version.outputs.new_version }}"
           git tag -a "v${{ steps.bump_version.outputs.new_version }}" -m "Version ${{ steps.bump_version.outputs.new_version }}"
           git push && git push --tags
@@ -163,7 +125,7 @@ jobs:
     if: ${{ github.event.inputs.create_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: "v${{ needs.bump-version.outputs.new_version }}"
@@ -173,14 +135,27 @@ jobs:
         with:
           python-version: '>=3.12'
 
-      - name: Install dependencies
+      - name: Install uv
         run: |
-          python -m pip install --upgrade pip
-          pip install build
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Build package
         run: |
-          python -m build
+          uv build
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            echo "## Changes since $LAST_TAG" > CHANGELOG.md
+            git log --pretty=format:"- %s" $LAST_TAG..HEAD >> CHANGELOG.md
+          else
+            echo "## Initial Release" > CHANGELOG.md
+            echo "- First release of Zeeker Database Customization Tool" >> CHANGELOG.md
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -189,6 +164,16 @@ jobs:
           name: "Release v${{ needs.bump-version.outputs.new_version }}"
           body: |
             ${{ github.event.inputs.release_notes || format('Version {0}', needs.bump-version.outputs.new_version) }}
+            
+            ### Installation
+            ```bash
+            pip install zeeker
+            # or
+            uv add zeeker
+            ```
+            
+            ### What's Changed
+            ${{ steps.changelog.outputs.content }}
           files: |
             dist/*
           draft: false
