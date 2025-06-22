@@ -529,9 +529,13 @@ class TestCLICommands:
 
         mock_deployer = MagicMock()
         mock_deployer_class.return_value = mock_deployer
-        mock_deployer.upload_customization.return_value = ValidationResult(
-            is_valid=True, info=["Would upload: test.txt"]
-        )
+        mock_deployer.get_existing_files.return_value = {}
+        mock_deployer.get_local_files.return_value = {"test.txt": "hash123"}
+
+        from zeeker.cli import DeploymentChanges
+        mock_changes = DeploymentChanges(uploads=["test.txt"])
+        mock_deployer.calculate_changes.return_value = mock_changes
+        mock_deployer.show_deployment_summary = MagicMock()
         mock_deployer.bucket_name = "test-bucket"
 
         with self.runner.isolated_filesystem():
@@ -550,7 +554,9 @@ class TestCLICommands:
 
             assert result.exit_code == 0
             assert "Dry run completed" in result.output
-            mock_deployer.upload_customization.assert_called_once()
+            mock_deployer.get_existing_files.assert_called_once_with("test_db")
+            mock_deployer.get_local_files.assert_called_once()
+            mock_deployer.calculate_changes.assert_called_once()
 
     @patch("os.getenv")
     def test_deploy_command_missing_env_vars(self, mock_getenv):

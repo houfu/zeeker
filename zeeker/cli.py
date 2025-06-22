@@ -1,8 +1,10 @@
 """
-Zeeker Database Customization Library
+Enhanced Zeeker Database Customization Library
 
-A Python library to help database developers create compliant customizations
-for Zeeker databases following the three-pass asset system.
+This file contains the complete implementation of the enhanced deploy command
+with sync, clean, and detailed diff capabilities.
+
+Replace the existing zeeker/cli.py with this implementation.
 """
 
 import boto3
@@ -35,6 +37,26 @@ class DatabaseCustomization:
     templates: Dict[str, str] = field(default_factory=dict)
     static_files: Dict[str, bytes] = field(default_factory=dict)
     metadata: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class DeploymentChanges:
+    """Represents the changes to be made during deployment."""
+
+    uploads: List[str] = field(default_factory=list)    # New files
+    updates: List[str] = field(default_factory=list)    # Modified files
+    deletions: List[str] = field(default_factory=list)  # Files to remove
+    unchanged: List[str] = field(default_factory=list)  # No changes needed
+
+    @property
+    def has_changes(self) -> bool:
+        """Check if any changes need to be made."""
+        return bool(self.uploads or self.updates or self.deletions)
+
+    @property
+    def has_destructive_changes(self) -> bool:
+        """Check if any destructive changes (deletions) will be made."""
+        return bool(self.deletions)
 
 
 class ZeekerValidator:
@@ -451,7 +473,7 @@ console.log('Database template loaded for {self.database_name}');
 
 
 class ZeekerDeployer:
-    """Handles deployment of customizations to S3."""
+    """Handles deployment of customizations to S3 with enhanced capabilities."""
 
     def __init__(self):
         # Get S3 configuration from environment variables
@@ -480,10 +502,152 @@ class ZeekerDeployer:
 
         self.s3_client = boto3.client("s3", **client_kwargs)
 
+    def get_existing_files(self, database_name: str) -> Dict[str, str]:
+        """Get existing files on S3 with their ETags for comparison."""
+        files = {}
+        try:
+            s3_prefix = f"assets/databases/{database_name}/"
+            paginator = self.s3_client.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=self.bucket_name, Prefix=s3_prefix)
+
+            for page in pages:
+                for obj in page.get('Contents', []):
+                    relative_path = obj['Key'][len(s3_prefix):]
+                    # S3 ETag is MD5 hash for single-part uploads
+                    files[relative_path] = obj['ETag'].strip('"')
+        except Exception as e:
+            # Log error but don't fail - treat as empty S3
+            click.echo(f"Warning: Could not list S3 files: {e}", err=True)
+        return files
+
+    def get_local_files(self, local_path: Path) -> Dict[str, str]:
+        """Get local files with their MD5 hashes for comparison."""
+        files = {}
+        for file_path in local_path.rglob("*"):
+            if file_path.is_file():
+                relative_path = str(file_path.relative_to(local_path)).replace("\\", "/")
+                # Calculate MD5 to compare with S3 ETag
+                md5_hash = hashlib.md5(file_path.read_bytes()).hexdigest()
+                files[relative_path] = md5_hash
+        return files
+
+    def calculate_changes(self, local_files: Dict[str, str], existing_files: Dict[str, str],
+                         sync: bool, clean: bool) -> DeploymentChanges:
+        """Calculate what changes need to be made."""
+        changes = DeploymentChanges()
+
+        if clean:
+            # Clean deployment: delete everything, upload everything
+            changes.deletions = list(existing_files.keys())
+            changes.uploads = list(local_files.keys())
+        else:
+            # Compare files
+            for local_file, local_hash in local_files.items():
+                if local_file not in existing_files:
+                    changes.uploads.append(local_file)
+                elif existing_files[local_file] != local_hash:
+                    changes.updates.append(local_file)
+                else:
+                    changes.unchanged.append(local_file)
+
+            # Handle sync deletions
+            if sync:
+                for existing_file in existing_files:
+                    if existing_file not in local_files:
+                        changes.deletions.append(existing_file)
+
+        return changes
+
+    def show_deployment_summary(self, changes: DeploymentChanges, database_name: str,
+                               local_files: Dict[str, str], existing_files: Dict[str, str]):
+        """Show a summary of what will be deployed."""
+        click.echo(f"\n📋 Deployment Summary for '{database_name}':")
+        click.echo(f"   Local files: {len(local_files)}")
+        click.echo(f"   S3 files: {len(existing_files)}")
+
+        if changes.uploads:
+            click.echo(f"   📤 Will upload: {len(changes.uploads)} files")
+            for file in changes.uploads[:5]:  # Show first 5
+                click.echo(f"      • {file}")
+            if len(changes.uploads) > 5:
+                click.echo(f"      ... and {len(changes.uploads) - 5} more")
+
+        if changes.updates:
+            click.echo(f"   🔄 Will update: {len(changes.updates)} files")
+            for file in changes.updates[:5]:
+                click.echo(f"      • {file}")
+            if len(changes.updates) > 5:
+                click.echo(f"      ... and {len(changes.updates) - 5} more")
+
+        if changes.deletions:
+            click.echo(f"   🗑️  Will delete: {len(changes.deletions)} files")
+            for file in changes.deletions:
+                click.echo(f"      • {file}")
+
+    def show_detailed_diff(self, changes: DeploymentChanges):
+        """Show detailed diff of all changes."""
+        click.echo("\n📊 Detailed Changes:")
+
+        if changes.uploads:
+            click.echo(f"\n➕ New files ({len(changes.uploads)}):")
+            for file in changes.uploads:
+                click.echo(f"   + {file}")
+
+        if changes.updates:
+            click.echo(f"\n🔄 Modified files ({len(changes.updates)}):")
+            for file in changes.updates:
+                click.echo(f"   ~ {file}")
+
+        if changes.deletions:
+            click.echo(f"\n➖ Files to delete ({len(changes.deletions)}):")
+            for file in changes.deletions:
+                click.echo(f"   - {file}")
+
+        if changes.unchanged:
+            click.echo(f"\n✓ Unchanged files ({len(changes.unchanged)})")
+            if len(changes.unchanged) <= 10:
+                for file in changes.unchanged:
+                    click.echo(f"   = {file}")
+            else:
+                click.echo(f"   ({len(changes.unchanged)} files)")
+
+    def execute_deployment(self, changes: DeploymentChanges, local_path: Path,
+                          database_name: str) -> ValidationResult:
+        """Execute the deployment based on calculated changes."""
+        result = ValidationResult(is_valid=True)
+        s3_prefix = f"assets/databases/{database_name}/"
+
+        # Delete files first (in case of clean deployment)
+        for file_to_delete in changes.deletions:
+            s3_key = s3_prefix + file_to_delete
+            try:
+                self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
+                result.info.append(f"Deleted: {file_to_delete}")
+            except Exception as e:
+                result.errors.append(f"Failed to delete {file_to_delete}: {e}")
+                result.is_valid = False
+
+        # Upload new and updated files
+        files_to_upload = changes.uploads + changes.updates
+        for file_to_upload in files_to_upload:
+            local_file_path = local_path / file_to_upload
+            s3_key = s3_prefix + file_to_upload
+
+            try:
+                self.s3_client.upload_file(str(local_file_path), self.bucket_name, s3_key)
+                action = "Uploaded" if file_to_upload in changes.uploads else "Updated"
+                result.info.append(f"{action}: {file_to_upload}")
+            except Exception as e:
+                result.errors.append(f"Failed to upload {file_to_upload}: {e}")
+                result.is_valid = False
+
+        return result
+
+    # Legacy method for backward compatibility
     def upload_customization(
         self, local_path: Path, database_name: str, dry_run: bool = False
     ) -> ValidationResult:
-        """Upload customization files to S3."""
+        """Legacy method - use the new CLI for enhanced features."""
         result = ValidationResult(is_valid=True)
 
         if not local_path.exists():
@@ -604,16 +768,28 @@ def validate(customization_path, database_name):
 @cli.command()
 @click.argument("local_path", type=click.Path(exists=True))
 @click.argument("database_name")
-@click.option("--dry-run", is_flag=True, help="Show what would be uploaded without uploading")
-def deploy(local_path, database_name, dry_run):
+@click.option("--dry-run", is_flag=True, help="Show what would be changed without making changes")
+@click.option("--sync", is_flag=True, help="Delete S3 files not present locally (full sync)")
+@click.option("--clean", is_flag=True, help="Remove all existing customizations first, then deploy")
+@click.option("--yes", is_flag=True, help="Skip confirmation prompts")
+@click.option("--diff", is_flag=True, help="Show detailed differences between local and S3")
+def deploy(local_path, database_name, dry_run, sync, clean, yes, diff):
     """Deploy customization to S3.
 
-    Requires environment variables:
-    - S3_BUCKET: S3 bucket name
-    - S3_ENDPOINT_URL: S3 endpoint URL (optional, defaults to AWS)
-    - AWS_ACCESS_KEY_ID: AWS access key
-    - AWS_SECRET_ACCESS_KEY: AWS secret key
+    Default behavior: Upload/overwrite files, keep extra S3 files.
+
+    Examples:
+      zeeker deploy ./custom legal_news                    # Safe additive deployment
+      zeeker deploy ./custom legal_news --dry-run         # Preview changes
+      zeeker deploy ./custom legal_news --sync --dry-run  # Preview full sync
+      zeeker deploy ./custom legal_news --clean           # Fresh start
     """
+
+    # Validate flags
+    if clean and sync:
+        click.echo("❌ Cannot use both --clean and --sync flags")
+        return
+
     try:
         deployer = ZeekerDeployer()
     except ValueError as e:
@@ -625,21 +801,59 @@ def deploy(local_path, database_name, dry_run):
         click.echo("  - S3_ENDPOINT_URL (optional)")
         return
 
-    result = deployer.upload_customization(Path(local_path), database_name, dry_run)
 
-    if result.errors:
-        click.echo("❌ Deployment failed:")
-        for error in result.errors:
-            click.echo(f"  ERROR: {error}")
+    # Get current state
+    local_path_obj = Path(local_path)
+    existing_files = deployer.get_existing_files(database_name)
+    local_files = deployer.get_local_files(local_path_obj)
 
-    for info in result.info:
-        click.echo(f"  {info}")
+    # Calculate what will happen
+    changes = deployer.calculate_changes(local_files, existing_files, sync, clean)
 
-    if result.is_valid:
-        if dry_run:
-            click.echo("✅ Dry run completed successfully!")
+    # Show diff if requested
+    if diff:
+        deployer.show_detailed_diff(changes)
+    else:
+        deployer.show_deployment_summary(changes, database_name, local_files, existing_files)
+
+    # Early exit if no changes
+    if not changes.has_changes:
+        click.echo("   ✅ No changes needed")
+        return
+
+    # Confirmation for destructive operations
+    if changes.has_destructive_changes and not yes and not dry_run:
+        if clean:
+            msg = f"This will delete ALL {len(existing_files)} existing files and upload {len(local_files)} new files."
         else:
-            click.echo(f"✅ Deployment completed successfully to {deployer.bucket_name}!")
+            msg = f"This will delete {len(changes.deletions)} files not present locally."
+
+        click.echo(f"\n⚠️  {msg}")
+        click.echo("Deleted files cannot be recovered.")
+
+        if not click.confirm("Continue?"):
+            click.echo("Deployment cancelled.")
+            return
+
+    # Perform deployment
+    if dry_run:
+        click.echo(f"\n🔍 Dry run completed - no changes made")
+        click.echo("Remove --dry-run to perform actual deployment")
+    else:
+        result = deployer.execute_deployment(changes, local_path_obj, database_name)
+
+        if result.is_valid:
+            click.echo(f"\n✅ Deployment completed successfully!")
+            if changes.deletions:
+                click.echo(f"   Deleted: {len(changes.deletions)} files")
+            if changes.uploads:
+                click.echo(f"   Uploaded: {len(changes.uploads)} files")
+            if changes.updates:
+                click.echo(f"   Updated: {len(changes.updates)} files")
+        else:
+            click.echo(f"\n❌ Deployment failed:")
+            for error in result.errors:
+                click.echo(f"   {error}")
 
 
 @cli.command()
