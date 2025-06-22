@@ -314,6 +314,8 @@ class TestZeekerDeployer:
             aws_access_key_id="test_access_key",
             aws_secret_access_key="test_secret_key",
             endpoint_url="https://sin1.contabostorage.com",
+            response_checksum_validation="when_required",
+            request_checksum_calculation="when_required",
         )
 
     @patch("os.getenv")
@@ -368,6 +370,8 @@ class TestZeekerDeployer:
             "s3",
             aws_access_key_id="test_access_key",
             aws_secret_access_key="test_secret_key",
+            response_checksum_validation="when_required",
+            request_checksum_calculation="when_required",
         )
 
     @patch("os.getenv")
