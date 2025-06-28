@@ -17,6 +17,7 @@ license = "MIT"
 dev = [
     "black>=25.1.0",
     "pytest>=8.4.0",
+    "toml>=0.10.2",
 ]
 
 [project.scripts]
