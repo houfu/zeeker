@@ -922,6 +922,7 @@ dependencies = [
     "click>=8.2.1",
     "jinja2>=3.1.6",
     "pyyaml>=6.0.2",
+    "sqlite-utils>=3.38",
 ]
 license = "MIT"
 
@@ -955,330 +956,62 @@ extend-exclude = '''
   | dist
 )/
 '''
+
 </document_content>
 </document>
 <document index="4">
-<source>./uv.lock</source>
+<source>./pytest.ini</source>
 <document_content>
-version = 1
-revision = 2
-requires-python = ">=3.12"
-
-[[package]]
-name = "black"
-version = "25.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "click" },
-    { name = "mypy-extensions" },
-    { name = "packaging" },
-    { name = "pathspec" },
-    { name = "platformdirs" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/94/49/26a7b0f3f35da4b5a65f081943b7bcd22d7002f5f0fb8098ec1ff21cb6ef/black-25.1.0.tar.gz", hash = "sha256:33496d5cd1222ad73391352b4ae8da15253c5de89b93a80b3e2c8d9a19ec2666", size = 649449, upload-time = "2025-01-29T04:15:40.373Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/71/3fe4741df7adf015ad8dfa082dd36c94ca86bb21f25608eb247b4afb15b2/black-25.1.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:4b60580e829091e6f9238c848ea6750efed72140b91b048770b64e74fe04908b", size = 1650988, upload-time = "2025-01-29T05:37:16.707Z" },
-    { url = "https://files.pythonhosted.org/packages/13/f3/89aac8a83d73937ccd39bbe8fc6ac8860c11cfa0af5b1c96d081facac844/black-25.1.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:1e2978f6df243b155ef5fa7e558a43037c3079093ed5d10fd84c43900f2d8ecc", size = 1453985, upload-time = "2025-01-29T05:37:18.273Z" },
-    { url = "https://files.pythonhosted.org/packages/6f/22/b99efca33f1f3a1d2552c714b1e1b5ae92efac6c43e790ad539a163d1754/black-25.1.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3b48735872ec535027d979e8dcb20bf4f70b5ac75a8ea99f127c106a7d7aba9f", size = 1783816, upload-time = "2025-01-29T04:18:33.823Z" },
-    { url = "https://files.pythonhosted.org/packages/18/7e/a27c3ad3822b6f2e0e00d63d58ff6299a99a5b3aee69fa77cd4b0076b261/black-25.1.0-cp312-cp312-win_amd64.whl", hash = "sha256:ea0213189960bda9cf99be5b8c8ce66bb054af5e9e861249cd23471bd7b0b3ba", size = 1440860, upload-time = "2025-01-29T04:19:12.944Z" },
-    { url = "https://files.pythonhosted.org/packages/98/87/0edf98916640efa5d0696e1abb0a8357b52e69e82322628f25bf14d263d1/black-25.1.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:8f0b18a02996a836cc9c9c78e5babec10930862827b1b724ddfe98ccf2f2fe4f", size = 1650673, upload-time = "2025-01-29T05:37:20.574Z" },
-    { url = "https://files.pythonhosted.org/packages/52/e5/f7bf17207cf87fa6e9b676576749c6b6ed0d70f179a3d812c997870291c3/black-25.1.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:afebb7098bfbc70037a053b91ae8437c3857482d3a690fefc03e9ff7aa9a5fd3", size = 1453190, upload-time = "2025-01-29T05:37:22.106Z" },
-    { url = "https://files.pythonhosted.org/packages/e3/ee/adda3d46d4a9120772fae6de454c8495603c37c4c3b9c60f25b1ab6401fe/black-25.1.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:030b9759066a4ee5e5aca28c3c77f9c64789cdd4de8ac1df642c40b708be6171", size = 1782926, upload-time = "2025-01-29T04:18:58.564Z" },
-    { url = "https://files.pythonhosted.org/packages/cc/64/94eb5f45dcb997d2082f097a3944cfc7fe87e071907f677e80788a2d7b7a/black-25.1.0-cp313-cp313-win_amd64.whl", hash = "sha256:a22f402b410566e2d1c950708c77ebf5ebd5d0d88a6a2e87c86d9fb48afa0d18", size = 1442613, upload-time = "2025-01-29T04:19:27.63Z" },
-    { url = "https://files.pythonhosted.org/packages/09/71/54e999902aed72baf26bca0d50781b01838251a462612966e9fc4891eadd/black-25.1.0-py3-none-any.whl", hash = "sha256:95e8176dae143ba9097f351d174fdaf0ccd29efb414b362ae3fd72bf0f710717", size = 207646, upload-time = "2025-01-29T04:15:38.082Z" },
-]
-
-[[package]]
-name = "boto3"
-version = "1.38.32"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "botocore" },
-    { name = "jmespath" },
-    { name = "s3transfer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/85/abba429fe0fc0b87db20b7b311deec062c613c5e74cfcaab2ad34e864bbf/boto3-1.38.32.tar.gz", hash = "sha256:3faa2c328a61745f3215a63039606a6fcf55d9afe1cc76e3a5e27b9db58cdbf6", size = 111874, upload-time = "2025-06-06T19:37:01.835Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/1a/2be51f4ac8592c2ccf699a17be7bb92c0aff8ce89fe2ffd657948b32bfeb/boto3-1.38.32-py3-none-any.whl", hash = "sha256:b998edac72f6740bd5d9d585cf3880f2dfeb4842e626b34430fd0e9623378011", size = 139940, upload-time = "2025-06-06T19:36:57.738Z" },
-]
-
-[[package]]
-name = "botocore"
-version = "1.38.32"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "jmespath" },
-    { name = "python-dateutil" },
-    { name = "urllib3" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/c2/c4c23c7ad746aba6edfa93ec9e6e14195efcf786425486f6a1b442734a8d/botocore-1.38.32.tar.gz", hash = "sha256:0899a090e352cb5eeaae2c7bb52a987b469d23912c7ece86664dfb5c2e074978", size = 13948764, upload-time = "2025-06-06T19:36:47.959Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/6e/104f66963c9d2dc8d5ba4675535aca5ba5277eb3535047e004275329fc87/botocore-1.38.32-py3-none-any.whl", hash = "sha256:64ab919a5d8b74dd73eaac1f978d0e674d11ff3bbe8815c3d2982477be9a082c", size = 13608384, upload-time = "2025-06-06T19:36:43.805Z" },
-]
-
-[[package]]
-name = "click"
-version = "8.2.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/60/6c/8ca2efa64cf75a977a0d7fac081354553ebe483345c734fb6b6515d96bbc/click-8.2.1.tar.gz", hash = "sha256:27c491cc05d968d271d5a1db13e3b5a184636d9d930f148c50b038f0d0646202", size = 286342, upload-time = "2025-05-20T23:19:49.832Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/32/10bb5764d90a8eee674e9dc6f4db6a0ab47c8c4d0d83c27f7c39ac415a4d/click-8.2.1-py3-none-any.whl", hash = "sha256:61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b", size = 102215, upload-time = "2025-05-20T23:19:47.796Z" },
-]
-
-[[package]]
-name = "colorama"
-version = "0.4.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
-]
-
-[[package]]
-name = "iniconfig"
-version = "2.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c909642694d71c9fcf53e5b504f2d96afea02718862f3/iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7", size = 4793, upload-time = "2025-03-19T20:09:59.721Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050, upload-time = "2025-03-19T20:10:01.071Z" },
-]
-
-[[package]]
-name = "jinja2"
-version = "3.1.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "markupsafe" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
-]
-
-[[package]]
-name = "jmespath"
-version = "1.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/00/2a/e867e8531cf3e36b41201936b7fa7ba7b5702dbef42922193f05c8976cd6/jmespath-1.0.1.tar.gz", hash = "sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe", size = 25843, upload-time = "2022-06-17T18:00:12.224Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl", hash = "sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980", size = 20256, upload-time = "2022-06-17T18:00:10.251Z" },
-]
-
-[[package]]
-name = "markupsafe"
-version = "3.0.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b2/97/5d42485e71dfc078108a86d6de8fa46db44a1a9295e89c5d6d4a06e23a62/markupsafe-3.0.2.tar.gz", hash = "sha256:ee55d3edf80167e48ea11a923c7386f4669df67d7994554387f84e7d8b0a2bf0", size = 20537, upload-time = "2024-10-18T15:21:54.129Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/09/d1f21434c97fc42f09d290cbb6350d44eb12f09cc62c9476effdb33a18aa/MarkupSafe-3.0.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:9778bd8ab0a994ebf6f84c2b949e65736d5575320a17ae8984a77fab08db94cf", size = 14274, upload-time = "2024-10-18T15:21:13.777Z" },
-    { url = "https://files.pythonhosted.org/packages/6b/b0/18f76bba336fa5aecf79d45dcd6c806c280ec44538b3c13671d49099fdd0/MarkupSafe-3.0.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:846ade7b71e3536c4e56b386c2a47adf5741d2d8b94ec9dc3e92e5e1ee1e2225", size = 12348, upload-time = "2024-10-18T15:21:14.822Z" },
-    { url = "https://files.pythonhosted.org/packages/e0/25/dd5c0f6ac1311e9b40f4af06c78efde0f3b5cbf02502f8ef9501294c425b/MarkupSafe-3.0.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1c99d261bd2d5f6b59325c92c73df481e05e57f19837bdca8413b9eac4bd8028", size = 24149, upload-time = "2024-10-18T15:21:15.642Z" },
-    { url = "https://files.pythonhosted.org/packages/f3/f0/89e7aadfb3749d0f52234a0c8c7867877876e0a20b60e2188e9850794c17/MarkupSafe-3.0.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e17c96c14e19278594aa4841ec148115f9c7615a47382ecb6b82bd8fea3ab0c8", size = 23118, upload-time = "2024-10-18T15:21:17.133Z" },
-    { url = "https://files.pythonhosted.org/packages/d5/da/f2eeb64c723f5e3777bc081da884b414671982008c47dcc1873d81f625b6/MarkupSafe-3.0.2-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:88416bd1e65dcea10bc7569faacb2c20ce071dd1f87539ca2ab364bf6231393c", size = 22993, upload-time = "2024-10-18T15:21:18.064Z" },
-    { url = "https://files.pythonhosted.org/packages/da/0e/1f32af846df486dce7c227fe0f2398dc7e2e51d4a370508281f3c1c5cddc/MarkupSafe-3.0.2-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:2181e67807fc2fa785d0592dc2d6206c019b9502410671cc905d132a92866557", size = 24178, upload-time = "2024-10-18T15:21:18.859Z" },
-    { url = "https://files.pythonhosted.org/packages/c4/f6/bb3ca0532de8086cbff5f06d137064c8410d10779c4c127e0e47d17c0b71/MarkupSafe-3.0.2-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:52305740fe773d09cffb16f8ed0427942901f00adedac82ec8b67752f58a1b22", size = 23319, upload-time = "2024-10-18T15:21:19.671Z" },
-    { url = "https://files.pythonhosted.org/packages/a2/82/8be4c96ffee03c5b4a034e60a31294daf481e12c7c43ab8e34a1453ee48b/MarkupSafe-3.0.2-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:ad10d3ded218f1039f11a75f8091880239651b52e9bb592ca27de44eed242a48", size = 23352, upload-time = "2024-10-18T15:21:20.971Z" },
-    { url = "https://files.pythonhosted.org/packages/51/ae/97827349d3fcffee7e184bdf7f41cd6b88d9919c80f0263ba7acd1bbcb18/MarkupSafe-3.0.2-cp312-cp312-win32.whl", hash = "sha256:0f4ca02bea9a23221c0182836703cbf8930c5e9454bacce27e767509fa286a30", size = 15097, upload-time = "2024-10-18T15:21:22.646Z" },
-    { url = "https://files.pythonhosted.org/packages/c1/80/a61f99dc3a936413c3ee4e1eecac96c0da5ed07ad56fd975f1a9da5bc630/MarkupSafe-3.0.2-cp312-cp312-win_amd64.whl", hash = "sha256:8e06879fc22a25ca47312fbe7c8264eb0b662f6db27cb2d3bbbc74b1df4b9b87", size = 15601, upload-time = "2024-10-18T15:21:23.499Z" },
-    { url = "https://files.pythonhosted.org/packages/83/0e/67eb10a7ecc77a0c2bbe2b0235765b98d164d81600746914bebada795e97/MarkupSafe-3.0.2-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:ba9527cdd4c926ed0760bc301f6728ef34d841f405abf9d4f959c478421e4efd", size = 14274, upload-time = "2024-10-18T15:21:24.577Z" },
-    { url = "https://files.pythonhosted.org/packages/2b/6d/9409f3684d3335375d04e5f05744dfe7e9f120062c9857df4ab490a1031a/MarkupSafe-3.0.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:f8b3d067f2e40fe93e1ccdd6b2e1d16c43140e76f02fb1319a05cf2b79d99430", size = 12352, upload-time = "2024-10-18T15:21:25.382Z" },
-    { url = "https://files.pythonhosted.org/packages/d2/f5/6eadfcd3885ea85fe2a7c128315cc1bb7241e1987443d78c8fe712d03091/MarkupSafe-3.0.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:569511d3b58c8791ab4c2e1285575265991e6d8f8700c7be0e88f86cb0672094", size = 24122, upload-time = "2024-10-18T15:21:26.199Z" },
-    { url = "https://files.pythonhosted.org/packages/0c/91/96cf928db8236f1bfab6ce15ad070dfdd02ed88261c2afafd4b43575e9e9/MarkupSafe-3.0.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:15ab75ef81add55874e7ab7055e9c397312385bd9ced94920f2802310c930396", size = 23085, upload-time = "2024-10-18T15:21:27.029Z" },
-    { url = "https://files.pythonhosted.org/packages/c2/cf/c9d56af24d56ea04daae7ac0940232d31d5a8354f2b457c6d856b2057d69/MarkupSafe-3.0.2-cp313-cp313-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:f3818cb119498c0678015754eba762e0d61e5b52d34c8b13d770f0719f7b1d79", size = 22978, upload-time = "2024-10-18T15:21:27.846Z" },
-    { url = "https://files.pythonhosted.org/packages/2a/9f/8619835cd6a711d6272d62abb78c033bda638fdc54c4e7f4272cf1c0962b/MarkupSafe-3.0.2-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:cdb82a876c47801bb54a690c5ae105a46b392ac6099881cdfb9f6e95e4014c6a", size = 24208, upload-time = "2024-10-18T15:21:28.744Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/bf/176950a1792b2cd2102b8ffeb5133e1ed984547b75db47c25a67d3359f77/MarkupSafe-3.0.2-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:cabc348d87e913db6ab4aa100f01b08f481097838bdddf7c7a84b7575b7309ca", size = 23357, upload-time = "2024-10-18T15:21:29.545Z" },
-    { url = "https://files.pythonhosted.org/packages/ce/4f/9a02c1d335caabe5c4efb90e1b6e8ee944aa245c1aaaab8e8a618987d816/MarkupSafe-3.0.2-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:444dcda765c8a838eaae23112db52f1efaf750daddb2d9ca300bcae1039adc5c", size = 23344, upload-time = "2024-10-18T15:21:30.366Z" },
-    { url = "https://files.pythonhosted.org/packages/ee/55/c271b57db36f748f0e04a759ace9f8f759ccf22b4960c270c78a394f58be/MarkupSafe-3.0.2-cp313-cp313-win32.whl", hash = "sha256:bcf3e58998965654fdaff38e58584d8937aa3096ab5354d493c77d1fdd66d7a1", size = 15101, upload-time = "2024-10-18T15:21:31.207Z" },
-    { url = "https://files.pythonhosted.org/packages/29/88/07df22d2dd4df40aba9f3e402e6dc1b8ee86297dddbad4872bd5e7b0094f/MarkupSafe-3.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:e6a2a455bd412959b57a172ce6328d2dd1f01cb2135efda2e4576e8a23fa3b0f", size = 15603, upload-time = "2024-10-18T15:21:32.032Z" },
-    { url = "https://files.pythonhosted.org/packages/62/6a/8b89d24db2d32d433dffcd6a8779159da109842434f1dd2f6e71f32f738c/MarkupSafe-3.0.2-cp313-cp313t-macosx_10_13_universal2.whl", hash = "sha256:b5a6b3ada725cea8a5e634536b1b01c30bcdcd7f9c6fff4151548d5bf6b3a36c", size = 14510, upload-time = "2024-10-18T15:21:33.625Z" },
-    { url = "https://files.pythonhosted.org/packages/7a/06/a10f955f70a2e5a9bf78d11a161029d278eeacbd35ef806c3fd17b13060d/MarkupSafe-3.0.2-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:a904af0a6162c73e3edcb969eeeb53a63ceeb5d8cf642fade7d39e7963a22ddb", size = 12486, upload-time = "2024-10-18T15:21:34.611Z" },
-    { url = "https://files.pythonhosted.org/packages/34/cf/65d4a571869a1a9078198ca28f39fba5fbb910f952f9dbc5220afff9f5e6/MarkupSafe-3.0.2-cp313-cp313t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4aa4e5faecf353ed117801a068ebab7b7e09ffb6e1d5e412dc852e0da018126c", size = 25480, upload-time = "2024-10-18T15:21:35.398Z" },
-    { url = "https://files.pythonhosted.org/packages/0c/e3/90e9651924c430b885468b56b3d597cabf6d72be4b24a0acd1fa0e12af67/MarkupSafe-3.0.2-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c0ef13eaeee5b615fb07c9a7dadb38eac06a0608b41570d8ade51c56539e509d", size = 23914, upload-time = "2024-10-18T15:21:36.231Z" },
-    { url = "https://files.pythonhosted.org/packages/66/8c/6c7cf61f95d63bb866db39085150df1f2a5bd3335298f14a66b48e92659c/MarkupSafe-3.0.2-cp313-cp313t-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:d16a81a06776313e817c951135cf7340a3e91e8c1ff2fac444cfd75fffa04afe", size = 23796, upload-time = "2024-10-18T15:21:37.073Z" },
-    { url = "https://files.pythonhosted.org/packages/bb/35/cbe9238ec3f47ac9a7c8b3df7a808e7cb50fe149dc7039f5f454b3fba218/MarkupSafe-3.0.2-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:6381026f158fdb7c72a168278597a5e3a5222e83ea18f543112b2662a9b699c5", size = 25473, upload-time = "2024-10-18T15:21:37.932Z" },
-    { url = "https://files.pythonhosted.org/packages/e6/32/7621a4382488aa283cc05e8984a9c219abad3bca087be9ec77e89939ded9/MarkupSafe-3.0.2-cp313-cp313t-musllinux_1_2_i686.whl", hash = "sha256:3d79d162e7be8f996986c064d1c7c817f6df3a77fe3d6859f6f9e7be4b8c213a", size = 24114, upload-time = "2024-10-18T15:21:39.799Z" },
-    { url = "https://files.pythonhosted.org/packages/0d/80/0985960e4b89922cb5a0bac0ed39c5b96cbc1a536a99f30e8c220a996ed9/MarkupSafe-3.0.2-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:131a3c7689c85f5ad20f9f6fb1b866f402c445b220c19fe4308c0b147ccd2ad9", size = 24098, upload-time = "2024-10-18T15:21:40.813Z" },
-    { url = "https://files.pythonhosted.org/packages/82/78/fedb03c7d5380df2427038ec8d973587e90561b2d90cd472ce9254cf348b/MarkupSafe-3.0.2-cp313-cp313t-win32.whl", hash = "sha256:ba8062ed2cf21c07a9e295d5b8a2a5ce678b913b45fdf68c32d95d6c1291e0b6", size = 15208, upload-time = "2024-10-18T15:21:41.814Z" },
-    { url = "https://files.pythonhosted.org/packages/4f/65/6079a46068dfceaeabb5dcad6d674f5f5c61a6fa5673746f42a9f4c233b3/MarkupSafe-3.0.2-cp313-cp313t-win_amd64.whl", hash = "sha256:e444a31f8db13eb18ada366ab3cf45fd4b31e4db1236a4448f68778c1d1a5a2f", size = 15739, upload-time = "2024-10-18T15:21:42.784Z" },
-]
-
-[[package]]
-name = "mypy-extensions"
-version = "1.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a2/6e/371856a3fb9d31ca8dac321cda606860fa4548858c0cc45d9d1d4ca2628b/mypy_extensions-1.1.0.tar.gz", hash = "sha256:52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558", size = 6343, upload-time = "2025-04-22T14:54:24.164Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl", hash = "sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505", size = 4963, upload-time = "2025-04-22T14:54:22.983Z" },
-]
-
-[[package]]
-name = "packaging"
-version = "25.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a1/d4/1fc4078c65507b51b96ca8f8c3ba19e6a61c8253c72794544580a7b6c24d/packaging-25.0.tar.gz", hash = "sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f", size = 165727, upload-time = "2025-04-19T11:48:59.673Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl", hash = "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484", size = 66469, upload-time = "2025-04-19T11:48:57.875Z" },
-]
-
-[[package]]
-name = "pathspec"
-version = "0.12.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ca/bc/f35b8446f4531a7cb215605d100cd88b7ac6f44ab3fc94870c120ab3adbf/pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712", size = 51043, upload-time = "2023-12-10T22:30:45Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/20/ff623b09d963f88bfde16306a54e12ee5ea43e9b597108672ff3a408aad6/pathspec-0.12.1-py3-none-any.whl", hash = "sha256:a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08", size = 31191, upload-time = "2023-12-10T22:30:43.14Z" },
-]
-
-[[package]]
-name = "platformdirs"
-version = "4.3.8"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fe/8b/3c73abc9c759ecd3f1f7ceff6685840859e8070c4d947c93fae71f6a0bf2/platformdirs-4.3.8.tar.gz", hash = "sha256:3d512d96e16bcb959a814c9f348431070822a6496326a4be0911c40b5a74c2bc", size = 21362, upload-time = "2025-05-07T22:47:42.121Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/39/979e8e21520d4e47a0bbe349e2713c0aac6f3d853d0e5b34d76206c439aa/platformdirs-4.3.8-py3-none-any.whl", hash = "sha256:ff7059bb7eb1179e2685604f4aaf157cfd9535242bd23742eadc3c13542139b4", size = 18567, upload-time = "2025-05-07T22:47:40.376Z" },
-]
-
-[[package]]
-name = "pluggy"
-version = "1.6.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
-]
-
-[[package]]
-name = "pygments"
-version = "2.19.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/7c/2d/c3338d48ea6cc0feb8446d8e6937e1408088a72a39937982cc6111d17f84/pygments-2.19.1.tar.gz", hash = "sha256:61c16d2a8576dc0649d9f39e089b5f02bcd27fba10d8fb4dcc28173f7a45151f", size = 4968581, upload-time = "2025-01-06T17:26:30.443Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl", hash = "sha256:9ea1544ad55cecf4b8242fab6dd35a93bbce657034b0611ee383099054ab6d8c", size = 1225293, upload-time = "2025-01-06T17:26:25.553Z" },
-]
-
-[[package]]
-name = "pytest"
-version = "8.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "iniconfig" },
-    { name = "packaging" },
-    { name = "pluggy" },
-    { name = "pygments" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/aa/405082ce2749be5398045152251ac69c0f3578c7077efc53431303af97ce/pytest-8.4.0.tar.gz", hash = "sha256:14d920b48472ea0dbf68e45b96cd1ffda4705f33307dcc86c676c1b5104838a6", size = 1515232, upload-time = "2025-06-02T17:36:30.03Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/de/afa024cbe022b1b318a3d224125aa24939e99b4ff6f22e0ba639a2eaee47/pytest-8.4.0-py3-none-any.whl", hash = "sha256:f40f825768ad76c0977cbacdf1fd37c6f7a468e460ea6a0636078f8972d4517e", size = 363797, upload-time = "2025-06-02T17:36:27.859Z" },
-]
-
-[[package]]
-name = "python-dateutil"
-version = "2.9.0.post0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "six" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee498c46e004a0eb49bc148f2fd230864601a86dcf6db/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432, upload-time = "2024-03-01T18:36:20.211Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892, upload-time = "2024-03-01T18:36:18.57Z" },
-]
-
-[[package]]
-name = "pyyaml"
-version = "6.0.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/54/ed/79a089b6be93607fa5cdaedf301d7dfb23af5f25c398d5ead2525b063e17/pyyaml-6.0.2.tar.gz", hash = "sha256:d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e", size = 130631, upload-time = "2024-08-06T20:33:50.674Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/0c/c581167fc46d6d6d7ddcfb8c843a4de25bdd27e4466938109ca68492292c/PyYAML-6.0.2-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:c70c95198c015b85feafc136515252a261a84561b7b1d51e3384e0655ddf25ab", size = 183873, upload-time = "2024-08-06T20:32:25.131Z" },
-    { url = "https://files.pythonhosted.org/packages/a8/0c/38374f5bb272c051e2a69281d71cba6fdb983413e6758b84482905e29a5d/PyYAML-6.0.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:ce826d6ef20b1bc864f0a68340c8b3287705cae2f8b4b1d932177dcc76721725", size = 173302, upload-time = "2024-08-06T20:32:26.511Z" },
-    { url = "https://files.pythonhosted.org/packages/c3/93/9916574aa8c00aa06bbac729972eb1071d002b8e158bd0e83a3b9a20a1f7/PyYAML-6.0.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1f71ea527786de97d1a0cc0eacd1defc0985dcf6b3f17bb77dcfc8c34bec4dc5", size = 739154, upload-time = "2024-08-06T20:32:28.363Z" },
-    { url = "https://files.pythonhosted.org/packages/95/0f/b8938f1cbd09739c6da569d172531567dbcc9789e0029aa070856f123984/PyYAML-6.0.2-cp312-cp312-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:9b22676e8097e9e22e36d6b7bda33190d0d400f345f23d4065d48f4ca7ae0425", size = 766223, upload-time = "2024-08-06T20:32:30.058Z" },
-    { url = "https://files.pythonhosted.org/packages/b9/2b/614b4752f2e127db5cc206abc23a8c19678e92b23c3db30fc86ab731d3bd/PyYAML-6.0.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:80bab7bfc629882493af4aa31a4cfa43a4c57c83813253626916b8c7ada83476", size = 767542, upload-time = "2024-08-06T20:32:31.881Z" },
-    { url = "https://files.pythonhosted.org/packages/d4/00/dd137d5bcc7efea1836d6264f049359861cf548469d18da90cd8216cf05f/PyYAML-6.0.2-cp312-cp312-musllinux_1_1_aarch64.whl", hash = "sha256:0833f8694549e586547b576dcfaba4a6b55b9e96098b36cdc7ebefe667dfed48", size = 731164, upload-time = "2024-08-06T20:32:37.083Z" },
-    { url = "https://files.pythonhosted.org/packages/c9/1f/4f998c900485e5c0ef43838363ba4a9723ac0ad73a9dc42068b12aaba4e4/PyYAML-6.0.2-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:8b9c7197f7cb2738065c481a0461e50ad02f18c78cd75775628afb4d7137fb3b", size = 756611, upload-time = "2024-08-06T20:32:38.898Z" },
-    { url = "https://files.pythonhosted.org/packages/df/d1/f5a275fdb252768b7a11ec63585bc38d0e87c9e05668a139fea92b80634c/PyYAML-6.0.2-cp312-cp312-win32.whl", hash = "sha256:ef6107725bd54b262d6dedcc2af448a266975032bc85ef0172c5f059da6325b4", size = 140591, upload-time = "2024-08-06T20:32:40.241Z" },
-    { url = "https://files.pythonhosted.org/packages/0c/e8/4f648c598b17c3d06e8753d7d13d57542b30d56e6c2dedf9c331ae56312e/PyYAML-6.0.2-cp312-cp312-win_amd64.whl", hash = "sha256:7e7401d0de89a9a855c839bc697c079a4af81cf878373abd7dc625847d25cbd8", size = 156338, upload-time = "2024-08-06T20:32:41.93Z" },
-    { url = "https://files.pythonhosted.org/packages/ef/e3/3af305b830494fa85d95f6d95ef7fa73f2ee1cc8ef5b495c7c3269fb835f/PyYAML-6.0.2-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:efdca5630322a10774e8e98e1af481aad470dd62c3170801852d752aa7a783ba", size = 181309, upload-time = "2024-08-06T20:32:43.4Z" },
-    { url = "https://files.pythonhosted.org/packages/45/9f/3b1c20a0b7a3200524eb0076cc027a970d320bd3a6592873c85c92a08731/PyYAML-6.0.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:50187695423ffe49e2deacb8cd10510bc361faac997de9efef88badc3bb9e2d1", size = 171679, upload-time = "2024-08-06T20:32:44.801Z" },
-    { url = "https://files.pythonhosted.org/packages/7c/9a/337322f27005c33bcb656c655fa78325b730324c78620e8328ae28b64d0c/PyYAML-6.0.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0ffe8360bab4910ef1b9e87fb812d8bc0a308b0d0eef8c8f44e0254ab3b07133", size = 733428, upload-time = "2024-08-06T20:32:46.432Z" },
-    { url = "https://files.pythonhosted.org/packages/a3/69/864fbe19e6c18ea3cc196cbe5d392175b4cf3d5d0ac1403ec3f2d237ebb5/PyYAML-6.0.2-cp313-cp313-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:17e311b6c678207928d649faa7cb0d7b4c26a0ba73d41e99c4fff6b6c3276484", size = 763361, upload-time = "2024-08-06T20:32:51.188Z" },
-    { url = "https://files.pythonhosted.org/packages/04/24/b7721e4845c2f162d26f50521b825fb061bc0a5afcf9a386840f23ea19fa/PyYAML-6.0.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:70b189594dbe54f75ab3a1acec5f1e3faa7e8cf2f1e08d9b561cb41b845f69d5", size = 759523, upload-time = "2024-08-06T20:32:53.019Z" },
-    { url = "https://files.pythonhosted.org/packages/2b/b2/e3234f59ba06559c6ff63c4e10baea10e5e7df868092bf9ab40e5b9c56b6/PyYAML-6.0.2-cp313-cp313-musllinux_1_1_aarch64.whl", hash = "sha256:41e4e3953a79407c794916fa277a82531dd93aad34e29c2a514c2c0c5fe971cc", size = 726660, upload-time = "2024-08-06T20:32:54.708Z" },
-    { url = "https://files.pythonhosted.org/packages/fe/0f/25911a9f080464c59fab9027482f822b86bf0608957a5fcc6eaac85aa515/PyYAML-6.0.2-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:68ccc6023a3400877818152ad9a1033e3db8625d899c72eacb5a668902e4d652", size = 751597, upload-time = "2024-08-06T20:32:56.985Z" },
-    { url = "https://files.pythonhosted.org/packages/14/0d/e2c3b43bbce3cf6bd97c840b46088a3031085179e596d4929729d8d68270/PyYAML-6.0.2-cp313-cp313-win32.whl", hash = "sha256:bc2fa7c6b47d6bc618dd7fb02ef6fdedb1090ec036abab80d4681424b84c1183", size = 140527, upload-time = "2024-08-06T20:33:03.001Z" },
-    { url = "https://files.pythonhosted.org/packages/fa/de/02b54f42487e3d3c6efb3f89428677074ca7bf43aae402517bc7cca949f3/PyYAML-6.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:8388ee1976c416731879ac16da0aff3f63b286ffdd57cdeb95f3f2e085687563", size = 156446, upload-time = "2024-08-06T20:33:04.33Z" },
-]
-
-[[package]]
-name = "s3transfer"
-version = "0.13.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "botocore" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/5d/9dcc100abc6711e8247af5aa561fc07c4a046f72f659c3adea9a449e191a/s3transfer-0.13.0.tar.gz", hash = "sha256:f5e6db74eb7776a37208001113ea7aa97695368242b364d73e91c981ac522177", size = 150232, upload-time = "2025-05-22T19:24:50.245Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/17/22bf8155aa0ea2305eefa3a6402e040df7ebe512d1310165eda1e233c3f8/s3transfer-0.13.0-py3-none-any.whl", hash = "sha256:0148ef34d6dd964d0d8cf4311b2b21c474693e57c2e069ec708ce043d2b527be", size = 85152, upload-time = "2025-05-22T19:24:48.703Z" },
-]
-
-[[package]]
-name = "six"
-version = "1.17.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
-]
-
-[[package]]
-name = "urllib3"
-version = "2.4.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8a/78/16493d9c386d8e60e442a35feac5e00f0913c0f4b7c217c11e8ec2ff53e0/urllib3-2.4.0.tar.gz", hash = "sha256:414bc6535b787febd7567804cc015fee39daab8ad86268f1310a9250697de466", size = 390672, upload-time = "2025-04-10T15:23:39.232Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6b/11/cc635220681e93a0183390e26485430ca2c7b5f9d33b15c74c2861cb8091/urllib3-2.4.0-py3-none-any.whl", hash = "sha256:4e16665048960a0900c702d4a66415956a584919c03361cac9f1df5c5dd7e813", size = 128680, upload-time = "2025-04-10T15:23:37.377Z" },
-]
-
-[[package]]
-name = "zeeker"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "boto3" },
-    { name = "click" },
-    { name = "jinja2" },
-    { name = "pyyaml" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "black" },
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "boto3", specifier = ">=1.38.32" },
-    { name = "click", specifier = ">=8.2.1" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black", specifier = ">=25.1.0" },
-    { name = "pytest", specifier = ">=8.4.0" },
-]
-
+[tool:pytest]
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+addopts =
+    --strict-markers
+    --strict-config
+    --verbose
+    -ra
+markers =
+    unit: Unit tests for individual components
+    integration: Integration tests for component interactions
+    cli: CLI interface tests
+    slow: Tests that take longer to run
 </document_content>
 </document>
 <document index="5">
 <source>./zeeker/__init__.py</source>
 <document_content>
+"""
+Zeeker - Database customization tool with project management capabilities.
+
+A tool for creating, validating, and deploying database customizations
+for Zeeker's Datasette-based system using sqlite-utils and following
+the three-pass asset system.
+"""
+
+from .core import (
+    ValidationResult,
+    DatabaseCustomization,
+    DeploymentChanges,
+    ZeekerProject,
+    ZeekerProjectManager,
+    ZeekerValidator,
+    ZeekerGenerator,
+    ZeekerDeployer,
+)
+
+__version__ = "0.1.0"
+__all__ = [
+    "ValidationResult",
+    "DatabaseCustomization",
+    "DeploymentChanges",
+    "ZeekerProject",
+    "ZeekerProjectManager",
+    "ZeekerValidator",
+    "ZeekerGenerator",
+    "ZeekerDeployer",
+]
 
 </document_content>
 </document>
@@ -1286,484 +1019,452 @@ dev = [
 <source>./zeeker/cli.py</source>
 <document_content>
 """
-Enhanced Zeeker Database Customization Library
+Zeeker CLI - Database customization tool with project management.
 
-This file contains the complete implementation of the enhanced deploy command
-with sync, clean, and detailed diff capabilities.
+Clean CLI interface that imports functionality from core modules.
+"""
 
-Replace the existing zeeker/cli.py with this implementation.
+import click
+from pathlib import Path
+
+from .core.project import ZeekerProjectManager
+from .core.validator import ZeekerValidator
+from .core.generator import ZeekerGenerator
+from .core.deployer import ZeekerDeployer
+
+
+# Main CLI group
+@click.group()
+def cli():
+    """Zeeker Database Management Tool."""
+    pass
+
+
+# Project management commands
+@cli.command()
+@click.argument("project_name")
+@click.option(
+    "--path", type=click.Path(), help="Project directory path (default: current directory)"
+)
+def init(project_name, path):
+    """Initialize a new Zeeker project.
+
+    Creates zeeker.toml, resources/ directory, .gitignore, and README.md.
+
+    Example:
+        zeeker init my-project
+    """
+    project_path = Path(path) if path else Path.cwd()
+    manager = ZeekerProjectManager(project_path)
+
+    result = manager.init_project(project_name)
+
+    if result.errors:
+        for error in result.errors:
+            click.echo(f"❌ {error}")
+        return
+
+    for info in result.info:
+        click.echo(f"✅ {info}")
+
+    click.echo(f"\nNext steps:")
+    click.echo(f"  1. cd {project_path.relative_to(Path.cwd()) if path else '.'}")
+    click.echo(f"  2. zeeker add <resource_name>")
+    click.echo(f"  3. zeeker build")
+    click.echo(f"  4. zeeker deploy")
+
+
+@cli.command()
+@click.argument("resource_name")
+@click.option("--description", help="Resource description")
+@click.option("--facets", multiple=True, help="Datasette facets (can be used multiple times)")
+@click.option("--sort", help="Default sort order")
+@click.option("--size", type=int, help="Default page size")
+def add(resource_name, description, facets, sort, size):
+    """Add a new resource to the project.
+
+    Creates a Python file in resources/ with a template for data fetching.
+
+    Example:
+        zeeker add users --description "User account data" --facets role --facets department --size 50
+    """
+    manager = ZeekerProjectManager()
+
+    # Build kwargs for Datasette metadata
+    kwargs = {}
+    if facets:
+        kwargs["facets"] = list(facets)
+    if sort:
+        kwargs["sort"] = sort
+    if size:
+        kwargs["size"] = size
+
+    result = manager.add_resource(resource_name, description, **kwargs)
+
+    if result.errors:
+        for error in result.errors:
+            click.echo(f"❌ {error}")
+        return
+
+    for info in result.info:
+        click.echo(f"✅ {info}")
+
+    click.echo(f"\nNext steps:")
+    click.echo(f"  1. Edit resources/{resource_name}.py")
+    click.echo(f"  2. Implement the fetch_data() function")
+    click.echo(f"  3. zeeker build")
+
+
+@cli.command()
+def build():
+    """Build database from all resources using sqlite-utils.
+
+    Runs fetch_data() for each resource and creates/updates the SQLite database.
+    Uses Simon Willison's sqlite-utils for robust database operations:
+
+    • Automatic table creation with proper schema detection
+    • Type inference from data (INTEGER, TEXT, REAL, JSON)
+    • Safe data insertion without SQL injection risks
+    • JSON support for complex data structures
+    • Better error handling than raw SQL
+
+    Generates complete Datasette metadata.json following customization guide format.
+
+    Must be run from a Zeeker project directory (contains zeeker.toml).
+    """
+    manager = ZeekerProjectManager()
+
+    result = manager.build_database()
+
+    if result.errors:
+        click.echo("❌ Database build failed:")
+        for error in result.errors:
+            click.echo(f"   {error}")
+        return
+
+    if result.warnings:
+        for warning in result.warnings:
+            click.echo(f"⚠️ {warning}")
+
+    for info in result.info:
+        click.echo(f"✅ {info}")
+
+    click.echo(f"\n🔧 Built with sqlite-utils for robust schema detection")
+    click.echo(f"📖 Generated metadata follows customization guide format")
+    click.echo(f"🚀 Ready for deployment with 'zeeker deploy'")
+
+
+@cli.command()
+@click.option("--dry-run", is_flag=True, help="Show what would be uploaded without uploading")
+def deploy(dry_run):
+    """Deploy the project database to S3.
+
+    Uploads the generated .db file to S3 following customization guide structure:
+    - Database: s3://bucket/latest/{database_name}.db
+    - Assets: s3://bucket/assets/databases/{database_name}/
+
+    Must be run from a Zeeker project directory (contains zeeker.toml).
+    Use 'zeeker assets deploy' for UI customizations.
+    """
+    manager = ZeekerProjectManager()
+
+    if not manager.is_project_root():
+        click.echo("❌ Not in a Zeeker project directory (no zeeker.toml found)")
+        return
+
+    try:
+        project = manager.load_project()
+        deployer = ZeekerDeployer()
+    except ValueError as e:
+        click.echo(f"❌ Configuration error: {e}")
+        click.echo("Please set the required environment variables:")
+        click.echo("  - S3_BUCKET")
+        click.echo("  - AWS_ACCESS_KEY_ID")
+        click.echo("  - AWS_SECRET_ACCESS_KEY")
+        click.echo("  - S3_ENDPOINT_URL (optional)")
+        return
+
+    db_path = manager.project_path / project.database
+    if not db_path.exists():
+        click.echo(f"❌ Database not found: {project.database}")
+        click.echo("Run 'zeeker build' first to build the database")
+        return
+
+    # Extract database name without .db extension for S3 path (per guide)
+    database_name = Path(project.database).stem
+
+    result = deployer.upload_database(db_path, database_name, dry_run)
+
+    if result.errors:
+        for error in result.errors:
+            click.echo(f"❌ {error}")
+        return
+
+    for info in result.info:
+        click.echo(f"✅ {info}")
+
+    if not dry_run:
+        click.echo(f"\n🚀 Database deployed successfully!")
+        click.echo(f"📍 Location: s3://{deployer.bucket_name}/latest/{database_name}.db")
+        click.echo(f"💡 For UI customizations, use: zeeker assets deploy")
+
+
+# Asset management commands (existing functionality with new names)
+@cli.group()
+def assets():
+    """Asset management commands for UI customizations."""
+    pass
+
+
+@assets.command()
+@click.argument("database_name")
+@click.argument("output_path", type=click.Path())
+@click.option("--title", help="Database title")
+@click.option("--description", help="Database description")
+@click.option("--primary-color", default="#3498db", help="Primary color")
+@click.option("--accent-color", default="#e74c3c", help="Accent color")
+def generate(database_name, output_path, title, description, primary_color, accent_color):
+    """Generate new database UI assets following the customization guide.
+
+    Creates templates/, static/, and metadata.json following guide patterns.
+    Template names use safe database-specific naming (database-DBNAME.html).
+    """
+    output_dir = Path(output_path)
+    generator = ZeekerGenerator(database_name, output_dir)
+
+    # Generate complete metadata following guide format
+    metadata = generator.generate_metadata_template(
+        title=title or f"{database_name.title()} Database",
+        description=description or f"Custom database for {database_name}",
+        extra_css=["custom.css"],
+        extra_js=["custom.js"],
+    )
+
+    css_content = generator.generate_css_template(primary_color, accent_color)
+    js_content = generator.generate_js_template()
+    db_template = generator.generate_database_template()
+
+    # Use safe template naming per guide: database-DBNAME.html
+    safe_template_name = f"database-{generator.sanitized_name}.html"
+    templates = {safe_template_name: db_template}
+
+    generator.save_assets(metadata, css_content, js_content, templates)
+    click.echo(f"Generated assets for '{database_name}' in {output_dir}")
+    click.echo(f"✅ Safe template created: {safe_template_name}")
+    click.echo(f"📋 Follow customization guide for deployment to S3")
+
+
+@assets.command()
+@click.argument("assets_path", type=click.Path(exists=True))
+@click.argument("database_name")
+def validate(assets_path, database_name):
+    """Validate database UI assets against customization guide rules.
+
+    Checks for:
+    - Banned template names (database.html, table.html, etc.)
+    - Proper file structure (templates/, static/)
+    - Complete metadata.json format
+    - CSS/JS URL patterns
+    """
+    validator = ZeekerValidator()
+    result = validator.validate_file_structure(Path(assets_path), database_name)
+
+    if result.errors:
+        click.echo("❌ Validation failed:")
+        for error in result.errors:
+            click.echo(f"  ERROR: {error}")
+
+    if result.warnings:
+        click.echo("⚠️ Warnings:")
+        for warning in result.warnings:
+            click.echo(f"  WARNING: {warning}")
+
+    if result.info:
+        for info in result.info:
+            click.echo(f"  INFO: {info}")
+
+    if result.is_valid and not result.warnings:
+        click.echo("✅ Validation passed! Assets follow customization guide.")
+    elif result.is_valid:
+        click.echo("✅ Validation passed with warnings.")
+
+    click.echo(f"\n📖 See database customization guide for details.")
+
+    return result.is_valid
+
+
+@assets.command()
+@click.argument("local_path", type=click.Path(exists=True))
+@click.argument("database_name")
+@click.option("--dry-run", is_flag=True, help="Show what would be changed without making changes")
+@click.option("--sync", is_flag=True, help="Delete S3 files not present locally (full sync)")
+@click.option("--clean", is_flag=True, help="Remove all existing assets first, then deploy")
+@click.option("--yes", is_flag=True, help="Skip confirmation prompts")
+@click.option("--diff", is_flag=True, help="Show detailed differences between local and S3")
+def deploy(local_path, database_name, dry_run, sync, clean, yes, diff):
+    """Deploy UI assets to S3 following customization guide structure.
+
+    Uploads to: s3://bucket/assets/databases/{database_name}/
+    - templates/ → S3 templates/
+    - static/ → S3 static/
+    - metadata.json → S3 metadata.json
+
+    Database folder name must match .db filename (without .db extension).
+    """
+    if clean and sync:
+        click.echo("❌ Cannot use both --clean and --sync flags")
+        return
+
+    try:
+        deployer = ZeekerDeployer()
+    except ValueError as e:
+        click.echo(f"❌ Configuration error: {e}")
+        return
+
+    local_path_obj = Path(local_path)
+    existing_files = deployer.get_existing_files(database_name)
+    local_files = deployer.get_local_files(local_path_obj)
+    changes = deployer.calculate_changes(local_files, existing_files, sync, clean)
+
+    if diff:
+        deployer.show_detailed_diff(changes)
+    else:
+        deployer.show_deployment_summary(changes, database_name, local_files, existing_files)
+
+    if not changes.has_changes:
+        click.echo("   ✅ No changes needed")
+        return
+
+    if changes.has_destructive_changes and not yes and not dry_run:
+        if clean:
+            msg = f"This will delete ALL {len(existing_files)} existing files and upload {len(local_files)} new files."
+        else:
+            msg = f"This will delete {len(changes.deletions)} files not present locally."
+
+        click.echo(f"\n⚠️  {msg}")
+        click.echo("Deleted files cannot be recovered.")
+
+        if not click.confirm("Continue?"):
+            click.echo("Deployment cancelled.")
+            return
+
+    if dry_run:
+        click.echo(f"\n🔍 Dry run completed - no changes made")
+        click.echo("Remove --dry-run to perform actual deployment")
+    else:
+        result = deployer.execute_deployment(changes, local_path_obj, database_name)
+
+        if result.is_valid:
+            click.echo(f"\n✅ Assets deployment completed successfully!")
+            click.echo(
+                f"📍 Location: s3://{deployer.bucket_name}/assets/databases/{database_name}/"
+            )
+            if changes.deletions:
+                click.echo(f"   Deleted: {len(changes.deletions)} files")
+            if changes.uploads:
+                click.echo(f"   Uploaded: {len(changes.uploads)} files")
+            if changes.updates:
+                click.echo(f"   Updated: {len(changes.updates)} files")
+        else:
+            click.echo(f"\n❌ Assets deployment failed:")
+            for error in result.errors:
+                click.echo(f"   {error}")
+
+
+@assets.command()
+def list():
+    """List all database UI assets in S3."""
+    try:
+        deployer = ZeekerDeployer()
+    except ValueError as e:
+        click.echo(f"❌ Configuration error: {e}")
+        return
+
+    databases = deployer.list_assets()
+
+    if databases:
+        click.echo(f"Database assets found in {deployer.bucket_name}:")
+        for db in databases:
+            click.echo(f"  - {db}")
+    else:
+        click.echo(f"No database assets found in {deployer.bucket_name}.")
+
+
+# Legacy commands for backward compatibility (with deprecation warnings)
+@cli.command(hidden=True)
+@click.argument("database_name")
+@click.argument("output_path", type=click.Path())
+@click.option("--title", help="Database title")
+@click.option("--description", help="Database description")
+@click.option("--primary-color", default="#3498db", help="Primary color")
+@click.option("--accent-color", default="#e74c3c", help="Accent color")
+def generate(database_name, output_path, title, description, primary_color, accent_color):
+    """[DEPRECATED] Use 'zeeker assets generate' instead."""
+    click.echo("⚠️  DEPRECATED: Use 'zeeker assets generate' instead")
+
+    ctx = click.get_current_context()
+    ctx.invoke(
+        assets.commands["generate"],
+        database_name=database_name,
+        output_path=output_path,
+        title=title,
+        description=description,
+        primary_color=primary_color,
+        accent_color=accent_color,
+    )
+
+
+if __name__ == "__main__":
+    cli()
+
+</document_content>
+</document>
+<document index="7">
+<source>./zeeker/core/__init__.py</source>
+<document_content>
+"""
+Zeeker core modules for database and asset management.
+"""
+
+from .types import ValidationResult, DatabaseCustomization, DeploymentChanges, ZeekerProject
+from .project import ZeekerProjectManager
+from .validator import ZeekerValidator
+from .generator import ZeekerGenerator
+from .deployer import ZeekerDeployer
+
+__all__ = [
+    "ValidationResult",
+    "DatabaseCustomization",
+    "DeploymentChanges",
+    "ZeekerProject",
+    "ZeekerProjectManager",
+    "ZeekerValidator",
+    "ZeekerGenerator",
+    "ZeekerDeployer",
+]
+
+</document_content>
+</document>
+<document index="8">
+<source>./zeeker/core/deployer.py</source>
+<document_content>
+"""
+S3 deployment for Zeeker databases and assets.
 """
 
 import boto3
-import click
 import hashlib
-import json
 import os
-import re
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List
 
-
-@dataclass
-class ValidationResult:
-    """Result of validation operations."""
-
-    is_valid: bool
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    info: List[str] = field(default_factory=list)
-
-
-@dataclass
-class DatabaseCustomization:
-    """Represents a complete database customization."""
-
-    database_name: str
-    base_path: Path
-    templates: Dict[str, str] = field(default_factory=dict)
-    static_files: Dict[str, bytes] = field(default_factory=dict)
-    metadata: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class DeploymentChanges:
-    """Represents the changes to be made during deployment."""
-
-    uploads: List[str] = field(default_factory=list)  # New files
-    updates: List[str] = field(default_factory=list)  # Modified files
-    deletions: List[str] = field(default_factory=list)  # Files to remove
-    unchanged: List[str] = field(default_factory=list)  # No changes needed
-
-    @property
-    def has_changes(self) -> bool:
-        """Check if any changes need to be made."""
-        return bool(self.uploads or self.updates or self.deletions)
-
-    @property
-    def has_destructive_changes(self) -> bool:
-        """Check if any destructive changes (deletions) will be made."""
-        return bool(self.deletions)
-
-
-class ZeekerValidator:
-    """Validates Zeeker database customizations for compliance."""
-
-    # Banned template names that would break core functionality
-    BANNED_TEMPLATES = {
-        "database.html",
-        "table.html",
-        "index.html",
-        "query.html",
-        "row.html",
-        "error.html",
-        "base.html",
-    }
-
-    # Required metadata fields for complete Datasette structure
-    REQUIRED_METADATA_FIELDS = {"title", "description"}
-
-    @staticmethod
-    def sanitize_database_name(name: str) -> str:
-        """Sanitize database name following Datasette conventions."""
-        # Replace special characters and add MD5 hash if needed
-        sanitized = re.sub(r"[^a-zA-Z0-9_-]", "-", name)
-        if sanitized != name:
-            hash_suffix = hashlib.md5(name.encode()).hexdigest()[:6]
-            sanitized = f"{sanitized}-{hash_suffix}"
-        return sanitized
-
-    def validate_template_name(self, template_name: str, database_name: str) -> ValidationResult:
-        """Validate that template name is safe and follows conventions."""
-        result = ValidationResult(is_valid=True)
-
-        # Check if template name is banned
-        if template_name in self.BANNED_TEMPLATES:
-            result.is_valid = False
-            result.errors.append(
-                f"Template '{template_name}' is banned. "
-                f"Use 'database-{database_name}.html' instead for database-specific templates."
-            )
-
-        # Check naming conventions
-        if template_name.startswith("database-") or template_name.startswith("table-"):
-            if not template_name.startswith(
-                f"database-{database_name}"
-            ) and not template_name.startswith(f"table-{database_name}"):
-                result.warnings.append(
-                    f"Template '{template_name}' should include database name "
-                    f"for clarity: 'database-{database_name}.html'"
-                )
-
-        # Check for safe naming patterns
-        safe_patterns = [
-            f"database-{database_name}",
-            f"table-{database_name}-",
-            "custom-",
-            "_partial-",
-        ]
-
-        if not any(template_name.startswith(pattern) for pattern in safe_patterns):
-            result.warnings.append(
-                f"Template '{template_name}' doesn't follow recommended naming patterns. "
-                f"Consider using database-specific or custom- prefixes."
-            )
-
-        return result
-
-    def validate_metadata(self, metadata: Dict[str, Any]) -> ValidationResult:
-        """Validate metadata structure and content."""
-        result = ValidationResult(is_valid=True)
-
-        # Check if it's a complete Datasette metadata structure
-        for field in self.REQUIRED_METADATA_FIELDS:
-            if field not in metadata:
-                result.warnings.append(f"Recommended field '{field}' missing from metadata")
-
-        # Validate JSON structure
-        try:
-            json.dumps(metadata)
-        except (TypeError, ValueError) as e:
-            result.is_valid = False
-            result.errors.append(f"Invalid JSON structure: {e}")
-
-        # Check for proper CSS/JS URL patterns
-        if "extra_css_urls" in metadata:
-            for url in metadata["extra_css_urls"]:
-                if not url.startswith("/static/databases/"):
-                    result.warnings.append(
-                        f"CSS URL '{url}' should start with '/static/databases/' for proper loading"
-                    )
-
-        if "extra_js_urls" in metadata:
-            for url in metadata["extra_js_urls"]:
-                if not url.startswith("/static/databases/"):
-                    result.warnings.append(
-                        f"JS URL '{url}' should start with '/static/databases/' for proper loading"
-                    )
-
-        return result
-
-    def validate_file_structure(
-        self, customization_path: Path, database_name: str
-    ) -> ValidationResult:
-        """Validate the file structure of a customization."""
-        result = ValidationResult(is_valid=True)
-
-        if not customization_path.exists():
-            result.is_valid = False
-            result.errors.append(f"Customization path does not exist: {customization_path}")
-            return result
-
-        # Check for expected structure
-        expected_dirs = ["templates", "static"]
-        existing_dirs = [d.name for d in customization_path.iterdir() if d.is_dir()]
-
-        for dir_name in existing_dirs:
-            if dir_name not in expected_dirs and dir_name != "metadata.json":
-                result.warnings.append(f"Unexpected directory: {dir_name}")
-
-        # Validate templates
-        templates_dir = customization_path / "templates"
-        if templates_dir.exists():
-            for template_file in templates_dir.glob("*.html"):
-                template_result = self.validate_template_name(template_file.name, database_name)
-                result.errors.extend(template_result.errors)
-                result.warnings.extend(template_result.warnings)
-
-        # Validate metadata.json if present
-        metadata_file = customization_path / "metadata.json"
-        if metadata_file.exists():
-            try:
-                with open(metadata_file) as f:
-                    metadata = json.load(f)
-                metadata_result = self.validate_metadata(metadata)
-                result.errors.extend(metadata_result.errors)
-                result.warnings.extend(metadata_result.warnings)
-            except (json.JSONDecodeError, IOError) as e:
-                result.is_valid = False
-                result.errors.append(f"Error reading metadata.json: {e}")
-
-        return result
-
-
-class ZeekerGenerator:
-    """Generates Zeeker customization assets."""
-
-    def __init__(self, database_name: str, output_path: Path):
-        self.database_name = database_name
-        self.sanitized_name = ZeekerValidator.sanitize_database_name(database_name)
-        self.output_path = output_path
-        self.customization = DatabaseCustomization(database_name, output_path)
-
-    def create_base_structure(self) -> None:
-        """Create the basic directory structure for customization."""
-        dirs = [
-            self.output_path,
-            self.output_path / "templates",
-            self.output_path / "static",
-            self.output_path / "static" / "images",
-        ]
-
-        for dir_path in dirs:
-            dir_path.mkdir(parents=True, exist_ok=True)
-
-    def generate_metadata_template(
-        self,
-        title: str,
-        description: str,
-        license_type: str = "CC-BY-4.0",
-        source_url: Optional[str] = None,
-        extra_css: Optional[List[str]] = None,
-        extra_js: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
-        """Generate a complete metadata.json template."""
-        metadata = {
-            "title": title,
-            "description": description,
-            "license": license_type,
-            "license_url": f"https://creativecommons.org/licenses/{license_type.lower()}/",
-        }
-
-        if source_url:
-            metadata["source_url"] = source_url
-
-        # Add CSS/JS URLs with proper paths
-        if extra_css:
-            metadata["extra_css_urls"] = [
-                f"/static/databases/{self.sanitized_name}/{css}" for css in extra_css
-            ]
-
-        if extra_js:
-            metadata["extra_js_urls"] = [
-                f"/static/databases/{self.sanitized_name}/{js}" for js in extra_js
-            ]
-
-        # Add database-specific metadata
-        metadata["databases"] = {self.database_name: {"description": description, "title": title}}
-
-        return metadata
-
-    def generate_css_template(
-        self,
-        primary_color: str = "#3498db",
-        accent_color: str = "#e74c3c",
-        include_examples: bool = True,
-    ) -> str:
-        """Generate a CSS template with best practices."""
-        css_template = f"""/* Custom styles for {self.database_name} database */
-
-/* CSS Custom Properties for theming */
-:root {{
-    --color-accent-primary: {primary_color};
-    --color-accent-secondary: {accent_color};
-    --font-family-custom: 'Segoe UI', system-ui, sans-serif;
-}}
-
-/* Scope styles to this database to avoid conflicts */
-[data-database="{self.sanitized_name}"] {{
-    /* Database-specific styles here */
-}}
-
-"""
-
-        if include_examples:
-            css_template += f"""
-/* Example: Custom header styling */
-.page-database[data-database="{self.sanitized_name}"] .database-title {{
-    color: var(--color-accent-primary);
-    font-family: var(--font-family-custom);
-    text-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
-}}
-
-/* Example: Custom table styling */
-.page-database[data-database="{self.sanitized_name}"] .card {{
-    border-left: 4px solid var(--color-accent-primary);
-    transition: transform 0.2s ease;
-}}
-
-.page-database[data-database="{self.sanitized_name}"] .card:hover {{
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}}
-
-/* Example: Custom button styling */
-.page-database[data-database="{self.sanitized_name}"] .btn-primary {{
-    background-color: var(--color-accent-primary);
-    border-color: var(--color-accent-primary);
-}}
-
-/* Responsive design considerations */
-@media (max-width: 768px) {{
-    .page-database[data-database="{self.sanitized_name}"] .database-title {{
-        font-size: 1.5rem;
-    }}
-}}
-"""
-
-        return css_template
-
-    def generate_js_template(self, include_examples: bool = True) -> str:
-        """Generate a JavaScript template with best practices."""
-        js_template = f"""// Custom JavaScript for {self.database_name} database
-
-// Defensive programming - ensure we're on the right database
-function isDatabasePage() {{
-    return window.location.pathname.includes('/{self.database_name}') ||
-           document.body.dataset.database === '{self.sanitized_name}';
-}}
-
-// Main initialization
-document.addEventListener('DOMContentLoaded', function() {{
-    if (!isDatabasePage()) {{
-        return; // Exit if not our database
-    }}
-
-    console.log('Custom JS loaded for {self.database_name} database');
-
-    // Initialize custom features
-    initCustomFeatures();
-}});
-
-function initCustomFeatures() {{
-    // Your custom functionality here
-}}
-
-"""
-
-        if include_examples:
-            js_template += f"""
-// Example: Enhanced search functionality
-function enhanceSearchInput() {{
-    const searchInput = document.querySelector('.hero-search-input');
-    if (searchInput) {{
-        searchInput.placeholder = 'Search {self.database_name}...';
-
-        // Add search suggestions or autocomplete
-        searchInput.addEventListener('input', function(e) {{
-            // Your search enhancement logic
-            console.log('Search query:', e.target.value);
-        }});
-    }}
-}}
-
-// Example: Custom table enhancements
-function enhanceTables() {{
-    const tables = document.querySelectorAll('.table-wrapper table');
-    tables.forEach(table => {{
-        // Add custom sorting, filtering, or styling
-        table.classList.add('enhanced-table');
-
-        // Example: Click to highlight rows
-        const rows = table.querySelectorAll('tbody tr');
-        rows.forEach(row => {{
-            row.addEventListener('click', function() {{
-                // Remove highlight from other rows
-                rows.forEach(r => r.classList.remove('highlighted'));
-                // Add highlight to clicked row
-                this.classList.add('highlighted');
-            }});
-        }});
-    }});
-}}
-
-// Example: Add custom navigation
-function addCustomNavigation() {{
-    const nav = document.querySelector('.nav');
-    if (nav) {{
-        const customLink = document.createElement('a');
-        customLink.href = '/custom-dashboard';
-        customLink.textContent = 'Dashboard';
-        customLink.className = 'nav-link';
-        nav.appendChild(customLink);
-    }}
-}}
-
-// Export functions for use in other scripts if needed
-window.{self.sanitized_name.replace('-', '_')}Utils = {{
-    enhanceSearchInput,
-    enhanceTables,
-    addCustomNavigation
-}};
-"""
-
-        return js_template
-
-    def generate_database_template(self, custom_title: Optional[str] = None) -> str:
-        """Generate a database-specific template."""
-        title = custom_title or f"{self.database_name.title()} Database"
-
-        return f"""{{%% extends "default:database.html" %%}}
-
-{{%% block extra_head %%}}
-{{{{ super() }}}}
-<meta name="description" content="Custom database: {self.database_name}">
-<meta name="keywords" content="{self.database_name}, database, search">
-{{%% endblock %%}}
-
-{{%% block content %%}}
-<div class="custom-database-header">
-    <h1>📊 {title}</h1>
-    <p>Welcome to the {self.database_name} database</p>
-</div>
-
-{{{{ super() }}}}
-
-<div class="custom-database-footer">
-    <p>Custom content for {self.database_name}</p>
-</div>
-{{%% endblock %%}}
-
-{{%% block extra_script %%}}
-{{{{ super() }}}}
-<script>
-// Database-specific inline scripts can go here
-console.log('Database template loaded for {self.database_name}');
-</script>
-{{%% endblock %%}}
-"""
-
-    def save_customization(
-        self,
-        metadata: Optional[Dict[str, Any]] = None,
-        css_content: Optional[str] = None,
-        js_content: Optional[str] = None,
-        templates: Optional[Dict[str, str]] = None,
-    ) -> None:
-        """Save all customization files to disk."""
-        self.create_base_structure()
-
-        # Save metadata.json
-        if metadata:
-            metadata_path = self.output_path / "metadata.json"
-            with open(metadata_path, "w", encoding="utf-8") as f:
-                json.dump(metadata, f, indent=2, ensure_ascii=False)
-
-        # Save CSS
-        if css_content:
-            css_path = self.output_path / "static" / "custom.css"
-            with open(css_path, "w", encoding="utf-8") as f:
-                f.write(css_content)
-
-        # Save JavaScript
-        if js_content:
-            js_path = self.output_path / "static" / "custom.js"
-            with open(js_path, "w", encoding="utf-8") as f:
-                f.write(js_content)
-
-        # Save templates
-        if templates:
-            for template_name, template_content in templates.items():
-                template_path = self.output_path / "templates" / template_name
-                with open(template_path, "w", encoding="utf-8") as f:
-                    f.write(template_content)
+from .types import ValidationResult, DeploymentChanges
 
 
 class ZeekerDeployer:
-    """Handles deployment of customizations to S3 with enhanced capabilities."""
+    """Handles deployment of databases and assets to S3 with enhanced capabilities."""
 
     def __init__(self):
-        # Get S3 configuration from environment variables
         self.bucket_name = os.getenv("S3_BUCKET")
         if not self.bucket_name:
             raise ValueError("S3_BUCKET environment variable is required")
@@ -1777,7 +1478,6 @@ class ZeekerDeployer:
                 "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are required"
             )
 
-        # Create S3 client with custom endpoint if specified
         client_kwargs = {
             "aws_access_key_id": access_key,
             "aws_secret_access_key": secret_key,
@@ -1788,6 +1488,33 @@ class ZeekerDeployer:
             client_kwargs["endpoint_url"] = self.endpoint_url
 
         self.s3_client = boto3.client("s3", **client_kwargs)
+
+    def upload_database(
+        self, db_path: Path, database_name: str, dry_run: bool = False
+    ) -> ValidationResult:
+        """Upload database file to S3."""
+        result = ValidationResult(is_valid=True)
+
+        if not db_path.exists():
+            result.is_valid = False
+            result.errors.append(f"Database file not found: {db_path}")
+            return result
+
+        s3_key = f"latest/{database_name}.db"
+
+        if dry_run:
+            result.info.append(f"Would upload: {db_path} -> s3://{self.bucket_name}/{s3_key}")
+        else:
+            try:
+                self.s3_client.upload_file(str(db_path), self.bucket_name, s3_key)
+                result.info.append(
+                    f"Uploaded database: {db_path} -> s3://{self.bucket_name}/{s3_key}"
+                )
+            except Exception as e:
+                result.is_valid = False
+                result.errors.append(f"Failed to upload database: {e}")
+
+        return result
 
     def get_existing_files(self, database_name: str) -> Dict[str, str]:
         """Get existing files on S3 with their ETags for comparison."""
@@ -1800,11 +1527,10 @@ class ZeekerDeployer:
             for page in pages:
                 for obj in page.get("Contents", []):
                     relative_path = obj["Key"][len(s3_prefix) :]
-                    # S3 ETag is MD5 hash for single-part uploads
                     files[relative_path] = obj["ETag"].strip('"')
         except Exception as e:
             # Log error but don't fail - treat as empty S3
-            click.echo(f"Warning: Could not list S3 files: {e}", err=True)
+            print(f"Warning: Could not list S3 files: {e}")
         return files
 
     def get_local_files(self, local_path: Path) -> Dict[str, str]:
@@ -1813,7 +1539,6 @@ class ZeekerDeployer:
         for file_path in local_path.rglob("*"):
             if file_path.is_file():
                 relative_path = str(file_path.relative_to(local_path)).replace("\\", "/")
-                # Calculate MD5 to compare with S3 ETag
                 md5_hash = hashlib.md5(file_path.read_bytes()).hexdigest()
                 files[relative_path] = md5_hash
         return files
@@ -1825,11 +1550,9 @@ class ZeekerDeployer:
         changes = DeploymentChanges()
 
         if clean:
-            # Clean deployment: delete everything, upload everything
             changes.deletions = list(existing_files.keys())
             changes.uploads = list(local_files.keys())
         else:
-            # Compare files
             for local_file, local_hash in local_files.items():
                 if local_file not in existing_files:
                     changes.uploads.append(local_file)
@@ -1838,7 +1561,6 @@ class ZeekerDeployer:
                 else:
                     changes.unchanged.append(local_file)
 
-            # Handle sync deletions
             if sync:
                 for existing_file in existing_files:
                     if existing_file not in local_files:
@@ -1854,55 +1576,55 @@ class ZeekerDeployer:
         existing_files: Dict[str, str],
     ):
         """Show a summary of what will be deployed."""
-        click.echo(f"\n📋 Deployment Summary for '{database_name}':")
-        click.echo(f"   Local files: {len(local_files)}")
-        click.echo(f"   S3 files: {len(existing_files)}")
+        print(f"\n📋 Deployment Summary for '{database_name}':")
+        print(f"   Local files: {len(local_files)}")
+        print(f"   S3 files: {len(existing_files)}")
 
         if changes.uploads:
-            click.echo(f"   📤 Will upload: {len(changes.uploads)} files")
-            for file in changes.uploads[:5]:  # Show first 5
-                click.echo(f"      • {file}")
+            print(f"   📤 Will upload: {len(changes.uploads)} files")
+            for file in changes.uploads[:5]:
+                print(f"      • {file}")
             if len(changes.uploads) > 5:
-                click.echo(f"      ... and {len(changes.uploads) - 5} more")
+                print(f"      ... and {len(changes.uploads) - 5} more")
 
         if changes.updates:
-            click.echo(f"   🔄 Will update: {len(changes.updates)} files")
+            print(f"   🔄 Will update: {len(changes.updates)} files")
             for file in changes.updates[:5]:
-                click.echo(f"      • {file}")
+                print(f"      • {file}")
             if len(changes.updates) > 5:
-                click.echo(f"      ... and {len(changes.updates) - 5} more")
+                print(f"      ... and {len(changes.updates) - 5} more")
 
         if changes.deletions:
-            click.echo(f"   🗑️  Will delete: {len(changes.deletions)} files")
+            print(f"   🗑️  Will delete: {len(changes.deletions)} files")
             for file in changes.deletions:
-                click.echo(f"      • {file}")
+                print(f"      • {file}")
 
     def show_detailed_diff(self, changes: DeploymentChanges):
         """Show detailed diff of all changes."""
-        click.echo("\n📊 Detailed Changes:")
+        print("\n📊 Detailed Changes:")
 
         if changes.uploads:
-            click.echo(f"\n➕ New files ({len(changes.uploads)}):")
+            print(f"\n➕ New files ({len(changes.uploads)}):")
             for file in changes.uploads:
-                click.echo(f"   + {file}")
+                print(f"   + {file}")
 
         if changes.updates:
-            click.echo(f"\n🔄 Modified files ({len(changes.updates)}):")
+            print(f"\n🔄 Modified files ({len(changes.updates)}):")
             for file in changes.updates:
-                click.echo(f"   ~ {file}")
+                print(f"   ~ {file}")
 
         if changes.deletions:
-            click.echo(f"\n➖ Files to delete ({len(changes.deletions)}):")
+            print(f"\n➖ Files to delete ({len(changes.deletions)}):")
             for file in changes.deletions:
-                click.echo(f"   - {file}")
+                print(f"   - {file}")
 
         if changes.unchanged:
-            click.echo(f"\n✓ Unchanged files ({len(changes.unchanged)})")
+            print(f"\n✓ Unchanged files ({len(changes.unchanged)})")
             if len(changes.unchanged) <= 10:
                 for file in changes.unchanged:
-                    click.echo(f"   = {file}")
+                    print(f"   = {file}")
             else:
-                click.echo(f"   ({len(changes.unchanged)} files)")
+                print(f"   ({len(changes.unchanged)} files)")
 
     def execute_deployment(
         self, changes: DeploymentChanges, local_path: Path, database_name: str
@@ -1937,11 +1659,10 @@ class ZeekerDeployer:
 
         return result
 
-    # Legacy method for backward compatibility
-    def upload_customization(
+    def upload_assets(
         self, local_path: Path, database_name: str, dry_run: bool = False
     ) -> ValidationResult:
-        """Legacy method - use the new CLI for enhanced features."""
+        """Upload assets to S3 (legacy method for backward compatibility)."""
         result = ValidationResult(is_valid=True)
 
         if not local_path.exists():
@@ -1972,8 +1693,8 @@ class ZeekerDeployer:
 
         return result
 
-    def list_customizations(self) -> List[str]:
-        """List all database customizations in S3."""
+    def list_assets(self) -> List[str]:
+        """List all database assets in S3."""
         try:
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name, Prefix="assets/databases/", Delimiter="/"
@@ -1986,203 +1707,957 @@ class ZeekerDeployer:
 
             return sorted(databases)
         except Exception as e:
-            print(f"Error listing customizations: {e}")
+            print(f"Error listing assets: {e}")
             return []
 
+</document_content>
+</document>
+<document index="9">
+<source>./zeeker/core/generator.py</source>
+<document_content>
+"""
+Asset generation for Zeeker database customizations.
+"""
 
-# CLI Interface
-@click.group()
-def cli():
-    """Zeeker Database Customization Tool."""
-    pass
+import json
+from pathlib import Path
+from typing import Dict, Optional, Any
 
-
-@cli.command()
-@click.argument("database_name")
-@click.argument("output_path", type=click.Path())
-@click.option("--title", help="Database title")
-@click.option("--description", help="Database description")
-@click.option("--primary-color", default="#3498db", help="Primary color")
-@click.option("--accent-color", default="#e74c3c", help="Accent color")
-def generate(database_name, output_path, title, description, primary_color, accent_color):
-    """Generate a new database customization."""
-    output_dir = Path(output_path)
-    generator = ZeekerGenerator(database_name, output_dir)
-
-    # Generate metadata
-    metadata = generator.generate_metadata_template(
-        title=title or f"{database_name.title()} Database",
-        description=description or f"Custom database for {database_name}",
-        extra_css=["custom.css"],
-        extra_js=["custom.js"],
-    )
-
-    # Generate CSS and JS
-    css_content = generator.generate_css_template(primary_color, accent_color)
-    js_content = generator.generate_js_template()
-
-    # Generate database template
-    db_template = generator.generate_database_template()
-    templates = {f"database-{generator.sanitized_name}.html": db_template}
-
-    # Save everything
-    generator.save_customization(metadata, css_content, js_content, templates)
-
-    click.echo(f"Generated customization for '{database_name}' in {output_dir}")
+from .types import DatabaseCustomization
+from .validator import ZeekerValidator
 
 
-@cli.command()
-@click.argument("customization_path", type=click.Path(exists=True))
-@click.argument("database_name")
-def validate(customization_path, database_name):
-    """Validate a database customization."""
-    validator = ZeekerValidator()
-    result = validator.validate_file_structure(Path(customization_path), database_name)
+class ZeekerGenerator:
+    """Generates Zeeker assets following the customization guide."""
 
-    if result.errors:
-        click.echo("❌ Validation failed:")
-        for error in result.errors:
-            click.echo(f"  ERROR: {error}")
+    def __init__(self, database_name: str, output_path: Path):
+        self.database_name = database_name
+        self.sanitized_name = ZeekerValidator.sanitize_database_name(database_name)
+        self.output_path = output_path
+        self.customization = DatabaseCustomization(database_name, output_path)
 
-    if result.warnings:
-        click.echo("⚠️ Warnings:")
-        for warning in result.warnings:
-            click.echo(f"  WARNING: {warning}")
+    def create_base_structure(self) -> None:
+        """Create structure following the guide: templates/, static/, static/images/"""
+        dirs = [
+            self.output_path,
+            self.output_path / "templates",
+            self.output_path / "static",
+            self.output_path / "static" / "images",
+        ]
 
-    if result.info:
-        for info in result.info:
-            click.echo(f"  INFO: {info}")
+        for dir_path in dirs:
+            dir_path.mkdir(parents=True, exist_ok=True)
 
-    if result.is_valid and not result.warnings:
-        click.echo("✅ Validation passed!")
+    def generate_metadata_template(self, title: str, description: str, **kwargs) -> Dict[str, Any]:
+        """Generate complete Datasette metadata following the guide format."""
+        # Use sanitized name for URL paths (matches S3 structure)
+        url_name = self.sanitized_name
 
-    return result.is_valid
+        metadata = {
+            "title": title,
+            "description": description,
+            "license": kwargs.get("license_type", "CC-BY-4.0"),
+            "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        }
+
+        if kwargs.get("source_url"):
+            metadata["source_url"] = kwargs["source_url"]
+
+        # Follow guide URL pattern: /static/databases/database_name/filename
+        if kwargs.get("extra_css"):
+            metadata["extra_css_urls"] = [
+                f"/static/databases/{url_name}/{css}" for css in kwargs["extra_css"]
+            ]
+
+        if kwargs.get("extra_js"):
+            metadata["extra_js_urls"] = [
+                f"/static/databases/{url_name}/{js}" for js in kwargs["extra_js"]
+            ]
+
+        # Complete Datasette structure (not fragments) per guide
+        metadata["databases"] = {self.database_name: {"description": description, "title": title}}
+
+        return metadata
+
+    def generate_css_template(
+        self, primary_color: str = "#3498db", accent_color: str = "#e74c3c"
+    ) -> str:
+        """Generate CSS following the guide's scoping best practices."""
+        return f"""/* Custom styles for {self.database_name} database */
+/* Following Zeeker customization guide patterns */
+
+/* CSS Custom Properties for theming */
+:root {{
+    --color-accent-primary: {primary_color};
+    --color-accent-secondary: {accent_color};
+}}
+
+/* Scope to your database to avoid conflicts (per guide) */
+[data-database="{self.sanitized_name}"] {{
+    /* Database-specific styles here */
+}}
+
+/* Database-specific header styling */
+.page-database[data-database="{self.sanitized_name}"] .database-title {{
+    color: var(--color-accent-primary);
+    text-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}}
+
+/* Custom table styling */
+.page-database[data-database="{self.sanitized_name}"] .card {{
+    border-left: 4px solid var(--color-accent-primary);
+    transition: transform 0.2s ease;
+}}
+
+.page-database[data-database="{self.sanitized_name}"] .card:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}}
+
+/* Responsive design */
+@media (max-width: 768px) {{
+    .page-database[data-database="{self.sanitized_name}"] .database-title {{
+        font-size: 1.5rem;
+    }}
+}}
+"""
+
+    def generate_js_template(self) -> str:
+        """Generate JavaScript following the guide's defensive programming practices."""
+        return f"""// Custom JavaScript for {self.database_name} database
+// Following Zeeker customization guide best practices
+
+// Defensive programming - ensure we're on the right database (per guide)
+function isDatabasePage() {{
+    return window.location.pathname.includes('/{self.database_name}') ||
+           document.body.dataset.database === '{self.sanitized_name}';
+}}
+
+document.addEventListener('DOMContentLoaded', function() {{
+    if (!isDatabasePage()) {{
+        return; // Exit if not our database (safety per guide)
+    }}
+    
+    console.log('Custom JS loaded for {self.database_name} database');
+    
+    // Initialize custom features safely
+    initCustomFeatures();
+}});
+
+function initCustomFeatures() {{
+    // Add custom search suggestions (safe implementation)
+    const searchInput = document.querySelector('.hero-search-input');
+    if (searchInput) {{
+        searchInput.placeholder = 'Search {self.database_name}...';
+    }}
+    
+    // Custom table enhancements
+    enhanceTables();
+}}
+
+function enhanceTables() {{
+    // Safe element selection per guide
+    const tables = document.querySelectorAll('.table-wrapper table');
+    tables.forEach(table => {{
+        // Add your custom table functionality here
+        table.classList.add('enhanced-table');
+    }});
+}}
+"""
+
+    def generate_database_template(self, custom_title: Optional[str] = None) -> str:
+        """Generate safe database template following guide naming conventions."""
+        title = custom_title or f"{self.database_name.title()} Database"
+
+        # Follow guide pattern: database-DBNAME.html (safe naming)
+        return f"""{{%% extends "default:database.html" %%}}
+
+{{%% block extra_head %%}}
+{{{{ super() }}}}
+<meta name="description" content="Custom database: {self.database_name}">
+{{%% endblock %%}}
+
+{{%% block content %%}}
+<div class="custom-database-header">
+    <h1>📊 {title}</h1>
+    <p>Welcome to the {self.database_name} database</p>
+</div>
+
+{{{{ super() }}}}
+{{%% endblock %%}}
+"""
+
+    def save_assets(self, metadata=None, css_content=None, js_content=None, templates=None):
+        """Save assets following the guide's file structure."""
+        self.create_base_structure()
+
+        if metadata:
+            with open(self.output_path / "metadata.json", "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+        if css_content:
+            with open(self.output_path / "static" / "custom.css", "w", encoding="utf-8") as f:
+                f.write(css_content)
+
+        if js_content:
+            with open(self.output_path / "static" / "custom.js", "w", encoding="utf-8") as f:
+                f.write(js_content)
+
+        if templates:
+            for template_name, template_content in templates.items():
+                with open(
+                    self.output_path / "templates" / template_name, "w", encoding="utf-8"
+                ) as f:
+                    f.write(template_content)
+
+</document_content>
+</document>
+<document index="10">
+<source>./zeeker/core/project.py</source>
+<document_content>
+"""
+Project management for Zeeker projects.
+"""
+
+import importlib.util
+import json
+from pathlib import Path
+
+import sqlite_utils
+
+from .types import ValidationResult, ZeekerProject
 
 
-@cli.command()
-@click.argument("local_path", type=click.Path(exists=True))
-@click.argument("database_name")
-@click.option("--dry-run", is_flag=True, help="Show what would be changed without making changes")
-@click.option("--sync", is_flag=True, help="Delete S3 files not present locally (full sync)")
-@click.option("--clean", is_flag=True, help="Remove all existing customizations first, then deploy")
-@click.option("--yes", is_flag=True, help="Skip confirmation prompts")
-@click.option("--diff", is_flag=True, help="Show detailed differences between local and S3")
-def deploy(local_path, database_name, dry_run, sync, clean, yes, diff):
-    """Deploy customization to S3.
+class ZeekerProjectManager:
+    """Manages Zeeker projects and resources."""
 
-    Default behavior: Upload/overwrite files, keep extra S3 files.
+    def __init__(self, project_path: Path = None):
+        self.project_path = project_path or Path.cwd()
+        self.toml_path = self.project_path / "zeeker.toml"
+        self.resources_path = self.project_path / "resources"
+
+    def is_project_root(self) -> bool:
+        """Check if current directory is a Zeeker project root."""
+        return self.toml_path.exists()
+
+    def init_project(self, project_name: str) -> ValidationResult:
+        """Initialize a new Zeeker project."""
+        result = ValidationResult(is_valid=True)
+
+        # Create project directory if it doesn't exist
+        self.project_path.mkdir(exist_ok=True)
+
+        # Check if already a project
+        if self.toml_path.exists():
+            result.is_valid = False
+            result.errors.append(f"Directory already contains zeeker.toml")
+            return result
+
+        # Create basic project structure
+        project = ZeekerProject(name=project_name, database=f"{project_name}.db")
+
+        # Save zeeker.toml
+        project.save_toml(self.toml_path)
+
+        # Create resources package
+        self.resources_path.mkdir(exist_ok=True)
+        init_file = self.resources_path / "__init__.py"
+        init_file.write_text('"""Resources package for data fetching."""\n')
+
+        # Create .gitignore
+        gitignore_content = """# Generated database
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+
+# Data files (uncomment if you want to ignore data directory)
+# data/
+# raw/
+
+# OS
+.DS_Store
+Thumbs.db
+"""
+        gitignore_path = self.project_path / ".gitignore"
+        gitignore_path.write_text(gitignore_content)
+
+        # Create README.md
+        readme_content = f"""# {project_name.title()} Database Project
+
+A Zeeker project for managing the {project_name} database.
+
+## Getting Started
+
+1. Add resources:
+   ```bash
+   zeeker add my_resource --description "Description of the resource"
+   ```
+
+2. Implement data fetching in `resources/my_resource.py`
+
+3. Build the database:
+   ```bash
+   zeeker build
+   ```
+
+4. Deploy to S3:
+   ```bash
+   zeeker deploy
+   ```
+
+## Project Structure
+
+- `zeeker.toml` - Project configuration
+- `resources/` - Python modules for data fetching
+- `{project_name}.db` - Generated SQLite database (gitignored)
+
+## Resources
+
+"""
+
+        readme_path = self.project_path / "README.md"
+        readme_path.write_text(readme_content)
+
+        result.info.append(f"Initialized Zeeker project '{project_name}'")
+
+        # FIXED: Handle relative path safely
+        try:
+            relative_toml = self.toml_path.relative_to(Path.cwd())
+            result.info.append(f"Created: {relative_toml}")
+        except ValueError:
+            # If not in subpath of cwd, just use filename
+            result.info.append(f"Created: {self.toml_path.name}")
+
+        try:
+            relative_resources = self.resources_path.relative_to(Path.cwd())
+            result.info.append(f"Created: {relative_resources}/")
+        except ValueError:
+            result.info.append(f"Created: {self.resources_path.name}/")
+
+        try:
+            relative_gitignore = gitignore_path.relative_to(Path.cwd())
+            result.info.append(f"Created: {relative_gitignore}")
+        except ValueError:
+            result.info.append(f"Created: {gitignore_path.name}")
+
+        try:
+            relative_readme = readme_path.relative_to(Path.cwd())
+            result.info.append(f"Created: {relative_readme}")
+        except ValueError:
+            result.info.append(f"Created: {readme_path.name}")
+
+        return result
+
+    def load_project(self) -> ZeekerProject:
+        """Load project configuration."""
+        if not self.is_project_root():
+            raise ValueError(f"Not a Zeeker project (no zeeker.toml found)")
+        return ZeekerProject.from_toml(self.toml_path)
+
+    def add_resource(
+        self, resource_name: str, description: str = None, **kwargs
+    ) -> ValidationResult:
+        """Add a new resource to the project."""
+        result = ValidationResult(is_valid=True)
+
+        if not self.is_project_root():
+            result.is_valid = False
+            result.errors.append("Not in a Zeeker project directory (no zeeker.toml found)")
+            return result
+
+        # Load existing project
+        project = self.load_project()
+
+        # Check if resource already exists
+        resource_file = self.resources_path / f"{resource_name}.py"
+        if resource_file.exists():
+            result.is_valid = False
+            result.errors.append(f"Resource '{resource_name}' already exists")
+            return result
+
+        # Generate resource file
+        template = self._generate_resource_template(resource_name)
+        resource_file.write_text(template)
+
+        # Update project config with resource metadata
+        resource_config = {
+            "description": description or f"{resource_name.replace('_', ' ').title()} data"
+        }
+
+        # Add any additional Datasette metadata passed via kwargs
+        datasette_fields = [
+            "facets",
+            "sort",
+            "size",
+            "sortable_columns",
+            "hidden",
+            "label_column",
+            "columns",
+            "units",
+            "description_html",
+        ]
+        for field in datasette_fields:
+            if field in kwargs:
+                resource_config[field] = kwargs[field]
+
+        project.resources[resource_name] = resource_config
+        project.save_toml(self.toml_path)
+
+        try:
+            relative_resource = resource_file.relative_to(Path.cwd())
+            result.info.append(f"Created resource: {relative_resource}")
+        except ValueError:
+            result.info.append(f"Created resource: {resource_file.name}")
+
+        try:
+            relative_toml = self.toml_path.relative_to(Path.cwd())
+            result.info.append(f"Updated: {relative_toml}")
+        except ValueError:
+            result.info.append(f"Updated: {self.toml_path.name}")
+
+        return result
+
+    def _generate_resource_template(self, resource_name: str) -> str:
+        """Generate a Python template for a resource."""
+        return f'''"""
+{resource_name.replace('_', ' ').title()} resource for fetching and processing data.
+
+This module should implement a fetch_data() function that returns
+a list of dictionaries to be inserted into the '{resource_name}' table.
+
+The database is built using sqlite-utils, which provides:
+• Automatic table creation from your data structure
+• Type inference (integers → INTEGER, floats → REAL, strings → TEXT)
+• JSON support for complex data (lists, dicts stored as JSON)
+• Safe data insertion without SQL injection risks
+"""
+
+def fetch_data():
+    """
+    Fetch data for the {resource_name} table.
+
+    Returns:
+        List[Dict[str, Any]]: List of records to insert into database
+
+    sqlite-utils will automatically:
+    • Create the table from your data structure  
+    • Infer column types from your data
+    • Handle JSON for complex data structures
+    • Add new columns if data structure changes
+
+    Example:
+        return [
+            {{"id": 1, "name": "Example", "created": "2024-01-01"}},
+            {{"id": 2, "name": "Another", "created": "2024-01-02"}},
+        ]
+    """
+    # TODO: Implement your data fetching logic here
+    # This could be:
+    # - API calls (requests.get, etc.)
+    # - File reading (CSV, JSON, XML, etc.)
+    # - Database queries (from other sources)
+    # - Web scraping (BeautifulSoup, Scrapy, etc.)
+    # - Any other data source
+
+    return [
+        # Example data - replace with your implementation
+        # sqlite-utils will infer: id=INTEGER, example_field=TEXT
+        {{"id": 1, "example_field": "example_value"}},
+    ]
+
+
+def transform_data(raw_data):
+    """
+    Optional: Transform/clean the raw data before database insertion.
+
+    Args:
+        raw_data: The data returned from fetch_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed data
 
     Examples:
-      zeeker deploy ./custom legal_news                    # Safe additive deployment
-      zeeker deploy ./custom legal_news --dry-run         # Preview changes
-      zeeker deploy ./custom legal_news --sync --dry-run  # Preview full sync
-      zeeker deploy ./custom legal_news --clean           # Fresh start
+        # Clean strings
+        for item in raw_data:
+            item['name'] = item['name'].strip().title()
+
+        # Parse dates
+        for item in raw_data:
+            item['created_date'] = datetime.fromisoformat(item['date_string'])
+
+        # Handle complex data (sqlite-utils stores as JSON)
+        for item in raw_data:
+            item['metadata'] = {{"tags": ["news", "tech"], "priority": 1}}
     """
-
-    # Validate flags
-    if clean and sync:
-        click.echo("❌ Cannot use both --clean and --sync flags")
-        return
-
-    try:
-        deployer = ZeekerDeployer()
-    except ValueError as e:
-        click.echo(f"❌ Configuration error: {e}")
-        click.echo("Please set the required environment variables:")
-        click.echo("  - S3_BUCKET")
-        click.echo("  - AWS_ACCESS_KEY_ID")
-        click.echo("  - AWS_SECRET_ACCESS_KEY")
-        click.echo("  - S3_ENDPOINT_URL (optional)")
-        return
-
-    # Get current state
-    local_path_obj = Path(local_path)
-    existing_files = deployer.get_existing_files(database_name)
-    local_files = deployer.get_local_files(local_path_obj)
-
-    # Calculate what will happen
-    changes = deployer.calculate_changes(local_files, existing_files, sync, clean)
-
-    # Show diff if requested
-    if diff:
-        deployer.show_detailed_diff(changes)
-    else:
-        deployer.show_deployment_summary(changes, database_name, local_files, existing_files)
-
-    # Early exit if no changes
-    if not changes.has_changes:
-        click.echo("   ✅ No changes needed")
-        return
-
-    # Confirmation for destructive operations
-    if changes.has_destructive_changes and not yes and not dry_run:
-        if clean:
-            msg = f"This will delete ALL {len(existing_files)} existing files and upload {len(local_files)} new files."
-        else:
-            msg = f"This will delete {len(changes.deletions)} files not present locally."
-
-        click.echo(f"\n⚠️  {msg}")
-        click.echo("Deleted files cannot be recovered.")
-
-        if not click.confirm("Continue?"):
-            click.echo("Deployment cancelled.")
-            return
-
-    # Perform deployment
-    if dry_run:
-        click.echo(f"\n🔍 Dry run completed - no changes made")
-        click.echo("Remove --dry-run to perform actual deployment")
-    else:
-        result = deployer.execute_deployment(changes, local_path_obj, database_name)
-
-        if result.is_valid:
-            click.echo(f"\n✅ Deployment completed successfully!")
-            if changes.deletions:
-                click.echo(f"   Deleted: {len(changes.deletions)} files")
-            if changes.uploads:
-                click.echo(f"   Uploaded: {len(changes.uploads)} files")
-            if changes.updates:
-                click.echo(f"   Updated: {len(changes.updates)} files")
-        else:
-            click.echo(f"\n❌ Deployment failed:")
-            for error in result.errors:
-                click.echo(f"   {error}")
+    # Optional transformation logic
+    return raw_data
 
 
-@cli.command()
-def list_databases():
-    """List all database customizations in S3.
+# You can add additional helper functions here
+'''
 
-    Requires environment variables:
-    - S3_BUCKET: S3 bucket name
-    - S3_ENDPOINT_URL: S3 endpoint URL (optional, defaults to AWS)
-    - AWS_ACCESS_KEY_ID: AWS access key
-    - AWS_SECRET_ACCESS_KEY: AWS secret key
-    """
-    try:
-        deployer = ZeekerDeployer()
-    except ValueError as e:
-        click.echo(f"❌ Configuration error: {e}")
-        click.echo("Please set the required environment variables:")
-        click.echo("  - S3_BUCKET")
-        click.echo("  - AWS_ACCESS_KEY_ID")
-        click.echo("  - AWS_SECRET_ACCESS_KEY")
-        click.echo("  - S3_ENDPOINT_URL (optional)")
-        return
+    def build_database(self) -> ValidationResult:
+        """Build the SQLite database from all resources using sqlite-utils.
 
-    databases = deployer.list_customizations()
+        Uses Simon Willison's sqlite-utils for robust table creation and data insertion:
+        - Automatic schema detection from data
+        - Proper type inference (INTEGER, TEXT, REAL)
+        - Safe table creation and data insertion
+        - Better error handling than raw SQL
+        """
+        result = ValidationResult(is_valid=True)
 
-    if databases:
-        click.echo(f"Database customizations found in {deployer.bucket_name}:")
-        for db in databases:
-            click.echo(f"  - {db}")
-    else:
-        click.echo(f"No database customizations found in {deployer.bucket_name}.")
+        if not self.is_project_root():
+            result.is_valid = False
+            result.errors.append("Not in a Zeeker project directory")
+            return result
+
+        project = self.load_project()
+        db_path = self.project_path / project.database
+
+        # Remove existing database
+        if db_path.exists():
+            db_path.unlink()
+
+        # Create new database using sqlite-utils
+        db = sqlite_utils.Database(str(db_path))
+
+        try:
+            all_success = True
+            for resource_name in project.resources.keys():
+                resource_result = self._process_resource(db, resource_name)
+                if not resource_result.is_valid:
+                    result.errors.extend(resource_result.errors)
+                    result.is_valid = False
+                    all_success = False
+                else:
+                    result.info.extend(resource_result.info)
+
+            if result.is_valid and all_success:
+                result.info.append(f"Database built successfully: {project.database}")
+
+                # Generate and save Datasette metadata.json
+                metadata = project.to_datasette_metadata()
+                metadata_path = self.project_path / "metadata.json"
+                with open(metadata_path, "w", encoding="utf-8") as f:
+                    json.dump(metadata, f, indent=2, ensure_ascii=False)
+                result.info.append("Generated Datasette metadata: metadata.json")
+
+        except Exception as e:
+            result.is_valid = False
+            result.errors.append(f"Database build failed: {e}")
+
+        return result
+
+    def _process_resource(self, db: sqlite_utils.Database, resource_name: str) -> ValidationResult:
+        """Process a single resource using sqlite-utils for robust data insertion.
+
+        Benefits of sqlite-utils over raw SQL:
+        - Automatic table creation with correct schema
+        - Type inference from data (no manual column type guessing)
+        - JSON support for complex data structures
+        - Proper error handling and validation
+        - No SQL injection risks
+        """
+        result = ValidationResult(is_valid=True)
+
+        resource_file = self.resources_path / f"{resource_name}.py"
+        if not resource_file.exists():
+            result.is_valid = False
+            result.errors.append(f"Resource file not found: {resource_file}")
+            return result
+
+        try:
+            # Dynamically import the resource module
+            spec = importlib.util.spec_from_file_location(resource_name, resource_file)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            # Get the fetch_data function
+            if not hasattr(module, "fetch_data"):
+                result.is_valid = False
+                result.errors.append(f"Resource '{resource_name}' missing fetch_data() function")
+                return result
+
+            # Fetch data
+            raw_data = module.fetch_data()
+
+            # Optional transformation
+            if hasattr(module, "transform_data"):
+                data = module.transform_data(raw_data)
+            else:
+                data = raw_data
+
+            if not data:
+                result.warnings.append(f"Resource '{resource_name}' returned no data")
+                return result
+
+            # Validate data structure
+            if not isinstance(data, list):
+                result.is_valid = False
+                result.errors.append(
+                    f"Resource '{resource_name}' must return a list of dictionaries, got: {type(data)}"
+                )
+                return result
+
+            if not all(isinstance(record, dict) for record in data):
+                result.is_valid = False
+                result.errors.append(
+                    f"Resource '{resource_name}' must return a list of dictionaries"
+                )
+                return result
+
+            # Use sqlite-utils for robust table creation and data insertion
+            # alter=True: Automatically add new columns if schema changes
+            # replace=True: Replace existing data (fresh rebuild)
+            db[resource_name].insert_all(
+                data,
+                alter=True,  # Auto-add columns if schema changes
+                replace=True,  # Replace existing data for clean rebuild
+            )
+
+            result.info.append(f"Processed {len(data)} records for table '{resource_name}'")
+
+        except sqlite_utils.db.IntegrityError as e:
+            result.is_valid = False
+            result.errors.append(f"Database integrity error in '{resource_name}': {e}")
+        except Exception as e:
+            result.is_valid = False
+            result.errors.append(f"Error processing resource '{resource_name}': {e}")
+
+        return result
+</document_content>
+</document>
+<document index="11">
+<source>./zeeker/core/types.py</source>
+<document_content>
+"""
+Core data types and structures for Zeeker.
+"""
+import tomllib
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional, Any
 
 
-if __name__ == "__main__":
-    cli()
+@dataclass
+class ValidationResult:
+    """Result of validation operations."""
 
+    is_valid: bool
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    info: List[str] = field(default_factory=list)
+
+
+@dataclass
+class DatabaseCustomization:
+    """Represents a complete database customization."""
+
+    database_name: str
+    base_path: Path
+    templates: Dict[str, str] = field(default_factory=dict)
+    static_files: Dict[str, bytes] = field(default_factory=dict)
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class DeploymentChanges:
+    """Represents the changes to be made during deployment."""
+
+    uploads: List[str] = field(default_factory=list)
+    updates: List[str] = field(default_factory=list)
+    deletions: List[str] = field(default_factory=list)
+    unchanged: List[str] = field(default_factory=list)
+
+    @property
+    def has_changes(self) -> bool:
+        return bool(self.uploads or self.updates or self.deletions)
+
+    @property
+    def has_destructive_changes(self) -> bool:
+        return bool(self.deletions)
+
+
+@dataclass
+class ZeekerProject:
+    """Represents a Zeeker project configuration."""
+
+    name: str
+    database: str
+    resources: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    root_path: Path = field(default_factory=Path)
+
+    @classmethod
+    def from_toml(cls, toml_path: Path) -> "ZeekerProject":
+        """Load project from zeeker.toml file."""
+
+        with open(toml_path, "rb") as f:
+            data = tomllib.load(f)
+
+        project_data = data.get("project", {})
+
+        # Extract resource sections (resource.*)
+        resources = data.get("resource", {})
+
+        return cls(
+            name=project_data.get("name", ""),
+            database=project_data.get("database", ""),
+            resources=resources,
+            root_path=toml_path.parent,
+        )
+
+    def save_toml(self, toml_path: Path) -> None:
+        """Save project to zeeker.toml file."""
+        toml_content = f"""[project]
+name = "{self.name}"
+database = "{self.database}"
+
+"""
+        for resource_name, resource_config in self.resources.items():
+            toml_content += f"[resource.{resource_name}]\n"
+            for key, value in resource_config.items():
+                if isinstance(value, str):
+                    toml_content += f'{key} = "{value}"\n'
+                elif isinstance(value, list):
+                    # Format arrays nicely
+                    formatted_list = "[" + ", ".join(f'"{item}"' for item in value) + "]"
+                    toml_content += f"{key} = {formatted_list}\n"
+                elif isinstance(value, (int, float, bool)):
+                    toml_content += f"{key} = {value}\n"
+            toml_content += "\n"
+
+        with open(toml_path, "w", encoding="utf-8") as f:
+            f.write(toml_content)
+
+    def to_datasette_metadata(self) -> Dict[str, Any]:
+        """Convert project configuration to complete Datasette metadata.json format.
+
+        Follows the guide: must provide complete Datasette metadata structure,
+        not fragments. Includes proper CSS/JS URL patterns.
+        """
+        # Database name for S3 path (matches .db filename without extension)
+        db_name = Path(self.database).stem
+
+        metadata = {
+            "title": f"{self.name.replace('_', ' ').replace('-', ' ').title()} Database",
+            "description": f"Database for {self.name} project",
+            "license": "MIT",
+            "license_url": "https://opensource.org/licenses/MIT",
+            "source": f"{self.name} project",
+            "extra_css_urls": [f"/static/databases/{db_name}/custom.css"],
+            "extra_js_urls": [f"/static/databases/{db_name}/custom.js"],
+            "databases": {
+                db_name: {
+                    "description": f"Database for {self.name} project",
+                    "title": f"{self.name.replace('_', ' ').replace('-', ' ').title()}",
+                    "tables": {},
+                }
+            },
+        }
+
+        # Add table metadata from resource configurations
+        for resource_name, resource_config in self.resources.items():
+            table_metadata = {}
+
+            # Copy Datasette-specific fields
+            datasette_fields = [
+                "description",
+                "description_html",
+                "facets",
+                "sort",
+                "size",
+                "sortable_columns",
+                "hidden",
+                "label_column",
+                "columns",
+                "units",
+            ]
+
+            for field in datasette_fields:
+                if field in resource_config:
+                    table_metadata[field] = resource_config[field]
+
+            # Default description if not provided
+            if "description" not in table_metadata:
+                table_metadata["description"] = resource_config.get(
+                    "description", f"{resource_name.replace('_', ' ').title()} data"
+                )
+
+            metadata["databases"][db_name]["tables"][resource_name] = table_metadata
+
+        return metadata
+
+</document_content>
+</document>
+<document index="12">
+<source>./zeeker/core/validator.py</source>
+<document_content>
+"""
+Validation logic for Zeeker database assets and configurations.
+"""
+
+import re
+import json
+import hashlib
+from pathlib import Path
+from typing import Dict, Any
+
+from .types import ValidationResult
+
+
+class ZeekerValidator:
+    """Validates Zeeker database assets for compliance with the customization guide."""
+
+    # Banned template names from the guide - would break core functionality
+    BANNED_TEMPLATES = {
+        "database.html",  # would break all database pages
+        "table.html",  # would break all table pages
+        "index.html",  # would break homepage
+        "query.html",  # would break SQL interface
+        "row.html",  # would break record pages
+        "error.html",  # would break error handling
+        "base.html",  # would break template inheritance
+    }
+
+    REQUIRED_METADATA_FIELDS = {"title", "description"}
+
+    @staticmethod
+    def sanitize_database_name(name: str) -> str:
+        """Sanitize database name following Datasette conventions from the guide."""
+        sanitized = re.sub(r"[^a-zA-Z0-9_-]", "-", name)
+        if sanitized != name:
+            hash_suffix = hashlib.md5(name.encode()).hexdigest()[:6]
+            sanitized = f"{sanitized}-{hash_suffix}"
+        return sanitized
+
+    def validate_template_name(self, template_name: str, database_name: str) -> ValidationResult:
+        """Validate template names follow the guide's safety rules."""
+        result = ValidationResult(is_valid=True)
+
+        # Check if template name is banned (from the guide)
+        if template_name in self.BANNED_TEMPLATES:
+            result.is_valid = False
+            result.errors.append(
+                f"Template '{template_name}' is BANNED per customization guide. "
+                f"Use 'database-{database_name}.html' instead for database-specific templates."
+            )
+            return result
+
+        # Check for recommended naming patterns from the guide
+        safe_patterns = [
+            f"database-{database_name}",  # Database-specific pages
+            f"table-{database_name}-",  # Table-specific pages
+            "custom-",  # Custom pages
+            "_partial-",  # Partial templates
+        ]
+
+        is_safe_pattern = any(template_name.startswith(pattern) for pattern in safe_patterns)
+
+        if not is_safe_pattern:
+            result.warnings.append(
+                f"Template '{template_name}' doesn't follow guide's recommended patterns. "
+                f"Consider: database-{database_name}.html, table-{database_name}-TABLENAME.html, "
+                f"custom-{database_name}-*.html, or _partial-*.html"
+            )
+
+        return result
+
+    def validate_metadata(self, metadata: Dict[str, Any]) -> ValidationResult:
+        """Validate metadata follows complete Datasette structure per the guide."""
+        result = ValidationResult(is_valid=True)
+
+        # Check for complete Datasette structure (not fragments)
+        if "databases" not in metadata:
+            result.warnings.append(
+                "Per customization guide: metadata should include 'databases' section "
+                "for complete Datasette structure"
+            )
+
+        # Check recommended fields
+        for field in self.REQUIRED_METADATA_FIELDS:
+            if field not in metadata:
+                result.warnings.append(f"Recommended field '{field}' missing from metadata")
+
+        # Validate JSON structure
+        try:
+            json.dumps(metadata)
+        except (TypeError, ValueError) as e:
+            result.is_valid = False
+            result.errors.append(f"Invalid JSON structure: {e}")
+
+        # Check CSS/JS URL patterns follow the guide
+        if "extra_css_urls" in metadata:
+            for url in metadata["extra_css_urls"]:
+                if not url.startswith("/static/databases/"):
+                    result.warnings.append(
+                        f"CSS URL '{url}' should follow guide pattern: '/static/databases/database_name/filename.css'"
+                    )
+
+        if "extra_js_urls" in metadata:
+            for url in metadata["extra_js_urls"]:
+                if not url.startswith("/static/databases/"):
+                    result.warnings.append(
+                        f"JS URL '{url}' should follow guide pattern: '/static/databases/database_name/filename.js'"
+                    )
+
+        return result
+
+    def validate_file_structure(self, assets_path: Path, database_name: str) -> ValidationResult:
+        """Validate assets follow the guide's file structure."""
+        result = ValidationResult(is_valid=True)
+
+        if not assets_path.exists():
+            result.is_valid = False
+            result.errors.append(f"Assets path does not exist: {assets_path}")
+            return result
+
+        # Check for expected structure from the guide
+        expected_dirs = ["templates", "static"]
+        existing_dirs = [d.name for d in assets_path.iterdir() if d.is_dir()]
+
+        for dir_name in existing_dirs:
+            if dir_name not in expected_dirs:
+                result.warnings.append(
+                    f"Unexpected directory: {dir_name}. Guide expects: templates/, static/"
+                )
+
+        # Validate templates follow naming rules
+        templates_dir = assets_path / "templates"
+        if templates_dir.exists():
+            for template_file in templates_dir.glob("*.html"):
+                template_result = self.validate_template_name(template_file.name, database_name)
+                result.errors.extend(template_result.errors)
+                result.warnings.extend(template_result.warnings)
+
+                # FIXED: If template validation has errors, mark overall result as invalid
+                if not template_result.is_valid:
+                    result.is_valid = False
+
+        # Validate metadata.json if present
+        metadata_file = assets_path / "metadata.json"
+        if metadata_file.exists():
+            try:
+                with open(metadata_file) as f:
+                    metadata = json.load(f)
+                metadata_result = self.validate_metadata(metadata)
+                result.errors.extend(metadata_result.errors)
+                result.warnings.extend(metadata_result.warnings)
+
+                # FIXED: If metadata validation has errors, mark overall result as invalid
+                if not metadata_result.is_valid:
+                    result.is_valid = False
+
+            except (json.JSONDecodeError, IOError) as e:
+                result.is_valid = False
+                result.errors.append(f"Error reading metadata.json: {e}")
+
+        return result
 </document_content>
 </document>
 </documents>
