@@ -49,7 +49,7 @@ jobs:
       - name: Bump package version
         id: bump_version
         run: |
-          python - <<EOF
+          uv run python - <<EOF
           import toml
           import re
           import os
