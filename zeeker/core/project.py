@@ -4,6 +4,7 @@ Project management for Zeeker projects.
 
 import importlib.util
 import json
+import sqlite3
 from pathlib import Path
 
 import sqlite_utils
@@ -33,7 +34,7 @@ class ZeekerProjectManager:
         # Check if already a project
         if self.toml_path.exists():
             result.is_valid = False
-            result.errors.append(f"Directory already contains zeeker.toml")
+            result.errors.append("Directory already contains zeeker.toml")
             return result
 
         # Create basic project structure
@@ -139,7 +140,7 @@ A Zeeker project for managing the {project_name} database.
     def load_project(self) -> ZeekerProject:
         """Load project configuration."""
         if not self.is_project_root():
-            raise ValueError(f"Not a Zeeker project (no zeeker.toml found)")
+            raise ValueError("Not a Zeeker project (no zeeker.toml found)")
         return ZeekerProject.from_toml(self.toml_path)
 
     def add_resource(
@@ -406,7 +407,7 @@ def transform_data(raw_data):
 
             result.info.append(f"Processed {len(data)} records for table '{resource_name}'")
 
-        except sqlite_utils.db.IntegrityError as e:
+        except sqlite3.IntegrityError as e:
             result.is_valid = False
             result.errors.append(f"Database integrity error in '{resource_name}': {e}")
         except Exception as e:

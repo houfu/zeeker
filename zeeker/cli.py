@@ -47,11 +47,11 @@ def init(project_name, path):
     for info in result.info:
         click.echo(f"✅ {info}")
 
-    click.echo(f"\nNext steps:")
+    click.echo("\nNext steps:")
     click.echo(f"  1. cd {project_path.relative_to(Path.cwd()) if path else '.'}")
-    click.echo(f"  2. zeeker add <resource_name>")
-    click.echo(f"  3. zeeker build")
-    click.echo(f"  4. zeeker deploy")
+    click.echo("  2. zeeker add <resource_name>")
+    click.echo("  3. zeeker build")
+    click.echo("  4. zeeker deploy")
 
 
 @cli.command()
@@ -89,10 +89,10 @@ def add(resource_name, description, facets, sort, size):
     for info in result.info:
         click.echo(f"✅ {info}")
 
-    click.echo(f"\nNext steps:")
+    click.echo("\nNext steps:")
     click.echo(f"  1. Edit resources/{resource_name}.py")
-    click.echo(f"  2. Implement the fetch_data() function")
-    click.echo(f"  3. zeeker build")
+    click.echo("  2. Implement the fetch_data() function")
+    click.echo("  3. zeeker build")
 
 
 @cli.command()
@@ -129,14 +129,14 @@ def build():
     for info in result.info:
         click.echo(f"✅ {info}")
 
-    click.echo(f"\n🔧 Built with sqlite-utils for robust schema detection")
-    click.echo(f"📖 Generated metadata follows customization guide format")
-    click.echo(f"🚀 Ready for deployment with 'zeeker deploy'")
+    click.echo("\n🔧 Built with sqlite-utils for robust schema detection")
+    click.echo("📖 Generated metadata follows customization guide format")
+    click.echo("🚀 Ready for deployment with 'zeeker deploy'")
 
 
-@cli.command()
+@cli.command("deploy")
 @click.option("--dry-run", is_flag=True, help="Show what would be uploaded without uploading")
-def deploy(dry_run):
+def deploy_database(dry_run):
     """Deploy the project database to S3.
 
     Uploads the generated .db file to S3 following customization guide structure:
@@ -184,9 +184,9 @@ def deploy(dry_run):
         click.echo(f"✅ {info}")
 
     if not dry_run:
-        click.echo(f"\n🚀 Database deployed successfully!")
+        click.echo("\n🚀 Database deployed successfully!")
         click.echo(f"📍 Location: s3://{deployer.bucket_name}/latest/{database_name}.db")
-        click.echo(f"💡 For UI customizations, use: zeeker assets deploy")
+        click.echo("💡 For UI customizations, use: zeeker assets deploy")
 
 
 # Asset management commands (existing functionality with new names)
@@ -231,7 +231,7 @@ def generate(database_name, output_path, title, description, primary_color, acce
     generator.save_assets(metadata, css_content, js_content, templates)
     click.echo(f"Generated assets for '{database_name}' in {output_dir}")
     click.echo(f"✅ Safe template created: {safe_template_name}")
-    click.echo(f"📋 Follow customization guide for deployment to S3")
+    click.echo("📋 Follow customization guide for deployment to S3")
 
 
 @assets.command()
@@ -268,12 +268,12 @@ def validate(assets_path, database_name):
     elif result.is_valid:
         click.echo("✅ Validation passed with warnings.")
 
-    click.echo(f"\n📖 See database customization guide for details.")
+    click.echo("\n📖 See database customization guide for details.")
 
     return result.is_valid
 
 
-@assets.command()
+@assets.command("deploy")
 @click.argument("local_path", type=click.Path(exists=True))
 @click.argument("database_name")
 @click.option("--dry-run", is_flag=True, help="Show what would be changed without making changes")
@@ -281,7 +281,7 @@ def validate(assets_path, database_name):
 @click.option("--clean", is_flag=True, help="Remove all existing assets first, then deploy")
 @click.option("--yes", is_flag=True, help="Skip confirmation prompts")
 @click.option("--diff", is_flag=True, help="Show detailed differences between local and S3")
-def deploy(local_path, database_name, dry_run, sync, clean, yes, diff):
+def deploy_assets(local_path, database_name, dry_run, sync, clean, yes, diff):
     """Deploy UI assets to S3 following customization guide structure.
 
     Uploads to: s3://bucket/assets/databases/{database_name}/
@@ -329,13 +329,13 @@ def deploy(local_path, database_name, dry_run, sync, clean, yes, diff):
             return
 
     if dry_run:
-        click.echo(f"\n🔍 Dry run completed - no changes made")
+        click.echo("\n🔍 Dry run completed - no changes made")
         click.echo("Remove --dry-run to perform actual deployment")
     else:
         result = deployer.execute_deployment(changes, local_path_obj, database_name)
 
         if result.is_valid:
-            click.echo(f"\n✅ Assets deployment completed successfully!")
+            click.echo("\n✅ Assets deployment completed successfully!")
             click.echo(
                 f"📍 Location: s3://{deployer.bucket_name}/assets/databases/{database_name}/"
             )
@@ -346,13 +346,13 @@ def deploy(local_path, database_name, dry_run, sync, clean, yes, diff):
             if changes.updates:
                 click.echo(f"   Updated: {len(changes.updates)} files")
         else:
-            click.echo(f"\n❌ Assets deployment failed:")
+            click.echo("\n❌ Assets deployment failed:")
             for error in result.errors:
                 click.echo(f"   {error}")
 
 
-@assets.command()
-def list():
+@assets.command("list")
+def list_assets():
     """List all database UI assets in S3."""
     try:
         deployer = ZeekerDeployer()
@@ -371,14 +371,14 @@ def list():
 
 
 # Legacy commands for backward compatibility (with deprecation warnings)
-@cli.command(hidden=True)
+@cli.command("generate", hidden=True)
 @click.argument("database_name")
 @click.argument("output_path", type=click.Path())
 @click.option("--title", help="Database title")
 @click.option("--description", help="Database description")
 @click.option("--primary-color", default="#3498db", help="Primary color")
 @click.option("--accent-color", default="#e74c3c", help="Accent color")
-def generate(database_name, output_path, title, description, primary_color, accent_color):
+def generate_legacy(database_name, output_path, title, description, primary_color, accent_color):
     """[DEPRECATED] Use 'zeeker assets generate' instead."""
     click.echo("⚠️  DEPRECATED: Use 'zeeker assets generate' instead")
 
