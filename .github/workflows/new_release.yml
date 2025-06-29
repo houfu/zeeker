@@ -1,8 +1,9 @@
-name: Version Bump and Release
+name: Version Bump, Release, and Publish
 
 permissions:
   contents: write
   pull-requests: write
+  id-token: write  # For PyPI publishing
 
 on:
   workflow_dispatch:
@@ -18,6 +19,10 @@ on:
           - major
       create_release:
         description: 'Create GitHub release'
+        type: 'boolean'
+        default: true
+      publish_to_pypi:
+        description: 'Publish to PyPI'
         type: 'boolean'
         default: true
       release_notes:
@@ -37,18 +42,19 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '>=3.12'
+          python-version: '3.12'
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
 
       - name: Install dependencies
         run: |
-          uv sync
+          uv sync --group dev
 
       - name: Bump package version
         id: bump_version
@@ -135,14 +141,15 @@ jobs:
           ref: "v${{ needs.bump-version.outputs.new_version }}"
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '>=3.12'
+          python-version: '3.12'
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
 
       - name: Build package
         run: |
@@ -160,6 +167,18 @@ jobs:
             echo "## Initial Release" > CHANGELOG.md
             echo "- First release of Zeeker Database Customization Tool" >> CHANGELOG.md
           fi
+          
+          # Read the content and set as output
+          CONTENT=$(cat CHANGELOG.md)
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo "$CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -184,3 +203,69 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-multi-python:
+    needs: bump-version
+    if: ${{ github.event.inputs.publish_to_pypi == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "v${{ needs.bump-version.outputs.new_version }}"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev
+
+      - name: Run tests
+        run: |
+          uv run pytest
+
+  publish-to-pypi:
+    needs: [bump-version, create-release, test-multi-python]
+    if: ${{ github.event.inputs.publish_to_pypi == 'true' && github.event.inputs.create_release == 'true' }}
+    runs-on: ubuntu-latest
+    environment: release  # This adds protection rules if configured
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "v${{ needs.bump-version.outputs.new_version }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
