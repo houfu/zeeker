@@ -2661,3 +2661,5194 @@ class ZeekerValidator:
 </document_content>
 </document>
 </documents>
+<documents>
+<document index="1">
+<source>./README.md</source>
+<document_content>
+# Zeeker Database Customization Tool
+
+A Python library and CLI tool for creating, validating, and deploying database customizations for Zeeker's Datasette-based system. Zeeker uses a **three-pass asset system** that allows you to customize individual databases without breaking the overall site functionality.
+
+## 🚀 Features
+
+- **Safe Customizations**: Template validation prevents breaking core Datasette functionality
+- **Database-Specific Styling**: CSS and JavaScript scoped to individual databases
+- **Complete Asset Management**: Templates, CSS, JavaScript, and metadata in one tool
+- **S3 Deployment**: Direct deployment to S3-compatible storage
+- **Validation & Testing**: Comprehensive validation before deployment
+- **Best Practices**: Generates code following Datasette and web development standards
+
+## 📦 Installation
+
+### Using uv (Recommended)
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd zeeker
+
+# Install dependencies with uv
+uv sync
+
+# Install in development mode
+uv pip install -e .
+```
+
+### Using pip
+
+```bash
+pip install zeeker
+```
+
+## 🛠 Quick Start
+
+### 1. Generate a New Database Customization
+
+```bash
+# Generate customization for a database called 'legal_news'
+uv run zeeker generate legal_news ./my-customization \
+  --title "Legal News Database" \
+  --description "Singapore legal news and commentary" \
+  --primary-color "#e74c3c" \
+  --accent-color "#c0392b"
+```
+
+This creates a complete customization structure:
+
+```
+my-customization/
+├── metadata.json              # Datasette metadata configuration
+├── static/
+│   ├── custom.css            # Database-specific CSS
+│   ├── custom.js             # Database-specific JavaScript
+│   └── images/               # Directory for custom images
+└── templates/
+    └── database-legal_news.html  # Database-specific template
+```
+
+### 2. Validate Your Customization
+
+```bash
+# Validate the customization for compliance
+uv run zeeker validate ./my-customization legal_news
+```
+
+The validator checks for:
+- ✅ Safe template names (prevents breaking core functionality)
+- ✅ Proper metadata structure
+- ✅ Best practice recommendations
+- ❌ Banned template names that would break the site
+
+### 3. Deploy to S3
+
+```bash
+# Set up environment variables
+export S3_BUCKET="your-bucket-name"
+export S3_ENDPOINT_URL="https://sin1.contabostorage.com"  # Optional
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+
+# Deploy (dry run first)
+uv run zeeker deploy ./my-customization legal_news --dry-run
+
+# Deploy for real
+uv run zeeker deploy ./my-customization legal_news
+```
+
+### 4. List Deployed Customizations
+
+```bash
+# See all database customizations in S3
+uv run zeeker list-databases
+```
+
+## 📚 How It Works
+
+### Three-Pass Asset System
+
+Zeeker processes assets in three passes:
+
+1. **Pass 1**: Download database files (`.db` files)
+2. **Pass 2**: Set up base assets (shared templates, CSS, etc.)
+3. **Pass 3**: Apply your database-specific customizations
+
+Your customizations **overlay** the base assets, so you only need to provide files you want to change.
+
+### S3 Structure
+
+```
+s3://your-bucket/
+├── latest/                          # Your .db files
+│   └── legal_news.db
+└── assets/
+    ├── default/                     # Base assets (auto-managed)
+    │   ├── templates/
+    │   ├── static/
+    │   └── metadata.json
+    └── databases/                   # Your customizations
+        └── legal_news/              # Matches your .db filename
+            ├── templates/
+            ├── static/
+            └── metadata.json
+```
+
+## 🎨 Customization Guide
+
+### CSS Customization
+
+Create scoped styles that only affect your database:
+
+```css
+/* Scope to your database to avoid conflicts */
+[data-database="legal_news"] {
+    --color-accent-primary: #e74c3c;
+    --color-accent-secondary: #c0392b;
+}
+
+/* Custom header styling */
+.page-database[data-database="legal_news"] .database-title {
+    color: var(--color-accent-primary);
+    text-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
+/* Custom table styling */
+.page-database[data-database="legal_news"] .card {
+    border-left: 4px solid var(--color-accent-primary);
+    transition: transform 0.2s ease;
+}
+```
+
+### JavaScript Customization
+
+Add database-specific functionality:
+
+```javascript
+// Defensive programming - ensure we're on the right database
+function isDatabasePage() {
+    return window.location.pathname.includes('/legal_news') ||
+           document.body.dataset.database === 'legal_news';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!isDatabasePage()) {
+        return; // Exit if not our database
+    }
+
+    console.log('Custom JS loaded for legal_news database');
+    
+    // Add custom search suggestions
+    const searchInput = document.querySelector('.hero-search-input');
+    if (searchInput) {
+        searchInput.placeholder = 'Search legal news, cases, legislation...';
+    }
+});
+```
+
+### Template Customization
+
+Create database-specific templates using **safe naming patterns**:
+
+#### ✅ Safe Template Names
+
+```
+database-legal_news.html          # Database-specific page
+table-legal_news-headlines.html   # Table-specific page
+custom-legal_news-dashboard.html  # Custom page
+_partial-header.html              # Partial template
+```
+
+#### ❌ Banned Template Names
+
+```
+database.html     # Would break ALL database pages
+table.html        # Would break ALL table pages
+index.html        # Would break homepage
+query.html        # Would break SQL interface
+```
+
+#### Example Database Template
+
+```html
+{% extends "default:database.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<meta name="description" content="Singapore legal news database">
+{% endblock %}
+
+{% block content %}
+<div class="legal-news-banner">
+    <h1>📰 Singapore Legal News</h1>
+    <p>Latest legal developments and court decisions</p>
+</div>
+
+{{ super() }}
+{% endblock %}
+```
+
+### Metadata Configuration
+
+Provide a complete Datasette metadata structure:
+
+```json
+{
+  "title": "Legal News Database",
+  "description": "Singapore legal news and commentary",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "source_url": "https://example.com/legal-news",
+  "extra_css_urls": [
+    "/static/databases/legal_news/custom.css"
+  ],
+  "extra_js_urls": [
+    "/static/databases/legal_news/custom.js"
+  ],
+  "databases": {
+    "legal_news": {
+      "description": "Latest Singapore legal developments",
+      "title": "Legal News"
+    }
+  }
+}
+```
+
+## 🔧 CLI Reference
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `generate DATABASE_NAME OUTPUT_PATH` | Generate new customization |
+| `validate CUSTOMIZATION_PATH DATABASE_NAME` | Validate customization |
+| `deploy LOCAL_PATH DATABASE_NAME` | Deploy to S3 |
+| `list-databases` | List deployed customizations |
+
+### Generate Options
+
+```bash
+uv run zeeker generate DATABASE_NAME OUTPUT_PATH [OPTIONS]
+
+Options:
+  --title TEXT          Database title
+  --description TEXT    Database description  
+  --primary-color TEXT  Primary color (default: #3498db)
+  --accent-color TEXT   Accent color (default: #e74c3c)
+```
+
+### Deploy Options
+
+```bash
+uv run zeeker deploy LOCAL_PATH DATABASE_NAME [OPTIONS]
+
+Options:
+  --dry-run    Show what would be uploaded without uploading
+```
+
+## 🧪 Development
+
+### Setup Development Environment
+
+```bash
+# Clone and setup
+git clone <repository-url>
+cd zeeker
+uv sync
+
+# Install development dependencies
+uv sync --group dev
+
+# Run tests
+uv run pytest
+
+# Format code (follows black style)
+uv run black .
+
+# Run specific test categories
+uv run pytest -m unit          # Unit tests only
+uv run pytest -m integration   # Integration tests only
+uv run pytest -m cli          # CLI tests only
+```
+
+### Testing
+
+The project has comprehensive test coverage:
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=zeeker
+
+# Run specific test file
+uv run pytest tests/test_zeeker.py
+
+# Run specific test
+uv run pytest tests/test_zeeker.py::TestZeekerValidator::test_validate_template_name_banned_templates
+```
+
+### Project Structure
+
+```
+zeeker/
+├── zeeker/
+│   ├── __init__.py
+│   └── cli.py                 # Main CLI and library code
+├── tests/
+│   ├── conftest.py           # Test fixtures and configuration
+│   └── test_zeeker.py        # Comprehensive test suite
+├── database_customization_guide.md  # Detailed user guide
+├── pyproject.toml            # Project configuration
+└── README.md                 # This file
+```
+
+## 🔒 Safety Features
+
+### Template Validation
+
+The validator automatically prevents dangerous template names:
+
+- **Banned Templates**: `database.html`, `table.html`, `index.html`, etc.
+- **Safe Patterns**: `database-DBNAME.html`, `table-DBNAME-TABLE.html`, `custom-*.html`
+- **Automatic Blocking**: System rejects banned templates to protect core functionality
+
+### CSS/JS Scoping
+
+Generated code automatically scopes to your database:
+
+```css
+/* Automatically scoped to prevent conflicts */
+[data-database="your_database"] .custom-style {
+    /* Your styles here */
+}
+```
+
+### Metadata Validation
+
+- **JSON Structure**: Validates proper JSON format
+- **Required Fields**: Warns about missing recommended fields
+- **URL Patterns**: Validates CSS/JS URL patterns for proper loading
+
+## 🌐 Environment Variables
+
+Required for deployment:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `S3_BUCKET` | S3 bucket name | ✅ |
+| `AWS_ACCESS_KEY_ID` | AWS access key | ✅ |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | ✅ |
+| `S3_ENDPOINT_URL` | S3 endpoint URL | ⚪ Optional |
+
+## 📖 Examples
+
+### Generate Legal Database Customization
+
+```bash
+uv run zeeker generate legal_cases ./legal-customization \
+  --title "Legal Cases Database" \
+  --description "Singapore court cases and legal precedents" \
+  --primary-color "#2c3e50" \
+  --accent-color "#e67e22"
+```
+
+### Generate Tech News Customization
+
+```bash
+uv run zeeker generate tech_news ./tech-customization \
+  --title "Tech News" \
+  --description "Latest technology news and trends" \
+  --primary-color "#9b59b6" \
+  --accent-color "#8e44ad"
+```
+
+### Validate Before Deploy
+
+```bash
+# Always validate first
+uv run zeeker validate ./legal-customization legal_cases
+
+# Then deploy
+uv run zeeker deploy ./legal-customization legal_cases
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make changes and add tests
+4. Format code: `uv run black .`
+5. Run tests: `uv run pytest`
+6. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the terms specified in the project configuration.
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+**Templates Not Loading**
+- Check template names don't use banned patterns
+- Verify template follows `database-DBNAME.html` pattern
+- Look at browser page source for template debug info
+
+**Assets Not Loading**
+- Verify S3 paths match `/static/databases/DATABASE_NAME/` pattern  
+- Check S3 permissions and bucket configuration
+- Restart Datasette container after deployment
+
+**Validation Errors**
+- Read error messages carefully - they provide specific fixes
+- Use `--dry-run` flag to test deployments safely
+- Check the detailed guide in `database_customization_guide.md`
+
+For detailed troubleshooting, see the [Database Customization Guide](database_customization_guide.md).
+</document_content>
+</document>
+<document index="2">
+<source>./database_customization_guide.md</source>
+<document_content>
+# Database Customization Guide
+
+## Overview
+
+Zeeker uses a **three-pass asset system** that lets you customize individual databases without breaking the overall site. Here's how to add your own templates, CSS, JavaScript, and metadata.
+
+## How It Works
+
+When the container starts, it runs three passes:
+
+1. **Pass 1**: Download database files (`.db` files)
+2. **Pass 2**: Set up base assets (shared templates, CSS, etc.)
+3. **Pass 3**: Apply your database-specific customizations
+
+Your customizations **overlay** the base assets, so you only need to provide files you want to change.
+
+## S3 Structure
+
+```
+s3://your-bucket/
+├── latest/                          # Your .db files go here
+│   └── your_database.db
+└── assets/
+    ├── default/                     # Base assets (auto-managed)
+    │   ├── templates/
+    │   ├── static/
+    │   ├── plugins/
+    │   └── metadata.json
+    └── databases/                   # Your customizations go here
+        └── your_database/           # Folder matches your .db filename
+            ├── templates/           # Custom templates (optional)
+            ├── static/              # Custom CSS/JS (optional)
+            └── metadata.json        # Custom metadata (optional)
+```
+
+## Quick Start
+
+### 1. Find Your Database Name
+
+Your customization folder name must match your database filename (without `.db`):
+
+- Database file: `legal_news.db` → Folder: `databases/legal_news/`
+- Database file: `court_cases.db` → Folder: `databases/court_cases/`
+
+### 2. Create Your Customization Folder
+
+Upload to S3 at: `s3://your-bucket/assets/databases/your_database/`
+
+### 3. Add What You Need
+
+You only need to upload files you want to customize. Everything else uses the base assets.
+
+## Customization Options
+
+### Custom Metadata (`metadata.json`)
+
+**Important**: You must provide a complete Datasette metadata.json structure, not just database-specific parts. The system performs a full merge.
+
+```json
+{
+  "title": "Legal News Database",
+  "description": "Singapore legal news and commentary", 
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "source_url": "https://example.com/legal-news",
+  "extra_css_urls": [
+    "/static/databases/legal_news/custom.css"
+  ],
+  "extra_js_urls": [
+    "/static/databases/legal_news/custom.js"  
+  ],
+  "databases": {
+    "legal_news": {
+      "description": "Latest Singapore legal developments",
+      "title": "Legal News"
+    }
+  }
+}
+```
+
+This follows standard Datasette metadata.json format - you can't provide fragments.
+
+**Merging Rules (from the code):**
+- `extra_css_urls` and `extra_js_urls` are **appended** to base URLs (never replaced)
+- `databases.your_database` settings are **added** (won't override global `*` settings)  
+- Other root-level fields like `title`, `description` **replace** base values
+- Nested objects are deep-merged where possible
+
+### Custom CSS (`static/custom.css`)
+
+Override styles for your database:
+
+```css
+/* Custom colors for this database */
+:root {
+    --color-accent-primary: #e74c3c;  /* Red theme */
+    --color-accent-cyan: #e67e22;     /* Orange accents */
+}
+
+/* Database-specific header styling */
+.database-title {
+    color: var(--color-accent-primary);
+    text-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
+/* Custom table styling */
+.page-database .card {
+    border-left: 4px solid var(--color-accent-primary);
+}
+```
+
+### Custom JavaScript (`static/custom.js`)
+
+Add database-specific functionality:
+
+```javascript
+// Custom behavior for this database
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Custom JS loaded for legal news database');
+    
+    // Add custom search suggestions
+    const searchInput = document.querySelector('.hero-search-input');
+    if (searchInput) {
+        searchInput.placeholder = 'Search legal news, cases, legislation...';
+    }
+    
+    // Custom table enhancements
+    enhanceLegalNewsTables();
+});
+
+function enhanceLegalNewsTables() {
+    // Your custom table functionality
+    const tables = document.querySelectorAll('.table-wrapper table');
+    tables.forEach(table => {
+        // Add click handlers, formatting, etc.
+    });
+}
+```
+
+### Custom Templates (`templates/`)
+
+🛡️ **SAFETY FIRST**: General template names like `database.html` are **banned** in database customizations to prevent breaking core functionality.
+
+**❌ BANNED Template Names:**
+- `database.html` - would break all database pages
+- `table.html` - would break all table pages  
+- `index.html` - would break homepage
+- `query.html` - would break SQL interface
+- `row.html` - would break record pages
+- `error.html` - would break error handling
+
+**✅ ALLOWED Template Names:**
+- `database-YOURDB.html` - Database-specific pages
+- `table-YOURDB-TABLENAME.html` - Table-specific pages
+- `custom-YOURDB-dashboard.html` - Custom pages
+- `_partial-header.html` - Partial templates
+- Any name that doesn't conflict with core templates
+
+**Database-Specific Template Examples:**
+
+**`templates/database-legal_news.html`** - Only affects your database
+```html
+{% extends "default:database.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<meta name="description" content="Singapore legal news database">
+{% endblock %}
+
+{% block content %}
+<div class="legal-news-banner">
+    <h1>📰 Singapore Legal News</h1>
+    <p>Latest legal developments and court decisions</p>
+</div>
+
+{{ super() }}
+{% endblock %}
+```
+
+**`templates/table-legal_news-headlines.html`** - Only affects specific table
+```html
+{% extends "default:table.html" %}
+
+{% block content %}
+<div class="headlines-header">
+    <h1>📋 Legal Headlines Archive</h1>
+    <p>Searchable archive of Singapore legal news</p>
+</div>
+
+{{ super() }}
+{% endblock %}
+```
+
+**Why This Is Safer:**
+- ✅ No risk of breaking core Datasette functionality
+- ✅ Templates only affect your specific database/tables
+- ✅ Other databases remain unaffected
+- ✅ System remains functional even if your templates have issues
+- ✅ Clear separation between base templates and customizations
+
+### Debugging Template Names
+
+Datasette has specific template naming rules. To see which templates it looks for:
+
+1. **View page source** in your browser
+2. **Scroll to bottom** and look for a comment like:
+   ```html
+   <!-- Templates considered: *database-mydb.html, database.html -->
+   ```
+3. **The `*` shows which template was used**
+
+**For database-specific templates:**
+- Database page looks for: `database-YOURDB.html`, then `database.html`
+- Table page looks for: `table-YOURDB-TABLENAME.html`, then `table-YOURDB.html`, then `table.html`
+
+**Template Name Sanitization:**
+If your database/table names have spaces or special characters, Datasette sanitizes them:
+- Database: `Legal News` → `Legal-News-a1b2c3` (with MD5 hash)
+- Check page source to see exact names considered
+
+## File Locations After Deployment
+
+Your files get deployed to specific locations:
+
+- **CSS/JS**: `/static/databases/your_database/filename.css`
+- **Templates**: Processed by Jinja2 template engine (not directly accessible)
+- **Metadata**: Merged into main Datasette configuration
+
+**Static Asset URLs:**
+The Zeeker system configures Datasette with `--static static:/app/static`, so your files are accessible at:
+- `https://data.zeeker.sg/static/databases/your_database/custom.css`
+- `https://data.zeeker.sg/static/databases/your_database/custom.js`
+
+## Testing Your Customizations
+
+### 1. Local Testing with uv
+
+```bash
+# Install dependencies
+uv sync
+
+# Test the merge locally
+uv run scripts/manage.py check-assets --verbose
+
+# See what gets loaded
+uv run scripts/manage.py status
+```
+
+### 2. Deploy and Check
+
+```bash
+# Validate templates before deploying (future feature)
+uv run scripts/manage.py validate-templates legal_news
+
+# Upload your customizations to S3
+aws s3 sync ./my-customizations/ s3://bucket/assets/databases/my_database/
+
+# Restart the container to apply changes
+docker compose restart zeeker-datasette
+
+# Check logs for any template validation messages
+docker compose logs -f zeeker-datasette | grep -i template
+```
+
+### 3. Verify in Browser
+
+1. Visit your database page: `/your_database`
+2. Check browser dev tools for your CSS/JS loading
+3. View page source to confirm metadata changes
+
+## Best Practices
+
+### CSS Guidelines
+
+```css
+/* ✅ Good: Scope to your database */
+.page-database .custom-header { }
+.database-card[data-database="your_db"] { }
+
+/* ❌ Avoid: Global changes that affect other databases */
+.card { color: red; }  /* This affects ALL databases */
+```
+
+### JavaScript Guidelines
+
+```javascript
+// ✅ Good: Check if you're on the right database
+if (window.location.pathname.includes('/your_database')) {
+    // Your custom code
+}
+
+// ✅ Good: Defensive programming
+const element = document.querySelector('.specific-element');
+if (element) {
+    // Safe to use element
+}
+
+// ❌ Avoid: Assuming elements exist
+document.querySelector('.might-not-exist').addEventListener(...);  // Could crash
+```
+
+### File Organization
+
+```
+assets/databases/your_database/
+├── static/
+│   ├── custom.css              # Main stylesheet
+│   ├── database-specific.js    # Main JavaScript
+│   └── images/                 # Database-specific images
+│       └── banner.png
+├── templates/
+│   ├── database-your_database.html    # Safe: database-specific
+│   ├── table-your_database-TABLE.html # Safe: table-specific  
+│   └── custom-dashboard.html          # Safe: custom name
+└── metadata.json               # Database configuration
+```
+
+**Template Naming Rules:**
+- ✅ `database-DBNAME.html` - Database-specific pages
+- ✅ `table-DBNAME-TABLENAME.html` - Table-specific pages
+- ✅ `custom-anything.html` - Custom pages
+- ❌ `database.html` - BANNED (would break core functionality)
+- ❌ `table.html` - BANNED (would break core functionality)
+
+## Troubleshooting
+
+### Assets Not Loading?
+
+```bash
+# Check if files exist in S3
+aws s3 ls s3://bucket/assets/databases/your_database/ --recursive
+
+# Check container logs
+docker compose logs zeeker-datasette | grep "your_database"
+
+# Verify merge process
+uv run scripts/manage.py list-databases --verbose
+```
+
+### Templates Being Rejected?
+
+**Symptoms:**
+- Logs show "BANNED TEMPLATE" errors
+- Templates not applying
+- Container starts but customizations missing
+
+**Cause:** You used banned general template names
+
+**Fix:**
+1. **Rename your templates** to database-specific names:
+   ```bash
+   # Instead of:
+   database.html ❌
+   
+   # Use:
+   database-legal_news.html ✅
+   table-legal_news-headlines.html ✅
+   custom-legal_news-dashboard.html ✅
+   ```
+
+2. **Re-upload to S3** with correct names
+3. **Restart container**: `docker compose restart zeeker-datasette`
+
+**Template Validation:**
+The system automatically blocks dangerous template names to protect core functionality. This prevents accidentally breaking the entire site.
+
+### Metadata Not Merging?
+
+1. **Validate JSON syntax**: `cat metadata.json | python -m json.tool`
+2. **Use complete structure**: Must be a valid Datasette metadata.json, not fragments
+3. **Check container logs** for merge errors: `docker compose logs zeeker-datasette | grep metadata`
+4. **Verify paths match**: Database folder name must match .db filename exactly
+
+## Advanced Tips
+
+### Datasette-Specific Features
+
+**CSS Body Classes:**
+Datasette automatically adds CSS classes to the `<body>` tag:
+```css
+/* Target specific databases */
+body.db-your_database .card { }
+
+/* Target specific tables */  
+body.table-your_database-your_table .row { }
+
+/* Target specific columns */
+.col-column_name { }
+```
+
+**Template Variables:**
+All Datasette templates have access to standard variables:
+- `{{ database }}` - Current database name
+- `{{ table }}` - Current table name  
+- `{{ row }}` - Current row data
+- `{{ request }}` - Request object
+- `{{ datasette }}` - Datasette instance
+
+To see which templates Datasette considered for any page:
+
+1. View page source in your browser
+2. Scroll to the bottom and look for a comment like:
+   ```html
+   <!-- Templates considered: *database-mydb.html, database.html -->
+   ```
+3. The `*` shows which template was actually used
+
+This is invaluable for debugging template naming issues.
+
+### Conditional Styling
+
+```css
+/* Different styles based on database */
+[data-database="legal_news"] .card {
+    border-color: #e74c3c;
+}
+
+[data-database="court_cases"] .card {
+    border-color: #3498db;
+}
+```
+
+### Template Inheritance
+
+```html
+<!-- Extend base but customize specific sections -->
+{% extends "default:database.html" %}
+
+{% block nav %}
+{% include "_header.html" %}
+<div class="custom-nav">
+    <!-- Your database-specific navigation -->
+</div>
+{% endblock %}
+```
+
+### JavaScript Modules
+
+```javascript
+// static/modules/legal-search.js
+export function enhanceLegalSearch() {
+    // Reusable search enhancements
+}
+
+// static/database-main.js
+import { enhanceLegalSearch } from './modules/legal-search.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    enhanceLegalSearch();
+});
+```
+
+## Need Help?
+
+1. **Check the code**: Look at existing base templates in `templates/`
+2. **Test locally**: Use `uv run scripts/manage.py` commands
+3. **Ask for help**: Email with your specific use case
+
+The system is designed to be forgiving - if your customizations have errors, the base assets will still work.
+</document_content>
+</document>
+<document index="3">
+<source>./pyproject.toml</source>
+<document_content>
+[project]
+name = "zeeker"
+version = "0.2.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [ "boto3>=1.38.32", "click>=8.2.1", "jinja2>=3.1.6", "pyyaml>=6.0.2", "sqlite-utils>=3.38",]
+license = "MIT"
+
+[dependency-groups]
+dev = [ "black>=25.1.0", "pytest>=8.4.0", "toml>=0.10.2",]
+
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[project.scripts]
+zeeker = "zeeker.cli:cli"
+
+[tool.black]
+line-length = 100
+target-version = [ "py312",]
+include = "\\.pyi?$"
+extend-exclude = "/(\n  # directories\n  \\.eggs\n  | \\.git\n  | \\.hg\n  | \\.mypy_cache\n  | \\.tox\n  | \\.venv\n  | build\n  | dist\n)/\n"
+
+</document_content>
+</document>
+<document index="4">
+<source>./zeeker/__init__.py</source>
+<document_content>
+"""
+Zeeker - Database customization tool with project management capabilities.
+
+A tool for creating, validating, and deploying database customizations
+for Zeeker's Datasette-based system using sqlite-utils and following
+the three-pass asset system.
+"""
+
+from .core import (
+    ValidationResult,
+    DatabaseCustomization,
+    DeploymentChanges,
+    ZeekerProject,
+    ZeekerProjectManager,
+    ZeekerValidator,
+    ZeekerGenerator,
+    ZeekerDeployer,
+)
+
+__version__ = "0.2.0"
+__all__ = [
+    "ValidationResult",
+    "DatabaseCustomization",
+    "DeploymentChanges",
+    "ZeekerProject",
+    "ZeekerProjectManager",
+    "ZeekerValidator",
+    "ZeekerGenerator",
+    "ZeekerDeployer",
+]
+
+</document_content>
+</document>
+<document index="5">
+<source>./zeeker/cli.py</source>
+<document_content>
+"""
+Zeeker CLI - Database customization tool with project management.
+
+Clean CLI interface that imports functionality from core modules.
+"""
+
+import click
+from pathlib import Path
+
+from .core.project import ZeekerProjectManager
+from .core.validator import ZeekerValidator
+from .core.generator import ZeekerGenerator
+from .core.deployer import ZeekerDeployer
+
+
+# Main CLI group
+@click.group()
+def cli():
+    """Zeeker Database Management Tool."""
+    pass
+
+
+# Project management commands
+@cli.command()
+@click.argument("project_name")
+@click.option(
+    "--path", type=click.Path(), help="Project directory path (default: current directory)"
+)
+def init(project_name, path):
+    """Initialize a new Zeeker project.
+
+    Creates zeeker.toml, resources/ directory, .gitignore, and README.md.
+
+    Example:
+        zeeker init my-project
+    """
+    project_path = Path(path) if path else Path.cwd()
+    manager = ZeekerProjectManager(project_path)
+
+    result = manager.init_project(project_name)
+
+    if result.errors:
+        for error in result.errors:
+            click.echo(f"❌ {error}")
+        return
+
+    for info in result.info:
+        click.echo(f"✅ {info}")
+
+    click.echo("\nNext steps:")
+    click.echo(f"  1. cd {project_path.relative_to(Path.cwd()) if path else '.'}")
+    click.echo("  2. zeeker add <resource_name>")
+    click.echo("  3. zeeker build")
+    click.echo("  4. zeeker deploy")
+
+
+@cli.command()
+@click.argument("resource_name")
+@click.option("--description", help="Resource description")
+@click.option("--facets", multiple=True, help="Datasette facets (can be used multiple times)")
+@click.option("--sort", help="Default sort order")
+@click.option("--size", type=int, help="Default page size")
+def add(resource_name, description, facets, sort, size):
+    """Add a new resource to the project.
+
+    Creates a Python file in resources/ with a template for data fetching.
+
+    Example:
+        zeeker add users --description "User account data" --facets role --facets department --size 50
+    """
+    manager = ZeekerProjectManager()
+
+    # Build kwargs for Datasette metadata
+    kwargs = {}
+    if facets:
+        kwargs["facets"] = list(facets)
+    if sort:
+        kwargs["sort"] = sort
+    if size:
+        kwargs["size"] = size
+
+    result = manager.add_resource(resource_name, description, **kwargs)
+
+    if result.errors:
+        for error in result.errors:
+            click.echo(f"❌ {error}")
+        return
+
+    for info in result.info:
+        click.echo(f"✅ {info}")
+
+    click.echo("\nNext steps:")
+    click.echo(f"  1. Edit resources/{resource_name}.py")
+    click.echo("  2. Implement the fetch_data() function")
+    click.echo("  3. zeeker build")
+
+
+@cli.command()
+def build():
+    """Build database from all resources using sqlite-utils.
+
+    Runs fetch_data() for each resource and creates/updates the SQLite database.
+    Uses Simon Willison's sqlite-utils for robust database operations:
+
+    • Automatic table creation with proper schema detection
+    • Type inference from data (INTEGER, TEXT, REAL, JSON)
+    • Safe data insertion without SQL injection risks
+    • JSON support for complex data structures
+    • Better error handling than raw SQL
+
+    Generates complete Datasette metadata.json following customization guide format.
+
+    Must be run from a Zeeker project directory (contains zeeker.toml).
+    """
+    manager = ZeekerProjectManager()
+
+    result = manager.build_database()
+
+    if result.errors:
+        click.echo("❌ Database build failed:")
+        for error in result.errors:
+            click.echo(f"   {error}")
+        return
+
+    if result.warnings:
+        for warning in result.warnings:
+            click.echo(f"⚠️ {warning}")
+
+    for info in result.info:
+        click.echo(f"✅ {info}")
+
+    click.echo("\n🔧 Built with sqlite-utils for robust schema detection")
+    click.echo("📖 Generated metadata follows customization guide format")
+    click.echo("🚀 Ready for deployment with 'zeeker deploy'")
+
+
+@cli.command("deploy")
+@click.option("--dry-run", is_flag=True, help="Show what would be uploaded without uploading")
+def deploy_database(dry_run):
+    """Deploy the project database to S3.
+
+    Uploads the generated .db file to S3 following customization guide structure:
+    - Database: s3://bucket/latest/{database_name}.db
+    - Assets: s3://bucket/assets/databases/{database_name}/
+
+    Must be run from a Zeeker project directory (contains zeeker.toml).
+    Use 'zeeker assets deploy' for UI customizations.
+    """
+    manager = ZeekerProjectManager()
+
+    if not manager.is_project_root():
+        click.echo("❌ Not in a Zeeker project directory (no zeeker.toml found)")
+        return
+
+    try:
+        project = manager.load_project()
+        deployer = ZeekerDeployer()
+    except ValueError as e:
+        click.echo(f"❌ Configuration error: {e}")
+        click.echo("Please set the required environment variables:")
+        click.echo("  - S3_BUCKET")
+        click.echo("  - AWS_ACCESS_KEY_ID")
+        click.echo("  - AWS_SECRET_ACCESS_KEY")
+        click.echo("  - S3_ENDPOINT_URL (optional)")
+        return
+
+    db_path = manager.project_path / project.database
+    if not db_path.exists():
+        click.echo(f"❌ Database not found: {project.database}")
+        click.echo("Run 'zeeker build' first to build the database")
+        return
+
+    # Extract database name without .db extension for S3 path (per guide)
+    database_name = Path(project.database).stem
+
+    result = deployer.upload_database(db_path, database_name, dry_run)
+
+    if result.errors:
+        for error in result.errors:
+            click.echo(f"❌ {error}")
+        return
+
+    for info in result.info:
+        click.echo(f"✅ {info}")
+
+    if not dry_run:
+        click.echo("\n🚀 Database deployed successfully!")
+        click.echo(f"📍 Location: s3://{deployer.bucket_name}/latest/{database_name}.db")
+        click.echo("💡 For UI customizations, use: zeeker assets deploy")
+
+
+# Asset management commands (existing functionality with new names)
+@cli.group()
+def assets():
+    """Asset management commands for UI customizations."""
+    pass
+
+
+@assets.command()
+@click.argument("database_name")
+@click.argument("output_path", type=click.Path())
+@click.option("--title", help="Database title")
+@click.option("--description", help="Database description")
+@click.option("--primary-color", default="#3498db", help="Primary color")
+@click.option("--accent-color", default="#e74c3c", help="Accent color")
+def generate(database_name, output_path, title, description, primary_color, accent_color):
+    """Generate new database UI assets following the customization guide.
+
+    Creates templates/, static/, and metadata.json following guide patterns.
+    Template names use safe database-specific naming (database-DBNAME.html).
+    """
+    output_dir = Path(output_path)
+    generator = ZeekerGenerator(database_name, output_dir)
+
+    # Generate complete metadata following guide format
+    metadata = generator.generate_metadata_template(
+        title=title or f"{database_name.title()} Database",
+        description=description or f"Custom database for {database_name}",
+        extra_css=["custom.css"],
+        extra_js=["custom.js"],
+    )
+
+    css_content = generator.generate_css_template(primary_color, accent_color)
+    js_content = generator.generate_js_template()
+    db_template = generator.generate_database_template()
+
+    # Use safe template naming per guide: database-DBNAME.html
+    safe_template_name = f"database-{generator.sanitized_name}.html"
+    templates = {safe_template_name: db_template}
+
+    generator.save_assets(metadata, css_content, js_content, templates)
+    click.echo(f"Generated assets for '{database_name}' in {output_dir}")
+    click.echo(f"✅ Safe template created: {safe_template_name}")
+    click.echo("📋 Follow customization guide for deployment to S3")
+
+
+@assets.command()
+@click.argument("assets_path", type=click.Path(exists=True))
+@click.argument("database_name")
+def validate(assets_path, database_name):
+    """Validate database UI assets against customization guide rules.
+
+    Checks for:
+    - Banned template names (database.html, table.html, etc.)
+    - Proper file structure (templates/, static/)
+    - Complete metadata.json format
+    - CSS/JS URL patterns
+    """
+    validator = ZeekerValidator()
+    result = validator.validate_file_structure(Path(assets_path), database_name)
+
+    if result.errors:
+        click.echo("❌ Validation failed:")
+        for error in result.errors:
+            click.echo(f"  ERROR: {error}")
+
+    if result.warnings:
+        click.echo("⚠️ Warnings:")
+        for warning in result.warnings:
+            click.echo(f"  WARNING: {warning}")
+
+    if result.info:
+        for info in result.info:
+            click.echo(f"  INFO: {info}")
+
+    if result.is_valid and not result.warnings:
+        click.echo("✅ Validation passed! Assets follow customization guide.")
+    elif result.is_valid:
+        click.echo("✅ Validation passed with warnings.")
+
+    click.echo("\n📖 See database customization guide for details.")
+
+    return result.is_valid
+
+
+@assets.command("deploy")
+@click.argument("local_path", type=click.Path(exists=True))
+@click.argument("database_name")
+@click.option("--dry-run", is_flag=True, help="Show what would be changed without making changes")
+@click.option("--sync", is_flag=True, help="Delete S3 files not present locally (full sync)")
+@click.option("--clean", is_flag=True, help="Remove all existing assets first, then deploy")
+@click.option("--yes", is_flag=True, help="Skip confirmation prompts")
+@click.option("--diff", is_flag=True, help="Show detailed differences between local and S3")
+def deploy_assets(local_path, database_name, dry_run, sync, clean, yes, diff):
+    """Deploy UI assets to S3 following customization guide structure.
+
+    Uploads to: s3://bucket/assets/databases/{database_name}/
+    - templates/ → S3 templates/
+    - static/ → S3 static/
+    - metadata.json → S3 metadata.json
+
+    Database folder name must match .db filename (without .db extension).
+    """
+    if clean and sync:
+        click.echo("❌ Cannot use both --clean and --sync flags")
+        return
+
+    try:
+        deployer = ZeekerDeployer()
+    except ValueError as e:
+        click.echo(f"❌ Configuration error: {e}")
+        return
+
+    local_path_obj = Path(local_path)
+    existing_files = deployer.get_existing_files(database_name)
+    local_files = deployer.get_local_files(local_path_obj)
+    changes = deployer.calculate_changes(local_files, existing_files, sync, clean)
+
+    if diff:
+        deployer.show_detailed_diff(changes)
+    else:
+        deployer.show_deployment_summary(changes, database_name, local_files, existing_files)
+
+    if not changes.has_changes:
+        click.echo("   ✅ No changes needed")
+        return
+
+    if changes.has_destructive_changes and not yes and not dry_run:
+        if clean:
+            msg = f"This will delete ALL {len(existing_files)} existing files and upload {len(local_files)} new files."
+        else:
+            msg = f"This will delete {len(changes.deletions)} files not present locally."
+
+        click.echo(f"\n⚠️  {msg}")
+        click.echo("Deleted files cannot be recovered.")
+
+        if not click.confirm("Continue?"):
+            click.echo("Deployment cancelled.")
+            return
+
+    if dry_run:
+        click.echo("\n🔍 Dry run completed - no changes made")
+        click.echo("Remove --dry-run to perform actual deployment")
+    else:
+        result = deployer.execute_deployment(changes, local_path_obj, database_name)
+
+        if result.is_valid:
+            click.echo("\n✅ Assets deployment completed successfully!")
+            click.echo(
+                f"📍 Location: s3://{deployer.bucket_name}/assets/databases/{database_name}/"
+            )
+            if changes.deletions:
+                click.echo(f"   Deleted: {len(changes.deletions)} files")
+            if changes.uploads:
+                click.echo(f"   Uploaded: {len(changes.uploads)} files")
+            if changes.updates:
+                click.echo(f"   Updated: {len(changes.updates)} files")
+        else:
+            click.echo("\n❌ Assets deployment failed:")
+            for error in result.errors:
+                click.echo(f"   {error}")
+
+
+@assets.command("list")
+def list_assets():
+    """List all database UI assets in S3."""
+    try:
+        deployer = ZeekerDeployer()
+    except ValueError as e:
+        click.echo(f"❌ Configuration error: {e}")
+        return
+
+    databases = deployer.list_assets()
+
+    if databases:
+        click.echo(f"Database assets found in {deployer.bucket_name}:")
+        for db in databases:
+            click.echo(f"  - {db}")
+    else:
+        click.echo(f"No database assets found in {deployer.bucket_name}.")
+
+
+# Legacy commands for backward compatibility (with deprecation warnings)
+@cli.command("generate", hidden=True)
+@click.argument("database_name")
+@click.argument("output_path", type=click.Path())
+@click.option("--title", help="Database title")
+@click.option("--description", help="Database description")
+@click.option("--primary-color", default="#3498db", help="Primary color")
+@click.option("--accent-color", default="#e74c3c", help="Accent color")
+def generate_legacy(database_name, output_path, title, description, primary_color, accent_color):
+    """[DEPRECATED] Use 'zeeker assets generate' instead."""
+    click.echo("⚠️  DEPRECATED: Use 'zeeker assets generate' instead")
+
+    ctx = click.get_current_context()
+    ctx.invoke(
+        assets.commands["generate"],
+        database_name=database_name,
+        output_path=output_path,
+        title=title,
+        description=description,
+        primary_color=primary_color,
+        accent_color=accent_color,
+    )
+
+
+if __name__ == "__main__":
+    cli()
+
+</document_content>
+</document>
+<document index="6">
+<source>./zeeker/core/__init__.py</source>
+<document_content>
+"""
+Zeeker core modules for database and asset management.
+"""
+
+from .types import ValidationResult, DatabaseCustomization, DeploymentChanges, ZeekerProject
+from .project import ZeekerProjectManager
+from .validator import ZeekerValidator
+from .generator import ZeekerGenerator
+from .deployer import ZeekerDeployer
+
+__all__ = [
+    "ValidationResult",
+    "DatabaseCustomization",
+    "DeploymentChanges",
+    "ZeekerProject",
+    "ZeekerProjectManager",
+    "ZeekerValidator",
+    "ZeekerGenerator",
+    "ZeekerDeployer",
+]
+
+</document_content>
+</document>
+<document index="7">
+<source>./zeeker/core/deployer.py</source>
+<document_content>
+"""
+S3 deployment for Zeeker databases and assets.
+"""
+
+import boto3
+import hashlib
+import os
+from pathlib import Path
+from typing import Dict, List
+
+from .types import ValidationResult, DeploymentChanges
+
+
+class ZeekerDeployer:
+    """Handles deployment of databases and assets to S3 with enhanced capabilities."""
+
+    def __init__(self):
+        self.bucket_name = os.getenv("S3_BUCKET")
+        if not self.bucket_name:
+            raise ValueError("S3_BUCKET environment variable is required")
+
+        self.endpoint_url = os.getenv("S3_ENDPOINT_URL")
+        access_key = os.getenv("AWS_ACCESS_KEY_ID")
+        secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+        if not access_key or not secret_key:
+            raise ValueError(
+                "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are required"
+            )
+
+        client_kwargs = {
+            "aws_access_key_id": access_key,
+            "aws_secret_access_key": secret_key,
+            "response_checksum_validation": "when_required",
+            "request_checksum_calculation": "when_required",
+        }
+        if self.endpoint_url:
+            client_kwargs["endpoint_url"] = self.endpoint_url
+
+        self.s3_client = boto3.client("s3", **client_kwargs)
+
+    def upload_database(
+        self, db_path: Path, database_name: str, dry_run: bool = False
+    ) -> ValidationResult:
+        """Upload database file to S3."""
+        result = ValidationResult(is_valid=True)
+
+        if not db_path.exists():
+            result.is_valid = False
+            result.errors.append(f"Database file not found: {db_path}")
+            return result
+
+        s3_key = f"latest/{database_name}.db"
+
+        if dry_run:
+            result.info.append(f"Would upload: {db_path} -> s3://{self.bucket_name}/{s3_key}")
+        else:
+            try:
+                self.s3_client.upload_file(str(db_path), self.bucket_name, s3_key)
+                result.info.append(
+                    f"Uploaded database: {db_path} -> s3://{self.bucket_name}/{s3_key}"
+                )
+            except Exception as e:
+                result.is_valid = False
+                result.errors.append(f"Failed to upload database: {e}")
+
+        return result
+
+    def get_existing_files(self, database_name: str) -> Dict[str, str]:
+        """Get existing files on S3 with their ETags for comparison."""
+        files = {}
+        try:
+            s3_prefix = f"assets/databases/{database_name}/"
+            paginator = self.s3_client.get_paginator("list_objects_v2")
+            pages = paginator.paginate(Bucket=self.bucket_name, Prefix=s3_prefix)
+
+            for page in pages:
+                for obj in page.get("Contents", []):
+                    relative_path = obj["Key"][len(s3_prefix) :]
+                    files[relative_path] = obj["ETag"].strip('"')
+        except Exception as e:
+            # Log error but don't fail - treat as empty S3
+            print(f"Warning: Could not list S3 files: {e}")
+        return files
+
+    def get_local_files(self, local_path: Path) -> Dict[str, str]:
+        """Get local files with their MD5 hashes for comparison."""
+        files = {}
+        for file_path in local_path.rglob("*"):
+            if file_path.is_file():
+                relative_path = str(file_path.relative_to(local_path)).replace("\\", "/")
+                md5_hash = hashlib.md5(file_path.read_bytes()).hexdigest()
+                files[relative_path] = md5_hash
+        return files
+
+    def calculate_changes(
+        self, local_files: Dict[str, str], existing_files: Dict[str, str], sync: bool, clean: bool
+    ) -> DeploymentChanges:
+        """Calculate what changes need to be made."""
+        changes = DeploymentChanges()
+
+        if clean:
+            changes.deletions = list(existing_files.keys())
+            changes.uploads = list(local_files.keys())
+        else:
+            for local_file, local_hash in local_files.items():
+                if local_file not in existing_files:
+                    changes.uploads.append(local_file)
+                elif existing_files[local_file] != local_hash:
+                    changes.updates.append(local_file)
+                else:
+                    changes.unchanged.append(local_file)
+
+            if sync:
+                for existing_file in existing_files:
+                    if existing_file not in local_files:
+                        changes.deletions.append(existing_file)
+
+        return changes
+
+    def show_deployment_summary(
+        self,
+        changes: DeploymentChanges,
+        database_name: str,
+        local_files: Dict[str, str],
+        existing_files: Dict[str, str],
+    ):
+        """Show a summary of what will be deployed."""
+        print(f"\n📋 Deployment Summary for '{database_name}':")
+        print(f"   Local files: {len(local_files)}")
+        print(f"   S3 files: {len(existing_files)}")
+
+        if changes.uploads:
+            print(f"   📤 Will upload: {len(changes.uploads)} files")
+            for file in changes.uploads[:5]:
+                print(f"      • {file}")
+            if len(changes.uploads) > 5:
+                print(f"      ... and {len(changes.uploads) - 5} more")
+
+        if changes.updates:
+            print(f"   🔄 Will update: {len(changes.updates)} files")
+            for file in changes.updates[:5]:
+                print(f"      • {file}")
+            if len(changes.updates) > 5:
+                print(f"      ... and {len(changes.updates) - 5} more")
+
+        if changes.deletions:
+            print(f"   🗑️  Will delete: {len(changes.deletions)} files")
+            for file in changes.deletions:
+                print(f"      • {file}")
+
+    def show_detailed_diff(self, changes: DeploymentChanges):
+        """Show detailed diff of all changes."""
+        print("\n📊 Detailed Changes:")
+
+        if changes.uploads:
+            print(f"\n➕ New files ({len(changes.uploads)}):")
+            for file in changes.uploads:
+                print(f"   + {file}")
+
+        if changes.updates:
+            print(f"\n🔄 Modified files ({len(changes.updates)}):")
+            for file in changes.updates:
+                print(f"   ~ {file}")
+
+        if changes.deletions:
+            print(f"\n➖ Files to delete ({len(changes.deletions)}):")
+            for file in changes.deletions:
+                print(f"   - {file}")
+
+        if changes.unchanged:
+            print(f"\n✓ Unchanged files ({len(changes.unchanged)})")
+            if len(changes.unchanged) <= 10:
+                for file in changes.unchanged:
+                    print(f"   = {file}")
+            else:
+                print(f"   ({len(changes.unchanged)} files)")
+
+    def execute_deployment(
+        self, changes: DeploymentChanges, local_path: Path, database_name: str
+    ) -> ValidationResult:
+        """Execute the deployment based on calculated changes."""
+        result = ValidationResult(is_valid=True)
+        s3_prefix = f"assets/databases/{database_name}/"
+
+        # Delete files first (in case of clean deployment)
+        for file_to_delete in changes.deletions:
+            s3_key = s3_prefix + file_to_delete
+            try:
+                self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
+                result.info.append(f"Deleted: {file_to_delete}")
+            except Exception as e:
+                result.errors.append(f"Failed to delete {file_to_delete}: {e}")
+                result.is_valid = False
+
+        # Upload new and updated files
+        files_to_upload = changes.uploads + changes.updates
+        for file_to_upload in files_to_upload:
+            local_file_path = local_path / file_to_upload
+            s3_key = s3_prefix + file_to_upload
+
+            try:
+                self.s3_client.upload_file(str(local_file_path), self.bucket_name, s3_key)
+                action = "Uploaded" if file_to_upload in changes.uploads else "Updated"
+                result.info.append(f"{action}: {file_to_upload}")
+            except Exception as e:
+                result.errors.append(f"Failed to upload {file_to_upload}: {e}")
+                result.is_valid = False
+
+        return result
+
+    def upload_assets(
+        self, local_path: Path, database_name: str, dry_run: bool = False
+    ) -> ValidationResult:
+        """Upload assets to S3 (legacy method for backward compatibility)."""
+        result = ValidationResult(is_valid=True)
+
+        if not local_path.exists():
+            result.is_valid = False
+            result.errors.append(f"Local path does not exist: {local_path}")
+            return result
+
+        s3_prefix = f"assets/databases/{database_name}/"
+
+        for file_path in local_path.rglob("*"):
+            if file_path.is_file():
+                relative_path = file_path.relative_to(local_path)
+                s3_key = s3_prefix + str(relative_path).replace("\\", "/")
+
+                if dry_run:
+                    result.info.append(
+                        f"Would upload: {file_path} -> s3://{self.bucket_name}/{s3_key}"
+                    )
+                else:
+                    try:
+                        self.s3_client.upload_file(str(file_path), self.bucket_name, s3_key)
+                        result.info.append(
+                            f"Uploaded: {file_path} -> s3://{self.bucket_name}/{s3_key}"
+                        )
+                    except Exception as e:
+                        result.errors.append(f"Failed to upload {file_path}: {e}")
+                        result.is_valid = False
+
+        return result
+
+    def list_assets(self) -> List[str]:
+        """List all database assets in S3."""
+        try:
+            response = self.s3_client.list_objects_v2(
+                Bucket=self.bucket_name, Prefix="assets/databases/", Delimiter="/"
+            )
+
+            databases = []
+            for prefix in response.get("CommonPrefixes", []):
+                db_name = prefix["Prefix"].split("/")[-2]
+                databases.append(db_name)
+
+            return sorted(databases)
+        except Exception as e:
+            print(f"Error listing assets: {e}")
+            return []
+
+</document_content>
+</document>
+<document index="8">
+<source>./zeeker/core/generator.py</source>
+<document_content>
+"""
+Asset generation for Zeeker database customizations.
+"""
+
+import json
+from pathlib import Path
+from typing import Dict, Optional, Any
+
+from .types import DatabaseCustomization
+from .validator import ZeekerValidator
+
+
+class ZeekerGenerator:
+    """Generates Zeeker assets following the customization guide."""
+
+    def __init__(self, database_name: str, output_path: Path):
+        self.database_name = database_name
+        self.sanitized_name = ZeekerValidator.sanitize_database_name(database_name)
+        self.output_path = output_path
+        self.customization = DatabaseCustomization(database_name, output_path)
+
+    def create_base_structure(self) -> None:
+        """Create structure following the guide: templates/, static/, static/images/"""
+        dirs = [
+            self.output_path,
+            self.output_path / "templates",
+            self.output_path / "static",
+            self.output_path / "static" / "images",
+        ]
+
+        for dir_path in dirs:
+            dir_path.mkdir(parents=True, exist_ok=True)
+
+    def generate_metadata_template(self, title: str, description: str, **kwargs) -> Dict[str, Any]:
+        """Generate complete Datasette metadata following the guide format."""
+        # Use sanitized name for URL paths (matches S3 structure)
+        url_name = self.sanitized_name
+
+        metadata = {
+            "title": title,
+            "description": description,
+            "license": kwargs.get("license_type", "CC-BY-4.0"),
+            "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        }
+
+        if kwargs.get("source_url"):
+            metadata["source_url"] = kwargs["source_url"]
+
+        # Follow guide URL pattern: /static/databases/database_name/filename
+        if kwargs.get("extra_css"):
+            metadata["extra_css_urls"] = [
+                f"/static/databases/{url_name}/{css}" for css in kwargs["extra_css"]
+            ]
+
+        if kwargs.get("extra_js"):
+            metadata["extra_js_urls"] = [
+                f"/static/databases/{url_name}/{js}" for js in kwargs["extra_js"]
+            ]
+
+        # Complete Datasette structure (not fragments) per guide
+        metadata["databases"] = {self.database_name: {"description": description, "title": title}}
+
+        return metadata
+
+    def generate_css_template(
+        self, primary_color: str = "#3498db", accent_color: str = "#e74c3c"
+    ) -> str:
+        """Generate CSS following the guide's scoping best practices."""
+        return f"""/* Custom styles for {self.database_name} database */
+/* Following Zeeker customization guide patterns */
+
+/* CSS Custom Properties for theming */
+:root {{
+    --color-accent-primary: {primary_color};
+    --color-accent-secondary: {accent_color};
+}}
+
+/* Scope to your database to avoid conflicts (per guide) */
+[data-database="{self.sanitized_name}"] {{
+    /* Database-specific styles here */
+}}
+
+/* Database-specific header styling */
+.page-database[data-database="{self.sanitized_name}"] .database-title {{
+    color: var(--color-accent-primary);
+    text-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}}
+
+/* Custom table styling */
+.page-database[data-database="{self.sanitized_name}"] .card {{
+    border-left: 4px solid var(--color-accent-primary);
+    transition: transform 0.2s ease;
+}}
+
+.page-database[data-database="{self.sanitized_name}"] .card:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}}
+
+/* Responsive design */
+@media (max-width: 768px) {{
+    .page-database[data-database="{self.sanitized_name}"] .database-title {{
+        font-size: 1.5rem;
+    }}
+}}
+"""
+
+    def generate_js_template(self) -> str:
+        """Generate JavaScript following the guide's defensive programming practices."""
+        return f"""// Custom JavaScript for {self.database_name} database
+// Following Zeeker customization guide best practices
+
+// Defensive programming - ensure we're on the right database (per guide)
+function isDatabasePage() {{
+    return window.location.pathname.includes('/{self.database_name}') ||
+           document.body.dataset.database === '{self.sanitized_name}';
+}}
+
+document.addEventListener('DOMContentLoaded', function() {{
+    if (!isDatabasePage()) {{
+        return; // Exit if not our database (safety per guide)
+    }}
+    
+    console.log('Custom JS loaded for {self.database_name} database');
+    
+    // Initialize custom features safely
+    initCustomFeatures();
+}});
+
+function initCustomFeatures() {{
+    // Add custom search suggestions (safe implementation)
+    const searchInput = document.querySelector('.hero-search-input');
+    if (searchInput) {{
+        searchInput.placeholder = 'Search {self.database_name}...';
+    }}
+    
+    // Custom table enhancements
+    enhanceTables();
+}}
+
+function enhanceTables() {{
+    // Safe element selection per guide
+    const tables = document.querySelectorAll('.table-wrapper table');
+    tables.forEach(table => {{
+        // Add your custom table functionality here
+        table.classList.add('enhanced-table');
+    }});
+}}
+"""
+
+    def generate_database_template(self, custom_title: Optional[str] = None) -> str:
+        """Generate safe database template following guide naming conventions."""
+        title = custom_title or f"{self.database_name.title()} Database"
+
+        # Follow guide pattern: database-DBNAME.html (safe naming)
+        return f"""{{%% extends "default:database.html" %%}}
+
+{{%% block extra_head %%}}
+{{{{ super() }}}}
+<meta name="description" content="Custom database: {self.database_name}">
+{{%% endblock %%}}
+
+{{%% block content %%}}
+<div class="custom-database-header">
+    <h1>📊 {title}</h1>
+    <p>Welcome to the {self.database_name} database</p>
+</div>
+
+{{{{ super() }}}}
+{{%% endblock %%}}
+"""
+
+    def save_assets(self, metadata=None, css_content=None, js_content=None, templates=None):
+        """Save assets following the guide's file structure."""
+        self.create_base_structure()
+
+        if metadata:
+            with open(self.output_path / "metadata.json", "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+        if css_content:
+            with open(self.output_path / "static" / "custom.css", "w", encoding="utf-8") as f:
+                f.write(css_content)
+
+        if js_content:
+            with open(self.output_path / "static" / "custom.js", "w", encoding="utf-8") as f:
+                f.write(js_content)
+
+        if templates:
+            for template_name, template_content in templates.items():
+                with open(
+                    self.output_path / "templates" / template_name, "w", encoding="utf-8"
+                ) as f:
+                    f.write(template_content)
+
+</document_content>
+</document>
+<document index="9">
+<source>./zeeker/core/project.py</source>
+<document_content>
+"""
+Project management for Zeeker projects.
+"""
+
+import importlib.util
+import json
+import sqlite3
+from pathlib import Path
+
+import sqlite_utils
+
+from .types import ValidationResult, ZeekerProject
+
+
+class ZeekerProjectManager:
+    """Manages Zeeker projects and resources."""
+
+    def __init__(self, project_path: Path = None):
+        self.project_path = project_path or Path.cwd()
+        self.toml_path = self.project_path / "zeeker.toml"
+        self.resources_path = self.project_path / "resources"
+
+    def is_project_root(self) -> bool:
+        """Check if current directory is a Zeeker project root."""
+        return self.toml_path.exists()
+
+    def init_project(self, project_name: str) -> ValidationResult:
+        """Initialize a new Zeeker project."""
+        result = ValidationResult(is_valid=True)
+
+        # Create project directory if it doesn't exist
+        self.project_path.mkdir(exist_ok=True)
+
+        # Check if already a project
+        if self.toml_path.exists():
+            result.is_valid = False
+            result.errors.append("Directory already contains zeeker.toml")
+            return result
+
+        # Create basic project structure
+        project = ZeekerProject(name=project_name, database=f"{project_name}.db")
+
+        # Save zeeker.toml
+        project.save_toml(self.toml_path)
+
+        # Create resources package
+        self.resources_path.mkdir(exist_ok=True)
+        init_file = self.resources_path / "__init__.py"
+        init_file.write_text('"""Resources package for data fetching."""\n')
+
+        # Create .gitignore
+        gitignore_content = """# Generated database
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+
+# Data files (uncomment if you want to ignore data directory)
+# data/
+# raw/
+
+# OS
+.DS_Store
+Thumbs.db
+"""
+        gitignore_path = self.project_path / ".gitignore"
+        gitignore_path.write_text(gitignore_content)
+
+        # Create README.md
+        readme_content = f"""# {project_name.title()} Database Project
+
+A Zeeker project for managing the {project_name} database.
+
+## Getting Started
+
+1. Add resources:
+   ```bash
+   zeeker add my_resource --description "Description of the resource"
+   ```
+
+2. Implement data fetching in `resources/my_resource.py`
+
+3. Build the database:
+   ```bash
+   zeeker build
+   ```
+
+4. Deploy to S3:
+   ```bash
+   zeeker deploy
+   ```
+
+## Project Structure
+
+- `zeeker.toml` - Project configuration
+- `resources/` - Python modules for data fetching
+- `{project_name}.db` - Generated SQLite database (gitignored)
+
+## Resources
+
+"""
+
+        readme_path = self.project_path / "README.md"
+        readme_path.write_text(readme_content)
+
+        result.info.append(f"Initialized Zeeker project '{project_name}'")
+
+        # FIXED: Handle relative path safely
+        try:
+            relative_toml = self.toml_path.relative_to(Path.cwd())
+            result.info.append(f"Created: {relative_toml}")
+        except ValueError:
+            # If not in subpath of cwd, just use filename
+            result.info.append(f"Created: {self.toml_path.name}")
+
+        try:
+            relative_resources = self.resources_path.relative_to(Path.cwd())
+            result.info.append(f"Created: {relative_resources}/")
+        except ValueError:
+            result.info.append(f"Created: {self.resources_path.name}/")
+
+        try:
+            relative_gitignore = gitignore_path.relative_to(Path.cwd())
+            result.info.append(f"Created: {relative_gitignore}")
+        except ValueError:
+            result.info.append(f"Created: {gitignore_path.name}")
+
+        try:
+            relative_readme = readme_path.relative_to(Path.cwd())
+            result.info.append(f"Created: {relative_readme}")
+        except ValueError:
+            result.info.append(f"Created: {readme_path.name}")
+
+        return result
+
+    def load_project(self) -> ZeekerProject:
+        """Load project configuration."""
+        if not self.is_project_root():
+            raise ValueError("Not a Zeeker project (no zeeker.toml found)")
+        return ZeekerProject.from_toml(self.toml_path)
+
+    def add_resource(
+        self, resource_name: str, description: str = None, **kwargs
+    ) -> ValidationResult:
+        """Add a new resource to the project."""
+        result = ValidationResult(is_valid=True)
+
+        if not self.is_project_root():
+            result.is_valid = False
+            result.errors.append("Not in a Zeeker project directory (no zeeker.toml found)")
+            return result
+
+        # Load existing project
+        project = self.load_project()
+
+        # Check if resource already exists
+        resource_file = self.resources_path / f"{resource_name}.py"
+        if resource_file.exists():
+            result.is_valid = False
+            result.errors.append(f"Resource '{resource_name}' already exists")
+            return result
+
+        # Generate resource file
+        template = self._generate_resource_template(resource_name)
+        resource_file.write_text(template)
+
+        # Update project config with resource metadata
+        resource_config = {
+            "description": description or f"{resource_name.replace('_', ' ').title()} data"
+        }
+
+        # Add any additional Datasette metadata passed via kwargs
+        datasette_fields = [
+            "facets",
+            "sort",
+            "size",
+            "sortable_columns",
+            "hidden",
+            "label_column",
+            "columns",
+            "units",
+            "description_html",
+        ]
+        for field in datasette_fields:
+            if field in kwargs:
+                resource_config[field] = kwargs[field]
+
+        project.resources[resource_name] = resource_config
+        project.save_toml(self.toml_path)
+
+        try:
+            relative_resource = resource_file.relative_to(Path.cwd())
+            result.info.append(f"Created resource: {relative_resource}")
+        except ValueError:
+            result.info.append(f"Created resource: {resource_file.name}")
+
+        try:
+            relative_toml = self.toml_path.relative_to(Path.cwd())
+            result.info.append(f"Updated: {relative_toml}")
+        except ValueError:
+            result.info.append(f"Updated: {self.toml_path.name}")
+
+        return result
+
+    def _generate_resource_template(self, resource_name: str) -> str:
+        """Generate a Python template for a resource."""
+        return f'''"""
+{resource_name.replace('_', ' ').title()} resource for fetching and processing data.
+
+This module should implement a fetch_data() function that returns
+a list of dictionaries to be inserted into the '{resource_name}' table.
+
+The database is built using sqlite-utils, which provides:
+• Automatic table creation from your data structure
+• Type inference (integers → INTEGER, floats → REAL, strings → TEXT)
+• JSON support for complex data (lists, dicts stored as JSON)
+• Safe data insertion without SQL injection risks
+"""
+
+def fetch_data():
+    """
+    Fetch data for the {resource_name} table.
+
+    Returns:
+        List[Dict[str, Any]]: List of records to insert into database
+
+    sqlite-utils will automatically:
+    • Create the table from your data structure  
+    • Infer column types from your data
+    • Handle JSON for complex data structures
+    • Add new columns if data structure changes
+
+    Example:
+        return [
+            {{"id": 1, "name": "Example", "created": "2024-01-01"}},
+            {{"id": 2, "name": "Another", "created": "2024-01-02"}},
+        ]
+    """
+    # TODO: Implement your data fetching logic here
+    # This could be:
+    # - API calls (requests.get, etc.)
+    # - File reading (CSV, JSON, XML, etc.)
+    # - Database queries (from other sources)
+    # - Web scraping (BeautifulSoup, Scrapy, etc.)
+    # - Any other data source
+
+    return [
+        # Example data - replace with your implementation
+        # sqlite-utils will infer: id=INTEGER, example_field=TEXT
+        {{"id": 1, "example_field": "example_value"}},
+    ]
+
+
+def transform_data(raw_data):
+    """
+    Optional: Transform/clean the raw data before database insertion.
+
+    Args:
+        raw_data: The data returned from fetch_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed data
+
+    Examples:
+        # Clean strings
+        for item in raw_data:
+            item['name'] = item['name'].strip().title()
+
+        # Parse dates
+        for item in raw_data:
+            item['created_date'] = datetime.fromisoformat(item['date_string'])
+
+        # Handle complex data (sqlite-utils stores as JSON)
+        for item in raw_data:
+            item['metadata'] = {{"tags": ["news", "tech"], "priority": 1}}
+    """
+    # Optional transformation logic
+    return raw_data
+
+
+# You can add additional helper functions here
+'''
+
+    def build_database(self) -> ValidationResult:
+        """Build the SQLite database from all resources using sqlite-utils.
+
+        Uses Simon Willison's sqlite-utils for robust table creation and data insertion:
+        - Automatic schema detection from data
+        - Proper type inference (INTEGER, TEXT, REAL)
+        - Safe table creation and data insertion
+        - Better error handling than raw SQL
+        """
+        result = ValidationResult(is_valid=True)
+
+        if not self.is_project_root():
+            result.is_valid = False
+            result.errors.append("Not in a Zeeker project directory")
+            return result
+
+        project = self.load_project()
+        db_path = self.project_path / project.database
+
+        # Remove existing database
+        if db_path.exists():
+            db_path.unlink()
+
+        # Create new database using sqlite-utils
+        db = sqlite_utils.Database(str(db_path))
+
+        try:
+            all_success = True
+            for resource_name in project.resources.keys():
+                resource_result = self._process_resource(db, resource_name)
+                if not resource_result.is_valid:
+                    result.errors.extend(resource_result.errors)
+                    result.is_valid = False
+                    all_success = False
+                else:
+                    result.info.extend(resource_result.info)
+
+            if result.is_valid and all_success:
+                result.info.append(f"Database built successfully: {project.database}")
+
+                # Generate and save Datasette metadata.json
+                metadata = project.to_datasette_metadata()
+                metadata_path = self.project_path / "metadata.json"
+                with open(metadata_path, "w", encoding="utf-8") as f:
+                    json.dump(metadata, f, indent=2, ensure_ascii=False)
+                result.info.append("Generated Datasette metadata: metadata.json")
+
+        except Exception as e:
+            result.is_valid = False
+            result.errors.append(f"Database build failed: {e}")
+
+        return result
+
+    def _process_resource(self, db: sqlite_utils.Database, resource_name: str) -> ValidationResult:
+        """Process a single resource using sqlite-utils for robust data insertion.
+
+        Benefits of sqlite-utils over raw SQL:
+        - Automatic table creation with correct schema
+        - Type inference from data (no manual column type guessing)
+        - JSON support for complex data structures
+        - Proper error handling and validation
+        - No SQL injection risks
+        """
+        result = ValidationResult(is_valid=True)
+
+        resource_file = self.resources_path / f"{resource_name}.py"
+        if not resource_file.exists():
+            result.is_valid = False
+            result.errors.append(f"Resource file not found: {resource_file}")
+            return result
+
+        try:
+            # Dynamically import the resource module
+            spec = importlib.util.spec_from_file_location(resource_name, resource_file)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            # Get the fetch_data function
+            if not hasattr(module, "fetch_data"):
+                result.is_valid = False
+                result.errors.append(f"Resource '{resource_name}' missing fetch_data() function")
+                return result
+
+            # Fetch data
+            raw_data = module.fetch_data()
+
+            # Optional transformation
+            if hasattr(module, "transform_data"):
+                data = module.transform_data(raw_data)
+            else:
+                data = raw_data
+
+            if not data:
+                result.warnings.append(f"Resource '{resource_name}' returned no data")
+                return result
+
+            # Validate data structure
+            if not isinstance(data, list):
+                result.is_valid = False
+                result.errors.append(
+                    f"Resource '{resource_name}' must return a list of dictionaries, got: {type(data)}"
+                )
+                return result
+
+            if not all(isinstance(record, dict) for record in data):
+                result.is_valid = False
+                result.errors.append(
+                    f"Resource '{resource_name}' must return a list of dictionaries"
+                )
+                return result
+
+            # Use sqlite-utils for robust table creation and data insertion
+            # alter=True: Automatically add new columns if schema changes
+            # replace=True: Replace existing data (fresh rebuild)
+            db[resource_name].insert_all(
+                data,
+                alter=True,  # Auto-add columns if schema changes
+                replace=True,  # Replace existing data for clean rebuild
+            )
+
+            result.info.append(f"Processed {len(data)} records for table '{resource_name}'")
+
+        except sqlite3.IntegrityError as e:
+            result.is_valid = False
+            result.errors.append(f"Database integrity error in '{resource_name}': {e}")
+        except Exception as e:
+            result.is_valid = False
+            result.errors.append(f"Error processing resource '{resource_name}': {e}")
+
+        return result
+
+</document_content>
+</document>
+<document index="10">
+<source>./zeeker/core/types.py</source>
+<document_content>
+"""
+Core data types and structures for Zeeker.
+"""
+
+import tomllib
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+
+
+@dataclass
+class ValidationResult:
+    """Result of validation operations."""
+
+    is_valid: bool
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    info: List[str] = field(default_factory=list)
+
+
+@dataclass
+class DatabaseCustomization:
+    """Represents a complete database customization."""
+
+    database_name: str
+    base_path: Path
+    templates: Dict[str, str] = field(default_factory=dict)
+    static_files: Dict[str, bytes] = field(default_factory=dict)
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class DeploymentChanges:
+    """Represents the changes to be made during deployment."""
+
+    uploads: List[str] = field(default_factory=list)
+    updates: List[str] = field(default_factory=list)
+    deletions: List[str] = field(default_factory=list)
+    unchanged: List[str] = field(default_factory=list)
+
+    @property
+    def has_changes(self) -> bool:
+        return bool(self.uploads or self.updates or self.deletions)
+
+    @property
+    def has_destructive_changes(self) -> bool:
+        return bool(self.deletions)
+
+
+@dataclass
+class ZeekerProject:
+    """Represents a Zeeker project configuration."""
+
+    name: str
+    database: str
+    resources: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    root_path: Path = field(default_factory=Path)
+
+    @classmethod
+    def from_toml(cls, toml_path: Path) -> "ZeekerProject":
+        """Load project from zeeker.toml file."""
+
+        with open(toml_path, "rb") as f:
+            data = tomllib.load(f)
+
+        project_data = data.get("project", {})
+
+        # Extract resource sections (resource.*)
+        resources = data.get("resource", {})
+
+        return cls(
+            name=project_data.get("name", ""),
+            database=project_data.get("database", ""),
+            resources=resources,
+            root_path=toml_path.parent,
+        )
+
+    def save_toml(self, toml_path: Path) -> None:
+        """Save project to zeeker.toml file."""
+        toml_content = f"""[project]
+name = "{self.name}"
+database = "{self.database}"
+
+"""
+        for resource_name, resource_config in self.resources.items():
+            toml_content += f"[resource.{resource_name}]\n"
+            for key, value in resource_config.items():
+                if isinstance(value, str):
+                    toml_content += f'{key} = "{value}"\n'
+                elif isinstance(value, list):
+                    # Format arrays nicely
+                    formatted_list = "[" + ", ".join(f'"{item}"' for item in value) + "]"
+                    toml_content += f"{key} = {formatted_list}\n"
+                elif isinstance(value, (int, float, bool)):
+                    toml_content += f"{key} = {value}\n"
+            toml_content += "\n"
+
+        with open(toml_path, "w", encoding="utf-8") as f:
+            f.write(toml_content)
+
+    def to_datasette_metadata(self) -> Dict[str, Any]:
+        """Convert project configuration to complete Datasette metadata.json format.
+
+        Follows the guide: must provide complete Datasette metadata structure,
+        not fragments. Includes proper CSS/JS URL patterns.
+        """
+        # Database name for S3 path (matches .db filename without extension)
+        db_name = Path(self.database).stem
+
+        metadata = {
+            "title": f"{self.name.replace('_', ' ').replace('-', ' ').title()} Database",
+            "description": f"Database for {self.name} project",
+            "license": "MIT",
+            "license_url": "https://opensource.org/licenses/MIT",
+            "source": f"{self.name} project",
+            "extra_css_urls": [f"/static/databases/{db_name}/custom.css"],
+            "extra_js_urls": [f"/static/databases/{db_name}/custom.js"],
+            "databases": {
+                db_name: {
+                    "description": f"Database for {self.name} project",
+                    "title": f"{self.name.replace('_', ' ').replace('-', ' ').title()}",
+                    "tables": {},
+                }
+            },
+        }
+
+        # Add table metadata from resource configurations
+        for resource_name, resource_config in self.resources.items():
+            table_metadata = {}
+
+            # Copy Datasette-specific fields
+            datasette_fields = [
+                "description",
+                "description_html",
+                "facets",
+                "sort",
+                "size",
+                "sortable_columns",
+                "hidden",
+                "label_column",
+                "columns",
+                "units",
+            ]
+
+            for field in datasette_fields:
+                if field in resource_config:
+                    table_metadata[field] = resource_config[field]
+
+            # Default description if not provided
+            if "description" not in table_metadata:
+                table_metadata["description"] = resource_config.get(
+                    "description", f"{resource_name.replace('_', ' ').title()} data"
+                )
+
+            metadata["databases"][db_name]["tables"][resource_name] = table_metadata
+
+        return metadata
+
+</document_content>
+</document>
+<document index="11">
+<source>./zeeker/core/validator.py</source>
+<document_content>
+"""
+Validation logic for Zeeker database assets and configurations.
+"""
+
+import re
+import json
+import hashlib
+from pathlib import Path
+from typing import Dict, Any
+
+from .types import ValidationResult
+
+
+class ZeekerValidator:
+    """Validates Zeeker database assets for compliance with the customization guide."""
+
+    # Banned template names from the guide - would break core functionality
+    BANNED_TEMPLATES = {
+        "database.html",  # would break all database pages
+        "table.html",  # would break all table pages
+        "index.html",  # would break homepage
+        "query.html",  # would break SQL interface
+        "row.html",  # would break record pages
+        "error.html",  # would break error handling
+        "base.html",  # would break template inheritance
+    }
+
+    REQUIRED_METADATA_FIELDS = {"title", "description"}
+
+    @staticmethod
+    def sanitize_database_name(name: str) -> str:
+        """Sanitize database name following Datasette conventions from the guide."""
+        sanitized = re.sub(r"[^a-zA-Z0-9_-]", "-", name)
+        if sanitized != name:
+            hash_suffix = hashlib.md5(name.encode()).hexdigest()[:6]
+            sanitized = f"{sanitized}-{hash_suffix}"
+        return sanitized
+
+    def validate_template_name(self, template_name: str, database_name: str) -> ValidationResult:
+        """Validate template names follow the guide's safety rules."""
+        result = ValidationResult(is_valid=True)
+
+        # Check if template name is banned (from the guide)
+        if template_name in self.BANNED_TEMPLATES:
+            result.is_valid = False
+            result.errors.append(
+                f"Template '{template_name}' is BANNED per customization guide. "
+                f"Use 'database-{database_name}.html' instead for database-specific templates."
+            )
+            return result
+
+        # Check for recommended naming patterns from the guide
+        safe_patterns = [
+            f"database-{database_name}",  # Database-specific pages
+            f"table-{database_name}-",  # Table-specific pages
+            "custom-",  # Custom pages
+            "_partial-",  # Partial templates
+        ]
+
+        is_safe_pattern = any(template_name.startswith(pattern) for pattern in safe_patterns)
+
+        if not is_safe_pattern:
+            result.warnings.append(
+                f"Template '{template_name}' doesn't follow guide's recommended patterns. "
+                f"Consider: database-{database_name}.html, table-{database_name}-TABLENAME.html, "
+                f"custom-{database_name}-*.html, or _partial-*.html"
+            )
+
+        return result
+
+    def validate_metadata(self, metadata: Dict[str, Any]) -> ValidationResult:
+        """Validate metadata follows complete Datasette structure per the guide."""
+        result = ValidationResult(is_valid=True)
+
+        # Check for complete Datasette structure (not fragments)
+        if "databases" not in metadata:
+            result.warnings.append(
+                "Per customization guide: metadata should include 'databases' section "
+                "for complete Datasette structure"
+            )
+
+        # Check recommended fields
+        for field in self.REQUIRED_METADATA_FIELDS:
+            if field not in metadata:
+                result.warnings.append(f"Recommended field '{field}' missing from metadata")
+
+        # Validate JSON structure
+        try:
+            json.dumps(metadata)
+        except (TypeError, ValueError) as e:
+            result.is_valid = False
+            result.errors.append(f"Invalid JSON structure: {e}")
+
+        # Check CSS/JS URL patterns follow the guide
+        if "extra_css_urls" in metadata:
+            for url in metadata["extra_css_urls"]:
+                if not url.startswith("/static/databases/"):
+                    result.warnings.append(
+                        f"CSS URL '{url}' should follow guide pattern: '/static/databases/database_name/filename.css'"
+                    )
+
+        if "extra_js_urls" in metadata:
+            for url in metadata["extra_js_urls"]:
+                if not url.startswith("/static/databases/"):
+                    result.warnings.append(
+                        f"JS URL '{url}' should follow guide pattern: '/static/databases/database_name/filename.js'"
+                    )
+
+        return result
+
+    def validate_file_structure(self, assets_path: Path, database_name: str) -> ValidationResult:
+        """Validate assets follow the guide's file structure."""
+        result = ValidationResult(is_valid=True)
+
+        if not assets_path.exists():
+            result.is_valid = False
+            result.errors.append(f"Assets path does not exist: {assets_path}")
+            return result
+
+        # Check for expected structure from the guide
+        expected_dirs = ["templates", "static"]
+        existing_dirs = [d.name for d in assets_path.iterdir() if d.is_dir()]
+
+        for dir_name in existing_dirs:
+            if dir_name not in expected_dirs:
+                result.warnings.append(
+                    f"Unexpected directory: {dir_name}. Guide expects: templates/, static/"
+                )
+
+        # Validate templates follow naming rules
+        templates_dir = assets_path / "templates"
+        if templates_dir.exists():
+            for template_file in templates_dir.glob("*.html"):
+                template_result = self.validate_template_name(template_file.name, database_name)
+                result.errors.extend(template_result.errors)
+                result.warnings.extend(template_result.warnings)
+
+                # FIXED: If template validation has errors, mark overall result as invalid
+                if not template_result.is_valid:
+                    result.is_valid = False
+
+        # Validate metadata.json if present
+        metadata_file = assets_path / "metadata.json"
+        if metadata_file.exists():
+            try:
+                with open(metadata_file) as f:
+                    metadata = json.load(f)
+                metadata_result = self.validate_metadata(metadata)
+                result.errors.extend(metadata_result.errors)
+                result.warnings.extend(metadata_result.warnings)
+
+                # FIXED: If metadata validation has errors, mark overall result as invalid
+                if not metadata_result.is_valid:
+                    result.is_valid = False
+
+            except (json.JSONDecodeError, IOError) as e:
+                result.is_valid = False
+                result.errors.append(f"Error reading metadata.json: {e}")
+
+        return result
+
+</document_content>
+</document>
+<document index="12">
+<source>./tests/conftest.py</source>
+<document_content>
+"""
+Test configuration and shared fixtures for Zeeker tests.
+"""
+
+import json
+import os
+import tempfile
+import textwrap
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
+
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for test file operations."""
+    with tempfile.TemporaryDirectory() as temp_path:
+        yield Path(temp_path)
+
+
+@pytest.fixture
+def sample_project_dir(temp_dir):
+    """Create a sample project directory structure."""
+    project_dir = temp_dir / "test_project"
+    project_dir.mkdir()
+
+    # Create zeeker.toml
+    toml_content = textwrap.dedent(
+        """[project]
+name = "test_project"
+database = "test_project.db"
+
+[resource.users]
+description = "User account data"
+facets = ["role", "department"]
+size = 50
+
+[resource.posts]
+description = "Blog posts"
+sort = "created_date desc"
+"""
+    )
+    (project_dir / "zeeker.toml").write_text(toml_content)
+
+    # Create resources directory
+    resources_dir = project_dir / "resources"
+    resources_dir.mkdir()
+    (resources_dir / "__init__.py").write_text("")
+
+    return project_dir
+
+
+@pytest.fixture
+def sample_resource_file(sample_project_dir):
+    """Create a sample resource file."""
+    resource_content = '''"""
+Sample resource for testing.
+"""
+
+def fetch_data():
+    """Fetch sample data."""
+    return [
+        {"id": 1, "name": "Alice", "role": "admin"},
+        {"id": 2, "name": "Bob", "role": "user"},
+    ]
+'''
+    resource_file = sample_project_dir / "resources" / "users.py"
+    resource_file.write_text(resource_content)
+    return resource_file
+
+
+@pytest.fixture
+def sample_assets_dir(temp_dir):
+    """Create a sample assets directory with templates and static files."""
+    assets_dir = temp_dir / "assets"
+    assets_dir.mkdir()
+
+    # Create templates directory
+    templates_dir = assets_dir / "templates"
+    templates_dir.mkdir()
+
+    # Create static directory
+    static_dir = assets_dir / "static"
+    static_dir.mkdir()
+
+    # Create sample metadata.json
+    metadata = {
+        "title": "Test Database",
+        "description": "Test database for validation",
+        "extra_css_urls": ["/static/databases/test_db/custom.css"],
+        "extra_js_urls": ["/static/databases/test_db/custom.js"],
+        "databases": {"test_db": {"description": "Test database", "title": "Test DB"}},
+    }
+    (assets_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+
+    return assets_dir
+
+
+@pytest.fixture
+def mock_s3_client():
+    """Create a mock S3 client for testing deployment."""
+    mock_client = MagicMock()
+
+    # Mock successful upload
+    mock_client.upload_file.return_value = None
+
+    # Mock list_objects_v2 for empty bucket
+    mock_client.list_objects_v2.return_value = {"Contents": []}
+
+    # Mock get_paginator
+    mock_paginator = MagicMock()
+    mock_paginator.paginate.return_value = [{"Contents": []}]
+    mock_client.get_paginator.return_value = mock_paginator
+
+    return mock_client
+
+
+@pytest.fixture
+def s3_env_vars():
+    """Set up S3 environment variables for testing."""
+    env_vars = {
+        "S3_BUCKET": "test-bucket",
+        "AWS_ACCESS_KEY_ID": "test-key",
+        "AWS_SECRET_ACCESS_KEY": "test-secret",
+        "S3_ENDPOINT_URL": "https://test.endpoint.com",
+    }
+
+    # Store original values
+    original_values = {}
+    for key in env_vars:
+        original_values[key] = os.environ.get(key)
+        os.environ[key] = env_vars[key]
+
+    yield env_vars
+
+    # Restore original values
+    for key, original_value in original_values.items():
+        if original_value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = original_value
+
+
+@pytest.fixture
+def sample_database_file(temp_dir):
+    """Create a sample SQLite database file for testing."""
+    import sqlite3
+
+    db_path = temp_dir / "sample.db"
+    conn = sqlite3.connect(str(db_path))
+
+    # Create a simple table with data
+    conn.execute("CREATE TABLE users (id INTEGER, name TEXT, role TEXT)")
+    conn.execute("INSERT INTO users VALUES (1, 'Alice', 'admin')")
+    conn.execute("INSERT INTO users VALUES (2, 'Bob', 'user')")
+    conn.commit()
+    conn.close()
+
+    return db_path
+
+
+# Markers for test categorization
+pytest_markers = [
+    "unit: Unit tests for individual components",
+    "integration: Integration tests for component interactions",
+    "cli: CLI interface tests",
+    "slow: Tests that take longer to run",
+]
+
+
+def pytest_configure(config):
+    """Configure pytest with custom markers."""
+    for marker in pytest_markers:
+        config.addinivalue_line("markers", marker)
+
+</document_content>
+</document>
+<document index="13">
+<source>./tests/test_cli.py</source>
+<document_content>
+"""
+Tests for ZeekerDeployer S3 deployment functionality.
+"""
+
+import json
+from pathlib import Path
+from unittest.mock import patch, MagicMock, call
+import pytest
+
+from zeeker.core.deployer import ZeekerDeployer
+from zeeker.core.types import DeploymentChanges
+
+
+class TestZeekerDeployer:
+    """Test S3 deployment functionality."""
+
+    @pytest.fixture
+    def mock_s3_client(self):
+        """Create a mock S3 client."""
+        mock_client = MagicMock()
+        mock_client.upload_file.return_value = None
+        mock_client.delete_object.return_value = None
+        mock_client.list_objects_v2.return_value = {"Contents": []}
+
+        # Mock paginator
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [{"Contents": []}]
+        mock_client.get_paginator.return_value = mock_paginator
+
+        return mock_client
+
+    @pytest.fixture
+    def deployer(self, s3_env_vars, mock_s3_client):
+        """Create a ZeekerDeployer with mocked S3 client."""
+        with patch("boto3.client", return_value=mock_s3_client):
+            deployer = ZeekerDeployer()
+            deployer.s3_client = mock_s3_client
+            return deployer
+
+    def test_init_with_missing_bucket(self):
+        """Test initialization fails without S3_BUCKET."""
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="S3_BUCKET environment variable is required"):
+                ZeekerDeployer()
+
+    def test_init_with_missing_credentials(self):
+        """Test initialization fails without AWS credentials."""
+        with patch.dict("os.environ", {"S3_BUCKET": "test-bucket"}, clear=True):
+            with pytest.raises(ValueError, match="AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"):
+                ZeekerDeployer()
+
+    def test_upload_database_success(self, deployer, temp_dir):
+        """Test successful database upload."""
+        db_path = temp_dir / "test.db"
+        db_path.write_text("test database content")
+
+        result = deployer.upload_database(db_path, "test_database")
+
+        assert result.is_valid
+        assert len(result.errors) == 0
+        assert "Uploaded database" in result.info[0]
+
+        deployer.s3_client.upload_file.assert_called_once_with(
+            str(db_path), "test-bucket", "latest/test_database.db"
+        )
+
+    def test_upload_database_missing_file(self, deployer, temp_dir):
+        """Test upload fails with missing database file."""
+        missing_path = temp_dir / "missing.db"
+
+        result = deployer.upload_database(missing_path, "test_database")
+
+        assert not result.is_valid
+        assert "Database file not found" in result.errors[0]
+        deployer.s3_client.upload_file.assert_not_called()
+
+    def test_upload_database_dry_run(self, deployer, temp_dir):
+        """Test dry run doesn't actually upload."""
+        db_path = temp_dir / "test.db"
+        db_path.write_text("test database content")
+
+        result = deployer.upload_database(db_path, "test_database", dry_run=True)
+
+        assert result.is_valid
+        assert "Would upload" in result.info[0]
+        deployer.s3_client.upload_file.assert_not_called()
+
+    def test_get_existing_files(self, deployer):
+        """Test getting existing files from S3."""
+        # Mock S3 response
+        mock_contents = [
+            {"Key": "assets/databases/test_db/metadata.json", "ETag": '"abc123"'},
+            {"Key": "assets/databases/test_db/static/custom.css", "ETag": '"def456"'},
+        ]
+
+        mock_page = {"Contents": mock_contents}
+        deployer.s3_client.get_paginator.return_value.paginate.return_value = [mock_page]
+
+        result = deployer.get_existing_files("test_db")
+
+        expected = {
+            "metadata.json": "abc123",
+            "static/custom.css": "def456",
+        }
+        assert result == expected
+
+    def test_get_local_files(self, deployer, temp_dir):
+        """Test getting local files with hashes."""
+        # Create test files
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+        (temp_dir / "static").mkdir()
+        (temp_dir / "static" / "custom.css").write_text("body { color: red; }")
+
+        result = deployer.get_local_files(temp_dir)
+
+        assert "metadata.json" in result
+        assert "static/custom.css" in result
+        assert len(result["metadata.json"]) == 32  # MD5 hash length
+        assert len(result["static/custom.css"]) == 32
+
+    def test_calculate_changes_uploads(self, deployer):
+        """Test change calculation for new files."""
+        local_files = {"metadata.json": "hash1", "static/custom.css": "hash2"}
+        existing_files = {}
+
+        changes = deployer.calculate_changes(local_files, existing_files, sync=False, clean=False)
+
+        assert changes.uploads == ["metadata.json", "static/custom.css"]
+        assert changes.updates == []
+        assert changes.deletions == []
+        assert changes.has_changes
+
+    def test_calculate_changes_updates(self, deployer):
+        """Test change calculation for modified files."""
+        local_files = {"metadata.json": "newhash", "static/custom.css": "hash2"}
+        existing_files = {"metadata.json": "oldhash", "static/custom.css": "hash2"}
+
+        changes = deployer.calculate_changes(local_files, existing_files, sync=False, clean=False)
+
+        assert changes.uploads == []
+        assert changes.updates == ["metadata.json"]
+        assert changes.unchanged == ["static/custom.css"]
+        assert changes.deletions == []
+        assert changes.has_changes
+
+    def test_calculate_changes_sync_deletions(self, deployer):
+        """Test change calculation with sync deleting remote files."""
+        local_files = {"metadata.json": "hash1"}
+        existing_files = {"metadata.json": "hash1", "old_file.txt": "hash2"}
+
+        changes = deployer.calculate_changes(local_files, existing_files, sync=True, clean=False)
+
+        assert changes.uploads == []
+        assert changes.updates == []
+        assert changes.unchanged == ["metadata.json"]
+        assert changes.deletions == ["old_file.txt"]
+        assert changes.has_changes
+        assert changes.has_destructive_changes
+
+    def test_calculate_changes_clean(self, deployer):
+        """Test change calculation with clean deployment."""
+        local_files = {"metadata.json": "hash1"}
+        existing_files = {"old_metadata.json": "hash2", "old_file.txt": "hash3"}
+
+        changes = deployer.calculate_changes(local_files, existing_files, sync=False, clean=True)
+
+        assert changes.uploads == ["metadata.json"]
+        assert changes.updates == []
+        assert changes.deletions == ["old_metadata.json", "old_file.txt"]
+        assert changes.has_changes
+        assert changes.has_destructive_changes
+
+    def test_execute_deployment_uploads(self, deployer, temp_dir):
+        """Test executing deployment with uploads."""
+        # Create test files
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+
+        changes = DeploymentChanges()
+        changes.uploads = ["metadata.json"]
+
+        result = deployer.execute_deployment(changes, temp_dir, "test_db")
+
+        assert result.is_valid
+        assert "Uploaded: metadata.json" in result.info
+
+        deployer.s3_client.upload_file.assert_called_once_with(
+            str(temp_dir / "metadata.json"), "test-bucket", "assets/databases/test_db/metadata.json"
+        )
+
+    def test_execute_deployment_deletions(self, deployer, temp_dir):
+        """Test executing deployment with deletions."""
+        changes = DeploymentChanges()
+        changes.deletions = ["old_file.txt"]
+
+        result = deployer.execute_deployment(changes, temp_dir, "test_db")
+
+        assert result.is_valid
+        assert "Deleted: old_file.txt" in result.info
+
+        deployer.s3_client.delete_object.assert_called_once_with(
+            Bucket="test-bucket", Key="assets/databases/test_db/old_file.txt"
+        )
+
+    def test_execute_deployment_s3_error(self, deployer, temp_dir):
+        """Test deployment handles S3 errors gracefully."""
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+
+        # Mock S3 upload failure
+        deployer.s3_client.upload_file.side_effect = Exception("S3 error")
+
+        changes = DeploymentChanges()
+        changes.uploads = ["metadata.json"]
+
+        result = deployer.execute_deployment(changes, temp_dir, "test_db")
+
+        assert not result.is_valid
+        assert "Failed to upload metadata.json: S3 error" in result.errors
+
+    def test_list_assets(self, deployer):
+        """Test listing database assets."""
+        # Mock S3 response
+        mock_response = {
+            "CommonPrefixes": [
+                {"Prefix": "assets/databases/legal_news/"},
+                {"Prefix": "assets/databases/court_cases/"},
+            ]
+        }
+        deployer.s3_client.list_objects_v2.return_value = mock_response
+
+        result = deployer.list_assets()
+
+        assert result == ["court_cases", "legal_news"]  # Sorted
+        deployer.s3_client.list_objects_v2.assert_called_once_with(
+            Bucket="test-bucket", Prefix="assets/databases/", Delimiter="/"
+        )
+
+    def test_list_assets_empty(self, deployer):
+        """Test listing assets when none exist."""
+        deployer.s3_client.list_objects_v2.return_value = {}
+
+        result = deployer.list_assets()
+
+        assert result == []
+
+    def test_list_assets_with_error(self, deployer):
+        """Test listing assets handles errors gracefully."""
+        deployer.s3_client.list_objects_v2.side_effect = Exception("S3 error")
+
+        result = deployer.list_assets()
+
+        assert result == []
+
+    def test_legacy_upload_assets(self, deployer, temp_dir):
+        """Test legacy upload_assets method for backward compatibility."""
+        # Create test files
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+        (temp_dir / "static").mkdir()
+        (temp_dir / "static" / "custom.css").write_text("body { color: red; }")
+
+        result = deployer.upload_assets(temp_dir, "test_db")
+
+        assert result.is_valid
+        assert len(result.info) == 2  # Two files uploaded
+        assert deployer.s3_client.upload_file.call_count == 2
+
+        # Check the calls
+        calls = deployer.s3_client.upload_file.call_args_list
+        assert any("metadata.json" in str(call) for call in calls)
+        assert any("custom.css" in str(call) for call in calls)
+
+    def test_upload_assets_dry_run(self, deployer, temp_dir):
+        """Test legacy upload_assets dry run."""
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+
+        result = deployer.upload_assets(temp_dir, "test_db", dry_run=True)
+
+        assert result.is_valid
+        assert "Would upload" in result.info[0]
+        deployer.s3_client.upload_file.assert_not_called()
+
+    def test_upload_assets_missing_path(self, deployer, temp_dir):
+        """Test upload_assets with missing path."""
+        missing_path = temp_dir / "missing"
+
+        result = deployer.upload_assets(missing_path, "test_db")
+
+        assert not result.is_valid
+        assert "does not exist" in result.errors[0]
+
+</document_content>
+</document>
+<document index="14">
+<source>./tests/test_deployer.py</source>
+<document_content>
+"""
+Tests for ZeekerDeployer S3 deployment functionality.
+"""
+
+import json
+from pathlib import Path
+from unittest.mock import patch, MagicMock, call
+import pytest
+
+from zeeker.core.deployer import ZeekerDeployer
+from zeeker.core.types import DeploymentChanges
+
+
+class TestZeekerDeployer:
+    """Test S3 deployment functionality."""
+
+    @pytest.fixture
+    def mock_s3_client(self):
+        """Create a mock S3 client."""
+        mock_client = MagicMock()
+        mock_client.upload_file.return_value = None
+        mock_client.delete_object.return_value = None
+        mock_client.list_objects_v2.return_value = {"Contents": []}
+
+        # Mock paginator
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [{"Contents": []}]
+        mock_client.get_paginator.return_value = mock_paginator
+
+        return mock_client
+
+    @pytest.fixture
+    def deployer(self, s3_env_vars, mock_s3_client):
+        """Create a ZeekerDeployer with mocked S3 client."""
+        with patch("boto3.client", return_value=mock_s3_client):
+            deployer = ZeekerDeployer()
+            deployer.s3_client = mock_s3_client
+            return deployer
+
+    def test_init_with_missing_bucket(self):
+        """Test initialization fails without S3_BUCKET."""
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="S3_BUCKET environment variable is required"):
+                ZeekerDeployer()
+
+    def test_init_with_missing_credentials(self):
+        """Test initialization fails without AWS credentials."""
+        with patch.dict("os.environ", {"S3_BUCKET": "test-bucket"}, clear=True):
+            with pytest.raises(ValueError, match="AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"):
+                ZeekerDeployer()
+
+    def test_upload_database_success(self, deployer, temp_dir):
+        """Test successful database upload."""
+        db_path = temp_dir / "test.db"
+        db_path.write_text("test database content")
+
+        result = deployer.upload_database(db_path, "test_database")
+
+        assert result.is_valid
+        assert len(result.errors) == 0
+        assert "Uploaded database" in result.info[0]
+
+        deployer.s3_client.upload_file.assert_called_once_with(
+            str(db_path), "test-bucket", "latest/test_database.db"
+        )
+
+    def test_upload_database_missing_file(self, deployer, temp_dir):
+        """Test upload fails with missing database file."""
+        missing_path = temp_dir / "missing.db"
+
+        result = deployer.upload_database(missing_path, "test_database")
+
+        assert not result.is_valid
+        assert "Database file not found" in result.errors[0]
+        deployer.s3_client.upload_file.assert_not_called()
+
+    def test_upload_database_dry_run(self, deployer, temp_dir):
+        """Test dry run doesn't actually upload."""
+        db_path = temp_dir / "test.db"
+        db_path.write_text("test database content")
+
+        result = deployer.upload_database(db_path, "test_database", dry_run=True)
+
+        assert result.is_valid
+        assert "Would upload" in result.info[0]
+        deployer.s3_client.upload_file.assert_not_called()
+
+    def test_get_existing_files(self, deployer):
+        """Test getting existing files from S3."""
+        # Mock S3 response
+        mock_contents = [
+            {"Key": "assets/databases/test_db/metadata.json", "ETag": '"abc123"'},
+            {"Key": "assets/databases/test_db/static/custom.css", "ETag": '"def456"'},
+        ]
+
+        mock_page = {"Contents": mock_contents}
+        deployer.s3_client.get_paginator.return_value.paginate.return_value = [mock_page]
+
+        result = deployer.get_existing_files("test_db")
+
+        expected = {
+            "metadata.json": "abc123",
+            "static/custom.css": "def456",
+        }
+        assert result == expected
+
+    def test_get_local_files(self, deployer, temp_dir):
+        """Test getting local files with hashes."""
+        # Create test files
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+        (temp_dir / "static").mkdir()
+        (temp_dir / "static" / "custom.css").write_text("body { color: red; }")
+
+        result = deployer.get_local_files(temp_dir)
+
+        assert "metadata.json" in result
+        assert "static/custom.css" in result
+        assert len(result["metadata.json"]) == 32  # MD5 hash length
+        assert len(result["static/custom.css"]) == 32
+
+    def test_calculate_changes_uploads(self, deployer):
+        """Test change calculation for new files."""
+        local_files = {"metadata.json": "hash1", "static/custom.css": "hash2"}
+        existing_files = {}
+
+        changes = deployer.calculate_changes(local_files, existing_files, sync=False, clean=False)
+
+        assert changes.uploads == ["metadata.json", "static/custom.css"]
+        assert changes.updates == []
+        assert changes.deletions == []
+        assert changes.has_changes
+
+    def test_calculate_changes_updates(self, deployer):
+        """Test change calculation for modified files."""
+        local_files = {"metadata.json": "newhash", "static/custom.css": "hash2"}
+        existing_files = {"metadata.json": "oldhash", "static/custom.css": "hash2"}
+
+        changes = deployer.calculate_changes(local_files, existing_files, sync=False, clean=False)
+
+        assert changes.uploads == []
+        assert changes.updates == ["metadata.json"]
+        assert changes.unchanged == ["static/custom.css"]
+        assert changes.deletions == []
+        assert changes.has_changes
+
+    def test_calculate_changes_sync_deletions(self, deployer):
+        """Test change calculation with sync deleting remote files."""
+        local_files = {"metadata.json": "hash1"}
+        existing_files = {"metadata.json": "hash1", "old_file.txt": "hash2"}
+
+        changes = deployer.calculate_changes(local_files, existing_files, sync=True, clean=False)
+
+        assert changes.uploads == []
+        assert changes.updates == []
+        assert changes.unchanged == ["metadata.json"]
+        assert changes.deletions == ["old_file.txt"]
+        assert changes.has_changes
+        assert changes.has_destructive_changes
+
+    def test_calculate_changes_clean(self, deployer):
+        """Test change calculation with clean deployment."""
+        local_files = {"metadata.json": "hash1"}
+        existing_files = {"old_metadata.json": "hash2", "old_file.txt": "hash3"}
+
+        changes = deployer.calculate_changes(local_files, existing_files, sync=False, clean=True)
+
+        assert changes.uploads == ["metadata.json"]
+        assert changes.updates == []
+        assert changes.deletions == ["old_metadata.json", "old_file.txt"]
+        assert changes.has_changes
+        assert changes.has_destructive_changes
+
+    def test_execute_deployment_uploads(self, deployer, temp_dir):
+        """Test executing deployment with uploads."""
+        # Create test files
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+
+        changes = DeploymentChanges()
+        changes.uploads = ["metadata.json"]
+
+        result = deployer.execute_deployment(changes, temp_dir, "test_db")
+
+        assert result.is_valid
+        assert "Uploaded: metadata.json" in result.info
+
+        deployer.s3_client.upload_file.assert_called_once_with(
+            str(temp_dir / "metadata.json"), "test-bucket", "assets/databases/test_db/metadata.json"
+        )
+
+    def test_execute_deployment_deletions(self, deployer, temp_dir):
+        """Test executing deployment with deletions."""
+        changes = DeploymentChanges()
+        changes.deletions = ["old_file.txt"]
+
+        result = deployer.execute_deployment(changes, temp_dir, "test_db")
+
+        assert result.is_valid
+        assert "Deleted: old_file.txt" in result.info
+
+        deployer.s3_client.delete_object.assert_called_once_with(
+            Bucket="test-bucket", Key="assets/databases/test_db/old_file.txt"
+        )
+
+    def test_execute_deployment_s3_error(self, deployer, temp_dir):
+        """Test deployment handles S3 errors gracefully."""
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+
+        # Mock S3 upload failure
+        deployer.s3_client.upload_file.side_effect = Exception("S3 error")
+
+        changes = DeploymentChanges()
+        changes.uploads = ["metadata.json"]
+
+        result = deployer.execute_deployment(changes, temp_dir, "test_db")
+
+        assert not result.is_valid
+        assert "Failed to upload metadata.json: S3 error" in result.errors
+
+    def test_list_assets(self, deployer):
+        """Test listing database assets."""
+        # Mock S3 response
+        mock_response = {
+            "CommonPrefixes": [
+                {"Prefix": "assets/databases/legal_news/"},
+                {"Prefix": "assets/databases/court_cases/"},
+            ]
+        }
+        deployer.s3_client.list_objects_v2.return_value = mock_response
+
+        result = deployer.list_assets()
+
+        assert result == ["court_cases", "legal_news"]  # Sorted
+        deployer.s3_client.list_objects_v2.assert_called_once_with(
+            Bucket="test-bucket", Prefix="assets/databases/", Delimiter="/"
+        )
+
+    def test_list_assets_empty(self, deployer):
+        """Test listing assets when none exist."""
+        deployer.s3_client.list_objects_v2.return_value = {}
+
+        result = deployer.list_assets()
+
+        assert result == []
+
+    def test_list_assets_with_error(self, deployer):
+        """Test listing assets handles errors gracefully."""
+        deployer.s3_client.list_objects_v2.side_effect = Exception("S3 error")
+
+        result = deployer.list_assets()
+
+        assert result == []
+
+    def test_legacy_upload_assets(self, deployer, temp_dir):
+        """Test legacy upload_assets method for backward compatibility."""
+        # Create test files
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+        (temp_dir / "static").mkdir()
+        (temp_dir / "static" / "custom.css").write_text("body { color: red; }")
+
+        result = deployer.upload_assets(temp_dir, "test_db")
+
+        assert result.is_valid
+        assert len(result.info) == 2  # Two files uploaded
+        assert deployer.s3_client.upload_file.call_count == 2
+
+        # Check the calls
+        calls = deployer.s3_client.upload_file.call_args_list
+        assert any("metadata.json" in str(call) for call in calls)
+        assert any("custom.css" in str(call) for call in calls)
+
+    def test_upload_assets_dry_run(self, deployer, temp_dir):
+        """Test legacy upload_assets dry run."""
+        (temp_dir / "metadata.json").write_text('{"title": "test"}')
+
+        result = deployer.upload_assets(temp_dir, "test_db", dry_run=True)
+
+        assert result.is_valid
+        assert "Would upload" in result.info[0]
+        deployer.s3_client.upload_file.assert_not_called()
+
+    def test_upload_assets_missing_path(self, deployer, temp_dir):
+        """Test upload_assets with missing path."""
+        missing_path = temp_dir / "missing"
+
+        result = deployer.upload_assets(missing_path, "test_db")
+
+        assert not result.is_valid
+        assert "does not exist" in result.errors[0]
+
+</document_content>
+</document>
+<document index="15">
+<source>./tests/test_generator.py</source>
+<document_content>
+"""
+Tests for ZeekerGenerator - asset generation functionality.
+"""
+
+import json
+from pathlib import Path
+import pytest
+
+from zeeker.core.generator import ZeekerGenerator
+
+
+class TestZeekerGenerator:
+    """Test asset generation functionality."""
+
+    @pytest.fixture
+    def generator(self, temp_dir):
+        """Create a ZeekerGenerator for testing."""
+        return ZeekerGenerator("test_database", temp_dir / "output")
+
+    def test_generator_initialization(self, generator):
+        """Test generator initializes correctly."""
+        assert generator.database_name == "test_database"
+        assert generator.sanitized_name == "test_database"  # No special chars to sanitize
+        assert generator.output_path.name == "output"
+
+    def test_generator_with_special_chars(self, temp_dir):
+        """Test generator handles database names with special characters."""
+        generator = ZeekerGenerator("Legal News & Cases!", temp_dir / "output")
+
+        assert generator.database_name == "Legal News & Cases!"
+        assert generator.sanitized_name.startswith("Legal-News---Cases-")
+        assert len(generator.sanitized_name.split("-")[-1]) == 6  # MD5 hash suffix
+
+    def test_create_base_structure(self, generator):
+        """Test creating the base directory structure."""
+        generator.create_base_structure()
+
+        assert generator.output_path.exists()
+        assert (generator.output_path / "templates").exists()
+        assert (generator.output_path / "static").exists()
+        assert (generator.output_path / "static" / "images").exists()
+
+    def test_generate_metadata_template(self, generator):
+        """Test metadata generation."""
+        metadata = generator.generate_metadata_template(
+            title="Test Database",
+            description="A test database",
+            extra_css=["custom.css"],
+            extra_js=["custom.js"],
+        )
+
+        assert metadata["title"] == "Test Database"
+        assert metadata["description"] == "A test database"
+        assert "/static/databases/test_database/custom.css" in metadata["extra_css_urls"]
+        assert "/static/databases/test_database/custom.js" in metadata["extra_js_urls"]
+        assert "test_database" in metadata["databases"]
+
+    def test_generate_css_template(self, generator):
+        """Test CSS generation."""
+        css_content = generator.generate_css_template("#ff0000", "#00ff00")
+
+        assert "#ff0000" in css_content  # Primary color
+        assert "#00ff00" in css_content  # Accent color
+        assert "test_database" in css_content  # Database name scoping
+        assert "[data-database=" in css_content  # Scoping attribute
+
+    def test_generate_js_template(self, generator):
+        """Test JavaScript generation."""
+        js_content = generator.generate_js_template()
+
+        assert "test_database" in js_content
+        assert "isDatabasePage" in js_content  # Defensive programming function
+        assert "DOMContentLoaded" in js_content
+        assert "console.log" in js_content
+
+    def test_generate_database_template(self, generator):
+        """Test database template generation."""
+        template_content = generator.generate_database_template("Custom Title")
+
+        assert "Custom Title" in template_content
+        assert "extends" in template_content
+        assert "default:database.html" in template_content
+        assert "test_database" in template_content
+
+    def test_generate_database_template_default_title(self, generator):
+        """Test database template with default title."""
+        template_content = generator.generate_database_template()
+
+        assert "Test_Database Database" in template_content
+
+    def test_save_assets(self, generator):
+        """Test saving generated assets to files."""
+        metadata = {"title": "Test", "description": "Test DB"}
+        css_content = "body { color: red; }"
+        js_content = "console.log('test');"
+        templates = {"database-test_database.html": "<html>Test</html>"}
+
+        generator.save_assets(metadata, css_content, js_content, templates)
+
+        # Check files were created
+        assert (generator.output_path / "metadata.json").exists()
+        assert (generator.output_path / "static" / "custom.css").exists()
+        assert (generator.output_path / "static" / "custom.js").exists()
+        assert (generator.output_path / "templates" / "database-test_database.html").exists()
+
+        # Check content
+        with open(generator.output_path / "metadata.json") as f:
+            saved_metadata = json.load(f)
+        assert saved_metadata == metadata
+
+        with open(generator.output_path / "static" / "custom.css") as f:
+            saved_css = f.read()
+        assert saved_css == css_content
+
+    def test_save_assets_creates_directories(self, generator):
+        """Test that save_assets creates necessary directories."""
+        # Don't call create_base_structure first
+        metadata = {"title": "Test"}
+
+        generator.save_assets(metadata)
+
+        # Should have created the directories
+        assert generator.output_path.exists()
+        assert (generator.output_path / "templates").exists()
+        assert (generator.output_path / "static").exists()
+        assert (generator.output_path / "static" / "images").exists()
+
+    def test_metadata_with_source_url(self, generator):
+        """Test metadata generation with source URL."""
+        metadata = generator.generate_metadata_template(
+            title="Test Database",
+            description="A test database",
+            source_url="https://example.com/data",
+        )
+
+        assert metadata["source_url"] == "https://example.com/data"
+
+    def test_metadata_with_custom_license(self, generator):
+        """Test metadata generation with custom license."""
+        metadata = generator.generate_metadata_template(
+            title="Test Database", description="A test database", license_type="MIT"
+        )
+
+        assert metadata["license"] == "MIT"
+
+    def test_customization_object(self, generator):
+        """Test that generator has customization object."""
+        assert hasattr(generator, "customization")
+        assert generator.customization.database_name == "test_database"
+        assert generator.customization.base_path == generator.output_path
+
+</document_content>
+</document>
+<document index="16">
+<source>./tests/test_project.py</source>
+<document_content>
+"""
+Tests for ZeekerProjectManager - project management functionality.
+"""
+
+import textwrap
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+import pytest
+
+from zeeker.core.project import ZeekerProjectManager
+
+
+class TestZeekerProjectManager:
+    """Test project management functionality."""
+
+    @pytest.fixture
+    def manager(self, temp_dir):
+        """Create a ZeekerProjectManager for testing."""
+        return ZeekerProjectManager(temp_dir)
+
+    def test_manager_initialization(self, manager, temp_dir):
+        """Test manager initializes with correct paths."""
+        assert manager.project_path == temp_dir
+        assert manager.toml_path == temp_dir / "zeeker.toml"
+        assert manager.resources_path == temp_dir / "resources"
+
+    def test_manager_default_path(self):
+        """Test manager defaults to current working directory."""
+        manager = ZeekerProjectManager()
+        assert manager.project_path == Path.cwd()
+
+    def test_is_project_root_false(self, manager):
+        """Test is_project_root returns False when no zeeker.toml."""
+        assert not manager.is_project_root()
+
+    def test_is_project_root_true(self, manager):
+        """Test is_project_root returns True when zeeker.toml exists."""
+        manager.toml_path.write_text("[project]\nname = 'test'")
+        assert manager.is_project_root()
+
+    def test_init_project_success(self, manager):
+        """Test successful project initialization."""
+        result = manager.init_project("test_project")
+
+        assert result.is_valid
+        assert len(result.errors) == 0
+        assert "Initialized Zeeker project" in result.info[0]
+
+        # Check files created
+        assert manager.toml_path.exists()
+        assert manager.resources_path.exists()
+        assert (manager.resources_path / "__init__.py").exists()
+        assert (manager.project_path / ".gitignore").exists()
+        assert (manager.project_path / "README.md").exists()
+
+        # Check TOML content
+        toml_content = manager.toml_path.read_text()
+        assert "test_project" in toml_content
+        assert "test_project.db" in toml_content
+
+    def test_init_project_already_exists(self, manager):
+        """Test project initialization fails when project already exists."""
+        manager.toml_path.write_text("[project]\nname = 'existing'")
+
+        result = manager.init_project("test_project")
+
+        assert not result.is_valid
+        assert "already contains zeeker.toml" in result.errors[0]
+
+    def test_load_project_success(self, manager):
+        """Test loading an existing project."""
+        # Create a test project file
+        toml_content = textwrap.dedent(
+            """[project]
+name = "test_project"
+database = "test_project.db"
+
+[resource.users]
+description = "User data"
+facets = ["role", "department"]
+"""
+        )
+        manager.toml_path.write_text(toml_content)
+
+        project = manager.load_project()
+
+        assert project.name == "test_project"
+        assert project.database == "test_project.db"
+        assert "users" in project.resources
+        assert project.resources["users"]["description"] == "User data"
+
+    def test_load_project_not_found(self, manager):
+        """Test loading project fails when not found."""
+        with pytest.raises(ValueError, match="Not a Zeeker project"):
+            manager.load_project()
+
+    def test_add_resource_success(self, manager):
+        """Test adding a resource successfully."""
+        # Initialize project first
+        manager.init_project("test_project")
+
+        result = manager.add_resource(
+            "users", description="User account data", facets=["role", "department"], size=50
+        )
+
+        assert result.is_valid
+        assert len(result.errors) == 0
+        assert "Created resource" in result.info[0]
+
+        # Check resource file created
+        resource_file = manager.resources_path / "users.py"
+        assert resource_file.exists()
+
+        # Check file content
+        content = resource_file.read_text()
+        assert "def fetch_data():" in content
+        assert "users" in content
+
+        # Check project updated
+        project = manager.load_project()
+        assert "users" in project.resources
+        assert project.resources["users"]["description"] == "User account data"
+        assert project.resources["users"]["facets"] == ["role", "department"]
+        assert project.resources["users"]["size"] == 50
+
+    def test_add_resource_outside_project(self, manager):
+        """Test adding resource fails outside project."""
+        result = manager.add_resource("users", "User data")
+
+        assert not result.is_valid
+        assert "Not in a Zeeker project" in result.errors[0]
+
+    def test_add_resource_already_exists(self, manager):
+        """Test adding resource fails when it already exists."""
+        manager.init_project("test_project")
+        manager.add_resource("users", "User data")
+
+        # Try to add again
+        result = manager.add_resource("users", "User data again")
+
+        assert not result.is_valid
+        assert "already exists" in result.errors[0]
+
+    def test_generate_resource_template(self, manager):
+        """Test resource template generation."""
+        template = manager._generate_resource_template("test_resource")
+
+        assert "test_resource" in template
+        assert "def fetch_data():" in template
+        assert "sqlite-utils" in template
+        assert "TODO: Implement" in template
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_build_database_success(self, mock_db_class, manager):
+        """Test successful database build."""
+        # Setup project
+        manager.init_project("test_project")
+        manager.add_resource("users", "User data")
+
+        # Create mock resource with fetch_data
+        resource_content = """
+def fetch_data():
+    return [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        # Mock database
+        mock_db = MagicMock()
+        mock_db_class.return_value = mock_db
+
+        result = manager.build_database()
+
+        assert result.is_valid
+        assert "Database built successfully" in result.info[-2]  # Second to last info message
+        assert "Generated Datasette metadata" in result.info[-1]  # Last info message
+
+        # Check database operations
+        mock_db.__getitem__.assert_called_with("users")
+
+        # Check metadata file created
+        metadata_file = manager.project_path / "metadata.json"
+        assert metadata_file.exists()
+
+    def test_build_database_outside_project(self, manager):
+        """Test build fails outside project."""
+        result = manager.build_database()
+
+        assert not result.is_valid
+        assert "Not in a Zeeker project" in result.errors[0]
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_build_database_missing_resource_file(self, mock_db_class, manager):
+        """Test build fails with missing resource file."""
+        manager.init_project("test_project")
+
+        # Add resource to config but don't create file
+        project = manager.load_project()
+        project.resources["missing"] = {"description": "Missing resource"}
+        project.save_toml(manager.toml_path)
+
+        mock_db = MagicMock()
+        mock_db_class.return_value = mock_db
+
+        result = manager.build_database()
+
+        assert not result.is_valid
+        assert "Resource file not found" in result.errors[0]
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_build_database_no_fetch_function(self, mock_db_class, manager):
+        """Test build fails when resource has no fetch_data function."""
+        manager.init_project("test_project")
+        manager.add_resource("users", "User data")
+
+        # Create resource without fetch_data function
+        (manager.resources_path / "users.py").write_text("# No fetch_data function")
+
+        mock_db = MagicMock()
+        mock_db_class.return_value = mock_db
+
+        result = manager.build_database()
+
+        assert not result.is_valid
+        assert "missing fetch_data() function" in result.errors[0]
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_build_database_invalid_data_type(self, mock_db_class, manager):
+        """Test build fails when fetch_data returns wrong type."""
+        manager.init_project("test_project")
+        manager.add_resource("users", "User data")
+
+        # Create resource that returns wrong type
+        resource_content = """
+def fetch_data():
+    return "not a list"
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        mock_db = MagicMock()
+        mock_db_class.return_value = mock_db
+
+        result = manager.build_database()
+
+        assert not result.is_valid
+        assert "must return a list of dictionaries" in result.errors[0]
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_build_database_with_transform(self, mock_db_class, manager):
+        """Test build with optional transform_data function."""
+        manager.init_project("test_project")
+        manager.add_resource("users", "User data")
+
+        # Create resource with both fetch_data and transform_data
+        resource_content = """
+def fetch_data():
+    return [{"id": 1, "name": "alice"}, {"id": 2, "name": "bob"}]
+
+def transform_data(data):
+    for item in data:
+        item["name"] = item["name"].title()
+    return data
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        mock_db = MagicMock()
+        mock_table = MagicMock()
+        mock_db.__getitem__.return_value = mock_table
+        mock_db_class.return_value = mock_db
+
+        result = manager.build_database()
+
+        assert result.is_valid
+
+        # Check that insert_all was called (transform_data should have been used)
+        mock_table.insert_all.assert_called_once()
+        call_args = mock_table.insert_all.call_args[0]
+        data = call_args[0]
+
+        # The data should be transformed (names capitalized)
+        assert any(item["name"] == "Alice" for item in data)
+        assert any(item["name"] == "Bob" for item in data)
+
+</document_content>
+</document>
+<document index="17">
+<source>./tests/test_validator.py</source>
+<document_content>
+"""
+Tests for ZeekerValidator - focusing on safety-critical template validation.
+"""
+
+import pytest
+
+from zeeker.core.validator import ZeekerValidator
+
+
+class TestTemplateValidation:
+    """Test template name validation - critical for site safety."""
+
+    @pytest.fixture
+    def validator(self):
+        return ZeekerValidator()
+
+    @pytest.mark.parametrize(
+        "template_name",
+        [
+            "database.html",
+            "table.html",
+            "index.html",
+            "query.html",
+            "row.html",
+            "error.html",
+            "base.html",
+        ],
+    )
+    def test_banned_templates_rejected(self, validator, template_name):
+        """Banned templates must be rejected to prevent breaking core functionality."""
+        result = validator.validate_template_name(template_name, "test_db")
+
+        assert not result.is_valid
+        assert len(result.errors) == 1
+        assert "BANNED" in result.errors[0]
+        assert "database-test_db.html" in result.errors[0]
+
+    @pytest.mark.parametrize(
+        "template_name",
+        [
+            "database-legal_news.html",
+            "table-legal_news-headlines.html",
+            "custom-legal_news-dashboard.html",
+            "_partial-header.html",
+            "custom-anything.html",
+        ],
+    )
+    def test_safe_templates_accepted(self, validator, template_name):
+        """Safe template names should be accepted."""
+        result = validator.validate_template_name(template_name, "legal_news")
+
+        assert result.is_valid
+        assert len(result.errors) == 0
+
+    def test_unsafe_template_gets_warning(self, validator):
+        """Templates that don't follow recommended patterns get warnings."""
+        result = validator.validate_template_name("my-custom-page.html", "test_db")
+
+        assert result.is_valid  # Not banned, just not recommended
+        assert len(result.warnings) == 1
+        assert "doesn't follow guide's recommended patterns" in result.warnings[0]
+
+    def test_sanitize_database_name(self, validator):
+        """Database name sanitization should handle special characters."""
+        # Simple name unchanged
+        assert validator.sanitize_database_name("simple_name") == "simple_name"
+
+        # Spaces become dashes with hash suffix (using actual computed hash)
+        result = validator.sanitize_database_name("legal news")
+        assert result.startswith("legal-news-")
+        assert len(result.split("-")[-1]) == 6  # MD5 hash suffix
+
+        # Complex name gets hash suffix
+        sanitized = validator.sanitize_database_name("Legal News & Cases!")
+        assert sanitized.startswith("Legal-News---Cases-")
+        assert len(sanitized.split("-")[-1]) == 6  # MD5 hash suffix
+
+
+class TestMetadataValidation:
+    """Test metadata validation for Datasette compliance."""
+
+    @pytest.fixture
+    def validator(self):
+        return ZeekerValidator()
+
+    def test_valid_metadata_passes(self, validator):
+        """Complete, valid metadata should pass validation."""
+        metadata = {
+            "title": "Test Database",
+            "description": "A test database",
+            "extra_css_urls": ["/static/databases/test_db/custom.css"],
+            "extra_js_urls": ["/static/databases/test_db/custom.js"],
+            "databases": {"test_db": {"description": "Test", "title": "Test DB"}},
+        }
+
+        result = validator.validate_metadata(metadata)
+        assert result.is_valid
+        assert len(result.errors) == 0
+
+    def test_missing_databases_section_warns(self, validator):
+        """Missing databases section should generate warning."""
+        metadata = {"title": "Test", "description": "Test"}
+
+        result = validator.validate_metadata(metadata)
+        assert result.is_valid
+        assert any("databases" in warning for warning in result.warnings)
+
+    def test_missing_recommended_fields_warns(self, validator):
+        """Missing title/description should generate warnings."""
+        metadata = {"databases": {"test": {}}}
+
+        result = validator.validate_metadata(metadata)
+        assert result.is_valid
+        assert any("title" in warning for warning in result.warnings)
+        assert any("description" in warning for warning in result.warnings)
+
+    def test_wrong_css_url_pattern_warns(self, validator):
+        """CSS URLs not following guide pattern should warn."""
+        metadata = {
+            "title": "Test",
+            "description": "Test",
+            "extra_css_urls": ["/wrong/path/style.css"],
+        }
+
+        result = validator.validate_metadata(metadata)
+        assert result.is_valid
+        assert any(
+            "CSS URL" in warning and "guide pattern" in warning for warning in result.warnings
+        )
+
+    def test_invalid_json_structure_fails(self, validator):
+        """Metadata that can't be serialized to JSON should fail."""
+        # Create circular reference that can't be JSON serialized
+        metadata = {"title": "Test"}
+        metadata["self"] = metadata
+
+        result = validator.validate_metadata(metadata)
+        assert not result.is_valid
+        assert any("JSON structure" in error for error in result.errors)
+
+
+class TestFileStructureValidation:
+    """Test file structure validation."""
+
+    @pytest.fixture
+    def validator(self):
+        return ZeekerValidator()
+
+    def test_valid_structure_passes(self, validator, sample_assets_dir):
+        """Valid assets directory should pass validation."""
+        result = validator.validate_file_structure(sample_assets_dir, "test_db")
+        assert result.is_valid
+
+    def test_nonexistent_path_fails(self, validator, temp_dir):
+        """Non-existent assets path should fail."""
+        fake_path = temp_dir / "nonexistent"
+        result = validator.validate_file_structure(fake_path, "test_db")
+
+        assert not result.is_valid
+        assert "does not exist" in result.errors[0]
+
+    def test_banned_template_in_structure_fails(self, validator, sample_assets_dir):
+        """Banned templates in structure should fail validation."""
+        templates_dir = sample_assets_dir / "templates"
+        (templates_dir / "database.html").write_text("<html>Banned template</html>")
+
+        result = validator.validate_file_structure(sample_assets_dir, "test_db")
+        assert not result.is_valid
+        assert any("BANNED" in error for error in result.errors)
+
+    def test_invalid_metadata_json_fails(self, validator, sample_assets_dir):
+        """Invalid metadata.json should fail validation."""
+        (sample_assets_dir / "metadata.json").write_text("invalid json {")
+
+        result = validator.validate_file_structure(sample_assets_dir, "test_db")
+        assert not result.is_valid
+        assert any("metadata.json" in error for error in result.errors)
+
+    def test_unexpected_directory_warns(self, validator, sample_assets_dir):
+        """Unexpected directories should generate warnings."""
+        (sample_assets_dir / "weird_directory").mkdir()
+
+        result = validator.validate_file_structure(sample_assets_dir, "test_db")
+        assert result.is_valid
+        assert any("Unexpected directory" in warning for warning in result.warnings)
+
+</document_content>
+</document>
+</documents>
+<documents>
+<document index="1">
+<source>./README.md</source>
+<document_content>
+# Zeeker Database Management Tool
+
+A Python library and CLI tool for creating, managing, and deploying databases and customizations for Zeeker's Datasette-based system. Zeeker uses a **three-pass asset system** that allows you to manage complete database projects and customize individual databases without breaking overall site functionality.
+
+## 🚀 Features
+
+- **Complete Database Projects**: Create, build, and deploy entire databases with data resources
+- **Safe UI Customizations**: Template validation prevents breaking core Datasette functionality  
+- **Database-Specific Styling**: CSS and JavaScript scoped to individual databases
+- **S3 Deployment**: Direct deployment to S3-compatible storage for both databases and assets
+- **sqlite-utils Integration**: Robust database operations with automatic schema detection
+- **Validation & Testing**: Comprehensive validation before deployment
+- **Best Practices**: Generates code following Datasette and web development standards
+
+## 🛠 Two Workflows
+
+Zeeker supports two complementary workflows:
+
+### 📊 **Database Projects** (Primary Workflow)
+Create and manage complete databases with data resources:
+- Initialize projects with `zeeker init`
+- Add data resources with `zeeker add`
+- Build SQLite databases with `zeeker build`
+- Deploy databases with `zeeker deploy`
+
+### 🎨 **UI Customizations** (Secondary Workflow)  
+Customize the appearance of individual databases:
+- Generate UI assets with `zeeker assets generate`
+- Validate customizations with `zeeker assets validate`
+- Deploy UI assets with `zeeker assets deploy`
+
+## 📦 Installation
+
+### Using uv (Recommended)
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd zeeker
+
+# Install dependencies with uv
+uv sync
+
+# Install in development mode
+uv pip install -e .
+```
+
+### Using pip
+
+```bash
+pip install zeeker
+```
+
+## 🛠 Quick Start
+
+### Database Project Workflow
+
+#### 1. Create a New Database Project
+
+```bash
+# Initialize a new project
+uv run zeeker init legal_news_project
+
+# Navigate to project directory
+cd legal_news_project
+```
+
+#### 2. Add Data Resources
+
+```bash
+# Add a resource for legal articles
+uv run zeeker add articles \
+  --description "Legal news articles" \
+  --facets category --facets jurisdiction \
+  --sort "published_date desc" \
+  --size 25
+
+# Add a resource for court cases  
+uv run zeeker add court_cases \
+  --description "Court case summaries" \
+  --facets court_level --facets case_type
+```
+
+#### 3. Implement Data Fetching
+
+Edit `resources/articles.py`:
+```python
+def fetch_data():
+    """Fetch legal news articles."""
+    # Your data fetching logic here
+    # Could be API calls, file reading, web scraping, etc.
+    return [
+        {
+            "id": 1,
+            "title": "New Privacy Legislation Passed",
+            "content": "The legislature has passed...",
+            "category": "privacy",
+            "jurisdiction": "singapore",
+            "published_date": "2024-01-15"
+        },
+        # ... more articles
+    ]
+```
+
+#### 4. Build and Deploy Database
+
+```bash
+# Build SQLite database from all resources
+uv run zeeker build
+
+# Deploy database to S3
+uv run zeeker deploy
+```
+
+### UI Customization Workflow
+
+#### 1. Generate UI Assets for a Database
+
+```bash
+# Generate customization for the legal_news_project database
+uv run zeeker assets generate legal_news_project ./ui-customization \
+  --title "Legal News Database" \
+  --description "Singapore legal news and commentary" \
+  --primary-color "#e74c3c" \
+  --accent-color "#c0392b"
+```
+
+This creates:
+```
+ui-customization/
+├── metadata.json              # Datasette metadata configuration
+├── static/
+│   ├── custom.css            # Database-specific CSS
+│   ├── custom.js             # Database-specific JavaScript
+│   └── images/               # Directory for custom images
+└── templates/
+    └── database-legal_news_project.html  # Database-specific template
+```
+
+#### 2. Validate UI Customization
+
+```bash
+# Validate the customization for compliance
+uv run zeeker assets validate ./ui-customization legal_news_project
+```
+
+The validator checks for:
+- ✅ Safe template names (prevents breaking core functionality)
+- ✅ Proper metadata structure
+- ✅ Best practice recommendations
+- ❌ Banned template names that would break the site
+
+#### 3. Deploy UI Assets
+
+```bash
+# Set up environment variables
+export S3_BUCKET="your-bucket-name"
+export S3_ENDPOINT_URL="https://sin1.contabostorage.com"  # Optional
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+
+# Deploy (dry run first)
+uv run zeeker assets deploy ./ui-customization legal_news_project --dry-run
+
+# Deploy for real
+uv run zeeker assets deploy ./ui-customization legal_news_project
+```
+
+#### 4. List Deployed Customizations
+
+```bash
+# See all database UI customizations in S3
+uv run zeeker assets list
+```
+
+## 📚 How It Works
+
+### Three-Pass Asset System
+
+Zeeker processes assets in three passes:
+
+1. **Pass 1**: Download database files (`.db` files)
+2. **Pass 2**: Set up base assets (shared templates, CSS, etc.)
+3. **Pass 3**: Apply your database-specific customizations
+
+Your customizations **overlay** the base assets, so you only need to provide files you want to change.
+
+### S3 Structure
+
+```
+s3://your-bucket/
+├── latest/                          # Your .db files
+│   └── legal_news_project.db
+└── assets/
+    ├── default/                     # Base assets (auto-managed)
+    │   ├── templates/
+    │   ├── static/
+    │   └── metadata.json
+    └── databases/                   # Your UI customizations
+        └── legal_news_project/      # Matches your .db filename
+            ├── templates/
+            ├── static/
+            └── metadata.json
+```
+
+## 📊 Database Project Guide
+
+### Project Structure
+
+A Zeeker project consists of:
+
+```
+my-project/
+├── zeeker.toml              # Project configuration
+├── resources/               # Python modules for data fetching
+│   ├── __init__.py
+│   ├── articles.py          # Resource: articles table
+│   └── court_cases.py       # Resource: court_cases table
+├── my-project.db            # Generated SQLite database (gitignored)
+├── metadata.json            # Generated Datasette metadata
+├── .gitignore               # Git ignore rules
+└── README.md                # Project documentation
+```
+
+### Resource Development
+
+Each resource is a Python module that implements `fetch_data()`:
+
+```python
+"""
+Articles resource for legal news data.
+"""
+
+def fetch_data():
+    """
+    Fetch data for the articles table.
+    
+    Returns:
+        List[Dict[str, Any]]: List of records to insert into database
+    """
+    # Your data fetching logic here
+    # This could be:
+    # - API calls (requests.get, etc.)
+    # - File reading (CSV, JSON, XML, etc.) 
+    # - Database queries (from other sources)
+    # - Web scraping (BeautifulSoup, Scrapy, etc.)
+    # - Any other data source
+    
+    return [
+        {
+            "id": 1,
+            "title": "Legal Update",
+            "content": "...",
+            "published_date": "2024-01-15",
+            "tags": ["privacy", "legislation"]  # JSON stored automatically
+        },
+        # ... more records
+    ]
+
+def transform_data(raw_data):
+    """
+    Optional: Transform/clean data before database insertion.
+    """
+    # Clean and transform data
+    for item in raw_data:
+        item['title'] = item['title'].strip().title()
+        # Add computed fields, clean data, etc.
+    return raw_data
+```
+
+### sqlite-utils Integration
+
+Zeeker uses Simon Willison's sqlite-utils for robust database operations:
+
+- **Automatic table creation** with proper schema detection
+- **Type inference** from data (INTEGER, TEXT, REAL, JSON)
+- **Safe data insertion** without SQL injection risks
+- **JSON support** for complex data structures
+- **Better error handling** than raw SQL
+
+## 🎨 UI Customization Guide
+
+### CSS Customization
+
+Create scoped styles that only affect your database:
+
+```css
+/* Scope to your database to avoid conflicts */
+[data-database="legal_news_project"] {
+    --color-accent-primary: #e74c3c;
+    --color-accent-secondary: #c0392b;
+}
+
+/* Custom header styling */
+.page-database[data-database="legal_news_project"] .database-title {
+    color: var(--color-accent-primary);
+    text-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
+/* Custom table styling */
+.page-database[data-database="legal_news_project"] .card {
+    border-left: 4px solid var(--color-accent-primary);
+    transition: transform 0.2s ease;
+}
+```
+
+### JavaScript Customization
+
+Add database-specific functionality:
+
+```javascript
+// Defensive programming - ensure we're on the right database
+function isDatabasePage() {
+    return window.location.pathname.includes('/legal_news_project') ||
+           document.body.dataset.database === 'legal_news_project';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!isDatabasePage()) {
+        return; // Exit if not our database
+    }
+
+    console.log('Custom JS loaded for legal_news_project database');
+    
+    // Add custom search suggestions
+    const searchInput = document.querySelector('.hero-search-input');
+    if (searchInput) {
+        searchInput.placeholder = 'Search legal news, cases, legislation...';
+    }
+});
+```
+
+### Template Customization
+
+Create database-specific templates using **safe naming patterns**:
+
+#### ✅ Safe Template Names
+
+```
+database-legal_news_project.html          # Database-specific page
+table-legal_news_project-articles.html    # Table-specific page
+custom-legal_news_project-dashboard.html  # Custom page
+_partial-header.html                       # Partial template
+```
+
+#### ❌ Banned Template Names
+
+```
+database.html     # Would break ALL database pages
+table.html        # Would break ALL table pages
+index.html        # Would break homepage
+query.html        # Would break SQL interface
+```
+
+#### Example Database Template
+
+```html
+{% extends "default:database.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<meta name="description" content="Singapore legal news database">
+{% endblock %}
+
+{% block content %}
+<div class="legal-news-banner">
+    <h1>📰 Singapore Legal News</h1>
+    <p>Latest legal developments and court decisions</p>
+</div>
+
+{{ super() }}
+{% endblock %}
+```
+
+### Metadata Configuration
+
+Provide a complete Datasette metadata structure:
+
+```json
+{
+  "title": "Legal News Database",
+  "description": "Singapore legal news and commentary",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "source_url": "https://example.com/legal-news",
+  "extra_css_urls": [
+    "/static/databases/legal_news_project/custom.css"
+  ],
+  "extra_js_urls": [
+    "/static/databases/legal_news_project/custom.js"
+  ],
+  "databases": {
+    "legal_news_project": {
+      "description": "Latest Singapore legal developments",
+      "title": "Legal News"
+    }
+  }
+}
+```
+
+## 🔧 CLI Reference
+
+### Database Project Commands
+
+| Command | Description |
+|---------|-------------|
+| `zeeker init PROJECT_NAME` | Initialize new database project |
+| `zeeker add RESOURCE_NAME` | Add data resource to project |
+| `zeeker build` | Build SQLite database from resources |
+| `zeeker deploy` | Deploy database to S3 |
+
+### UI Customization Commands
+
+| Command | Description |
+|---------|-------------|
+| `zeeker assets generate DATABASE_NAME OUTPUT_PATH` | Generate UI customization assets |
+| `zeeker assets validate ASSETS_PATH DATABASE_NAME` | Validate UI assets |
+| `zeeker assets deploy LOCAL_PATH DATABASE_NAME` | Deploy UI assets to S3 |
+| `zeeker assets list` | List deployed UI customizations |
+
+### Project Commands Options
+
+```bash
+# Initialize project
+zeeker init PROJECT_NAME [--path PATH]
+
+# Add resource with Datasette options
+zeeker add RESOURCE_NAME \
+  --description TEXT \
+  --facets FIELD \
+  --sort FIELD \
+  --size NUMBER
+
+# Deploy with dry run
+zeeker deploy [--dry-run]
+```
+
+### UI Asset Commands Options
+
+```bash
+# Generate UI assets
+zeeker assets generate DATABASE_NAME OUTPUT_PATH \
+  --title TEXT \
+  --description TEXT \
+  --primary-color TEXT \
+  --accent-color TEXT
+
+# Deploy UI assets with options
+zeeker assets deploy LOCAL_PATH DATABASE_NAME \
+  --dry-run \
+  --sync \
+  --clean \
+  --yes \
+  --diff
+```
+
+## 🧪 Development
+
+### Setup Development Environment
+
+```bash
+# Clone and setup
+git clone <repository-url>
+cd zeeker
+uv sync
+
+# Install development dependencies
+uv sync --group dev
+
+# Run tests
+uv run pytest
+
+# Format code (follows black style)
+uv run black .
+
+# Run specific test categories
+uv run pytest -m unit          # Unit tests only
+uv run pytest -m integration   # Integration tests only
+uv run pytest -m cli          # CLI tests only
+```
+
+### Testing
+
+The project has comprehensive test coverage:
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=zeeker
+
+# Run specific test file
+uv run pytest tests/test_project.py
+
+# Run specific test
+uv run pytest tests/test_validator.py::TestTemplateValidation::test_banned_templates_rejected
+```
+
+### Project Structure
+
+```
+zeeker/
+├── zeeker/
+│   ├── __init__.py
+│   ├── cli.py                 # Main CLI interface
+│   └── core/                  # Core functionality modules
+│       ├── __init__.py
+│       ├── project.py         # Project management
+│       ├── validator.py       # Asset validation
+│       ├── generator.py       # Asset generation
+│       ├── deployer.py        # S3 deployment
+│       └── types.py           # Data structures
+├── tests/
+│   ├── conftest.py           # Test fixtures and configuration
+│   ├── test_project.py       # Project management tests
+│   ├── test_validator.py     # Validation tests
+│   ├── test_generator.py     # Generation tests
+│   └── test_deployer.py      # Deployment tests
+├── database_customization_guide.md  # Detailed user guide
+├── pyproject.toml            # Project configuration
+└── README.md                 # This file
+```
+
+## 🔒 Safety Features
+
+### Template Validation
+
+The validator automatically prevents dangerous template names:
+
+- **Banned Templates**: `database.html`, `table.html`, `index.html`, etc.
+- **Safe Patterns**: `database-DBNAME.html`, `table-DBNAME-TABLE.html`, `custom-*.html`
+- **Automatic Blocking**: System rejects banned templates to protect core functionality
+
+### CSS/JS Scoping
+
+Generated code automatically scopes to your database:
+
+```css
+/* Automatically scoped to prevent conflicts */
+[data-database="your_database"] .custom-style {
+    /* Your styles here */
+}
+```
+
+### Database Operations
+
+- **sqlite-utils Integration**: Automatic schema detection and type inference
+- **Safe Data Insertion**: No SQL injection risks
+- **JSON Support**: Complex data structures handled automatically
+- **Error Handling**: Comprehensive validation and error reporting
+
+## 🌐 Environment Variables
+
+Required for deployment:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `S3_BUCKET` | S3 bucket name | ✅ |
+| `AWS_ACCESS_KEY_ID` | AWS access key | ✅ |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | ✅ |
+| `S3_ENDPOINT_URL` | S3 endpoint URL | ⚪ Optional |
+
+## 📖 Examples
+
+### Complete Database Project Example
+
+```bash
+# Create project for Singapore legal data
+uv run zeeker init singapore_legal
+
+cd singapore_legal
+
+# Add resources
+uv run zeeker add court_cases \
+  --description "Singapore court case summaries" \
+  --facets court_level --facets case_type \
+  --sort "decision_date desc"
+
+uv run zeeker add legislation \
+  --description "Singapore legislation and amendments" \
+  --facets ministry --facets status \
+  --sort "effective_date desc"
+
+# Implement data fetching in resources/*.py files
+# Then build and deploy
+uv run zeeker build
+uv run zeeker deploy
+```
+
+### UI Customization Examples
+
+```bash
+# Generate Legal Database Customization
+uv run zeeker assets generate singapore_legal ./legal-customization \
+  --title "Singapore Legal Database" \
+  --description "Court cases and legislation for Singapore" \
+  --primary-color "#2c3e50" \
+  --accent-color "#e67e22"
+
+# Generate Tech News Customization
+uv run zeeker assets generate tech_news ./tech-customization \
+  --title "Tech News" \
+  --description "Latest technology news and trends" \
+  --primary-color "#9b59b6" \
+  --accent-color "#8e44ad"
+
+# Always validate before deploying
+uv run zeeker assets validate ./legal-customization singapore_legal
+
+# Then deploy UI assets
+uv run zeeker assets deploy ./legal-customization singapore_legal
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make changes and add tests
+4. Format code: `uv run black .`
+5. Run tests: `uv run pytest`
+6. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the terms specified in the project configuration.
+
+## 🆘 Troubleshooting
+
+### Database Project Issues
+
+**Build Fails**
+- Check that all resource files have `fetch_data()` function
+- Verify data is returned as list of dictionaries
+- Check for syntax errors in resource files
+- Ensure you're in a project directory (has `zeeker.toml`)
+
+**Deploy Fails**
+- Verify environment variables are set correctly
+- Check that database file was built successfully
+- Ensure S3 bucket exists and has correct permissions
+
+### UI Customization Issues
+
+**Templates Not Loading**
+- Check template names don't use banned patterns
+- Verify template follows `database-DBNAME.html` pattern
+- Look at browser page source for template debug info
+
+**Assets Not Loading**
+- Verify S3 paths match `/static/databases/DATABASE_NAME/` pattern  
+- Check S3 permissions and bucket configuration
+- Restart Datasette container after deployment
+
+**Validation Errors**
+- Read error messages carefully - they provide specific fixes
+- Use `--dry-run` flag to test deployments safely
+- Check the detailed guide in `database_customization_guide.md`
+
+For detailed troubleshooting, see the [Database Customization Guide](database_customization_guide.md).
+</document_content>
+</document>
+<document index="2">
+<source>./database_customization_guide.md</source>
+<document_content>
+# Database Customization Guide
+
+## Overview
+
+Zeeker uses a **three-pass asset system** that lets you customize individual databases without breaking the overall site. Here's how to add your own templates, CSS, JavaScript, and metadata.
+
+## How It Works
+
+When the container starts, it runs three passes:
+
+1. **Pass 1**: Download database files (`.db` files)
+2. **Pass 2**: Set up base assets (shared templates, CSS, etc.)
+3. **Pass 3**: Apply your database-specific customizations
+
+Your customizations **overlay** the base assets, so you only need to provide files you want to change.
+
+## S3 Structure
+
+```
+s3://your-bucket/
+├── latest/                          # Your .db files go here
+│   └── your_database.db
+└── assets/
+    ├── default/                     # Base assets (auto-managed)
+    │   ├── templates/
+    │   ├── static/
+    │   ├── plugins/
+    │   └── metadata.json
+    └── databases/                   # Your customizations go here
+        └── your_database/           # Folder matches your .db filename
+            ├── templates/           # Custom templates (optional)
+            ├── static/              # Custom CSS/JS (optional)
+            └── metadata.json        # Custom metadata (optional)
+```
+
+## Quick Start
+
+### 1. Find Your Database Name
+
+Your customization folder name must match your database filename (without `.db`):
+
+- Database file: `legal_news.db` → Folder: `databases/legal_news/`
+- Database file: `court_cases.db` → Folder: `databases/court_cases/`
+
+### 2. Create Your Customization Folder
+
+Upload to S3 at: `s3://your-bucket/assets/databases/your_database/`
+
+### 3. Add What You Need
+
+You only need to upload files you want to customize. Everything else uses the base assets.
+
+## Customization Options
+
+### Custom Metadata (`metadata.json`)
+
+**Important**: You must provide a complete Datasette metadata.json structure, not just database-specific parts. The system performs a full merge.
+
+```json
+{
+  "title": "Legal News Database",
+  "description": "Singapore legal news and commentary", 
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "source_url": "https://example.com/legal-news",
+  "extra_css_urls": [
+    "/static/databases/legal_news/custom.css"
+  ],
+  "extra_js_urls": [
+    "/static/databases/legal_news/custom.js"  
+  ],
+  "databases": {
+    "legal_news": {
+      "description": "Latest Singapore legal developments",
+      "title": "Legal News"
+    }
+  }
+}
+```
+
+This follows standard Datasette metadata.json format - you can't provide fragments.
+
+**Merging Rules (from the code):**
+- `extra_css_urls` and `extra_js_urls` are **appended** to base URLs (never replaced)
+- `databases.your_database` settings are **added** (won't override global `*` settings)  
+- Other root-level fields like `title`, `description` **replace** base values
+- Nested objects are deep-merged where possible
+
+### Custom CSS (`static/custom.css`)
+
+Override styles for your database:
+
+```css
+/* Custom colors for this database */
+:root {
+    --color-accent-primary: #e74c3c;  /* Red theme */
+    --color-accent-cyan: #e67e22;     /* Orange accents */
+}
+
+/* Database-specific header styling */
+.database-title {
+    color: var(--color-accent-primary);
+    text-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
+/* Custom table styling */
+.page-database .card {
+    border-left: 4px solid var(--color-accent-primary);
+}
+```
+
+### Custom JavaScript (`static/custom.js`)
+
+Add database-specific functionality:
+
+```javascript
+// Custom behavior for this database
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Custom JS loaded for legal news database');
+    
+    // Add custom search suggestions
+    const searchInput = document.querySelector('.hero-search-input');
+    if (searchInput) {
+        searchInput.placeholder = 'Search legal news, cases, legislation...';
+    }
+    
+    // Custom table enhancements
+    enhanceLegalNewsTables();
+});
+
+function enhanceLegalNewsTables() {
+    // Your custom table functionality
+    const tables = document.querySelectorAll('.table-wrapper table');
+    tables.forEach(table => {
+        // Add click handlers, formatting, etc.
+    });
+}
+```
+
+### Custom Templates (`templates/`)
+
+🛡️ **SAFETY FIRST**: General template names like `database.html` are **banned** in database customizations to prevent breaking core functionality.
+
+**❌ BANNED Template Names:**
+- `database.html` - would break all database pages
+- `table.html` - would break all table pages  
+- `index.html` - would break homepage
+- `query.html` - would break SQL interface
+- `row.html` - would break record pages
+- `error.html` - would break error handling
+
+**✅ ALLOWED Template Names:**
+- `database-YOURDB.html` - Database-specific pages
+- `table-YOURDB-TABLENAME.html` - Table-specific pages
+- `custom-YOURDB-dashboard.html` - Custom pages
+- `_partial-header.html` - Partial templates
+- Any name that doesn't conflict with core templates
+
+**Database-Specific Template Examples:**
+
+**`templates/database-legal_news.html`** - Only affects your database
+```html
+{% extends "default:database.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<meta name="description" content="Singapore legal news database">
+{% endblock %}
+
+{% block content %}
+<div class="legal-news-banner">
+    <h1>📰 Singapore Legal News</h1>
+    <p>Latest legal developments and court decisions</p>
+</div>
+
+{{ super() }}
+{% endblock %}
+```
+
+**`templates/table-legal_news-headlines.html`** - Only affects specific table
+```html
+{% extends "default:table.html" %}
+
+{% block content %}
+<div class="headlines-header">
+    <h1>📋 Legal Headlines Archive</h1>
+    <p>Searchable archive of Singapore legal news</p>
+</div>
+
+{{ super() }}
+{% endblock %}
+```
+
+**Why This Is Safer:**
+- ✅ No risk of breaking core Datasette functionality
+- ✅ Templates only affect your specific database/tables
+- ✅ Other databases remain unaffected
+- ✅ System remains functional even if your templates have issues
+- ✅ Clear separation between base templates and customizations
+
+### Debugging Template Names
+
+Datasette has specific template naming rules. To see which templates it looks for:
+
+1. **View page source** in your browser
+2. **Scroll to bottom** and look for a comment like:
+   ```html
+   <!-- Templates considered: *database-mydb.html, database.html -->
+   ```
+3. **The `*` shows which template was used**
+
+**For database-specific templates:**
+- Database page looks for: `database-YOURDB.html`, then `database.html`
+- Table page looks for: `table-YOURDB-TABLENAME.html`, then `table-YOURDB.html`, then `table.html`
+
+**Template Name Sanitization:**
+If your database/table names have spaces or special characters, Datasette sanitizes them:
+- Database: `Legal News` → `Legal-News-a1b2c3` (with MD5 hash)
+- Check page source to see exact names considered
+
+## File Locations After Deployment
+
+Your files get deployed to specific locations:
+
+- **CSS/JS**: `/static/databases/your_database/filename.css`
+- **Templates**: Processed by Jinja2 template engine (not directly accessible)
+- **Metadata**: Merged into main Datasette configuration
+
+**Static Asset URLs:**
+The Zeeker system configures Datasette with `--static static:/app/static`, so your files are accessible at:
+- `https://data.zeeker.sg/static/databases/your_database/custom.css`
+- `https://data.zeeker.sg/static/databases/your_database/custom.js`
+
+## Testing Your Customizations
+
+### 1. Local Testing with uv
+
+```bash
+# Install dependencies
+uv sync
+
+# Test the merge locally
+uv run scripts/manage.py check-assets --verbose
+
+# See what gets loaded
+uv run scripts/manage.py status
+```
+
+### 2. Deploy and Check
+
+```bash
+# Validate templates before deploying (future feature)
+uv run scripts/manage.py validate-templates legal_news
+
+# Upload your customizations to S3
+aws s3 sync ./my-customizations/ s3://bucket/assets/databases/my_database/
+
+# Restart the container to apply changes
+docker compose restart zeeker-datasette
+
+# Check logs for any template validation messages
+docker compose logs -f zeeker-datasette | grep -i template
+```
+
+### 3. Verify in Browser
+
+1. Visit your database page: `/your_database`
+2. Check browser dev tools for your CSS/JS loading
+3. View page source to confirm metadata changes
+
+## Best Practices
+
+### CSS Guidelines
+
+```css
+/* ✅ Good: Scope to your database */
+.page-database .custom-header { }
+.database-card[data-database="your_db"] { }
+
+/* ❌ Avoid: Global changes that affect other databases */
+.card { color: red; }  /* This affects ALL databases */
+```
+
+### JavaScript Guidelines
+
+```javascript
+// ✅ Good: Check if you're on the right database
+if (window.location.pathname.includes('/your_database')) {
+    // Your custom code
+}
+
+// ✅ Good: Defensive programming
+const element = document.querySelector('.specific-element');
+if (element) {
+    // Safe to use element
+}
+
+// ❌ Avoid: Assuming elements exist
+document.querySelector('.might-not-exist').addEventListener(...);  // Could crash
+```
+
+### File Organization
+
+```
+assets/databases/your_database/
+├── static/
+│   ├── custom.css              # Main stylesheet
+│   ├── database-specific.js    # Main JavaScript
+│   └── images/                 # Database-specific images
+│       └── banner.png
+├── templates/
+│   ├── database-your_database.html    # Safe: database-specific
+│   ├── table-your_database-TABLE.html # Safe: table-specific  
+│   └── custom-dashboard.html          # Safe: custom name
+└── metadata.json               # Database configuration
+```
+
+**Template Naming Rules:**
+- ✅ `database-DBNAME.html` - Database-specific pages
+- ✅ `table-DBNAME-TABLENAME.html` - Table-specific pages
+- ✅ `custom-anything.html` - Custom pages
+- ❌ `database.html` - BANNED (would break core functionality)
+- ❌ `table.html` - BANNED (would break core functionality)
+
+## Troubleshooting
+
+### Assets Not Loading?
+
+```bash
+# Check if files exist in S3
+aws s3 ls s3://bucket/assets/databases/your_database/ --recursive
+
+# Check container logs
+docker compose logs zeeker-datasette | grep "your_database"
+
+# Verify merge process
+uv run scripts/manage.py list-databases --verbose
+```
+
+### Templates Being Rejected?
+
+**Symptoms:**
+- Logs show "BANNED TEMPLATE" errors
+- Templates not applying
+- Container starts but customizations missing
+
+**Cause:** You used banned general template names
+
+**Fix:**
+1. **Rename your templates** to database-specific names:
+   ```bash
+   # Instead of:
+   database.html ❌
+   
+   # Use:
+   database-legal_news.html ✅
+   table-legal_news-headlines.html ✅
+   custom-legal_news-dashboard.html ✅
+   ```
+
+2. **Re-upload to S3** with correct names
+3. **Restart container**: `docker compose restart zeeker-datasette`
+
+**Template Validation:**
+The system automatically blocks dangerous template names to protect core functionality. This prevents accidentally breaking the entire site.
+
+### Metadata Not Merging?
+
+1. **Validate JSON syntax**: `cat metadata.json | python -m json.tool`
+2. **Use complete structure**: Must be a valid Datasette metadata.json, not fragments
+3. **Check container logs** for merge errors: `docker compose logs zeeker-datasette | grep metadata`
+4. **Verify paths match**: Database folder name must match .db filename exactly
+
+## Advanced Tips
+
+### Datasette-Specific Features
+
+**CSS Body Classes:**
+Datasette automatically adds CSS classes to the `<body>` tag:
+```css
+/* Target specific databases */
+body.db-your_database .card { }
+
+/* Target specific tables */  
+body.table-your_database-your_table .row { }
+
+/* Target specific columns */
+.col-column_name { }
+```
+
+**Template Variables:**
+All Datasette templates have access to standard variables:
+- `{{ database }}` - Current database name
+- `{{ table }}` - Current table name  
+- `{{ row }}` - Current row data
+- `{{ request }}` - Request object
+- `{{ datasette }}` - Datasette instance
+
+To see which templates Datasette considered for any page:
+
+1. View page source in your browser
+2. Scroll to the bottom and look for a comment like:
+   ```html
+   <!-- Templates considered: *database-mydb.html, database.html -->
+   ```
+3. The `*` shows which template was actually used
+
+This is invaluable for debugging template naming issues.
+
+### Conditional Styling
+
+```css
+/* Different styles based on database */
+[data-database="legal_news"] .card {
+    border-color: #e74c3c;
+}
+
+[data-database="court_cases"] .card {
+    border-color: #3498db;
+}
+```
+
+### Template Inheritance
+
+```html
+<!-- Extend base but customize specific sections -->
+{% extends "default:database.html" %}
+
+{% block nav %}
+{% include "_header.html" %}
+<div class="custom-nav">
+    <!-- Your database-specific navigation -->
+</div>
+{% endblock %}
+```
+
+### JavaScript Modules
+
+```javascript
+// static/modules/legal-search.js
+export function enhanceLegalSearch() {
+    // Reusable search enhancements
+}
+
+// static/database-main.js
+import { enhanceLegalSearch } from './modules/legal-search.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    enhanceLegalSearch();
+});
+```
+
+## Need Help?
+
+1. **Check the code**: Look at existing base templates in `templates/`
+2. **Test locally**: Use `uv run scripts/manage.py` commands
+3. **Ask for help**: Email with your specific use case
+
+The system is designed to be forgiving - if your customizations have errors, the base assets will still work.
+</document_content>
+</document>
+<document index="3">
+<source>./pyproject.toml</source>
+<document_content>
+[project]
+name = "zeeker"
+version = "0.2.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [ "boto3>=1.38.32", "click>=8.2.1", "jinja2>=3.1.6", "pyyaml>=6.0.2", "sqlite-utils>=3.38",]
+license = "MIT"
+
+[dependency-groups]
+dev = [ "black>=25.1.0", "pytest>=8.4.0", "toml>=0.10.2",]
+
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[project.scripts]
+zeeker = "zeeker.cli:cli"
+
+[tool.black]
+line-length = 100
+target-version = [ "py312",]
+include = "\\.pyi?$"
+extend-exclude = "/(\n  # directories\n  \\.eggs\n  | \\.git\n  | \\.hg\n  | \\.mypy_cache\n  | \\.tox\n  | \\.venv\n  | build\n  | dist\n)/\n"
+
+</document_content>
+</document>
+</documents>

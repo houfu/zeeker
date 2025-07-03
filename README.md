@@ -1,15 +1,33 @@
-# Zeeker Database Customization Tool
+# Zeeker Database Management Tool
 
-A Python library and CLI tool for creating, validating, and deploying database customizations for Zeeker's Datasette-based system. Zeeker uses a **three-pass asset system** that allows you to customize individual databases without breaking the overall site functionality.
+A Python library and CLI tool for creating, managing, and deploying databases and customizations for Zeeker's Datasette-based system. Zeeker uses a **three-pass asset system** that allows you to manage complete database projects and customize individual databases without breaking overall site functionality.
 
 ## 🚀 Features
 
-- **Safe Customizations**: Template validation prevents breaking core Datasette functionality
+- **Complete Database Projects**: Create, build, and deploy entire databases with data resources
+- **Safe UI Customizations**: Template validation prevents breaking core Datasette functionality  
 - **Database-Specific Styling**: CSS and JavaScript scoped to individual databases
-- **Complete Asset Management**: Templates, CSS, JavaScript, and metadata in one tool
-- **S3 Deployment**: Direct deployment to S3-compatible storage
+- **S3 Deployment**: Direct deployment to S3-compatible storage for both databases and assets
+- **sqlite-utils Integration**: Robust database operations with automatic schema detection
 - **Validation & Testing**: Comprehensive validation before deployment
 - **Best Practices**: Generates code following Datasette and web development standards
+
+## 🛠 Two Workflows
+
+Zeeker supports two complementary workflows:
+
+### 📊 **Database Projects** (Primary Workflow)
+Create and manage complete databases with data resources:
+- Initialize projects with `zeeker init`
+- Add data resources with `zeeker add`
+- Build SQLite databases with `zeeker build`
+- Deploy databases with `zeeker deploy`
+
+### 🎨 **UI Customizations** (Secondary Workflow)  
+Customize the appearance of individual databases:
+- Generate UI assets with `zeeker assets generate`
+- Validate customizations with `zeeker assets validate`
+- Deploy UI assets with `zeeker assets deploy`
 
 ## 📦 Installation
 
@@ -35,35 +53,95 @@ pip install zeeker
 
 ## 🛠 Quick Start
 
-### 1. Generate a New Database Customization
+### Database Project Workflow
+
+#### 1. Create a New Database Project
 
 ```bash
-# Generate customization for a database called 'legal_news'
-uv run zeeker generate legal_news ./my-customization \
+# Initialize a new project
+uv run zeeker init legal_news_project
+
+# Navigate to project directory
+cd legal_news_project
+```
+
+#### 2. Add Data Resources
+
+```bash
+# Add a resource for legal articles
+uv run zeeker add articles \
+  --description "Legal news articles" \
+  --facets category --facets jurisdiction \
+  --sort "published_date desc" \
+  --size 25
+
+# Add a resource for court cases  
+uv run zeeker add court_cases \
+  --description "Court case summaries" \
+  --facets court_level --facets case_type
+```
+
+#### 3. Implement Data Fetching
+
+Edit `resources/articles.py`:
+```python
+def fetch_data():
+    """Fetch legal news articles."""
+    # Your data fetching logic here
+    # Could be API calls, file reading, web scraping, etc.
+    return [
+        {
+            "id": 1,
+            "title": "New Privacy Legislation Passed",
+            "content": "The legislature has passed...",
+            "category": "privacy",
+            "jurisdiction": "singapore",
+            "published_date": "2024-01-15"
+        },
+        # ... more articles
+    ]
+```
+
+#### 4. Build and Deploy Database
+
+```bash
+# Build SQLite database from all resources
+uv run zeeker build
+
+# Deploy database to S3
+uv run zeeker deploy
+```
+
+### UI Customization Workflow
+
+#### 1. Generate UI Assets for a Database
+
+```bash
+# Generate customization for the legal_news_project database
+uv run zeeker assets generate legal_news_project ./ui-customization \
   --title "Legal News Database" \
   --description "Singapore legal news and commentary" \
   --primary-color "#e74c3c" \
   --accent-color "#c0392b"
 ```
 
-This creates a complete customization structure:
-
+This creates:
 ```
-my-customization/
+ui-customization/
 ├── metadata.json              # Datasette metadata configuration
 ├── static/
 │   ├── custom.css            # Database-specific CSS
 │   ├── custom.js             # Database-specific JavaScript
 │   └── images/               # Directory for custom images
 └── templates/
-    └── database-legal_news.html  # Database-specific template
+    └── database-legal_news_project.html  # Database-specific template
 ```
 
-### 2. Validate Your Customization
+#### 2. Validate UI Customization
 
 ```bash
 # Validate the customization for compliance
-uv run zeeker validate ./my-customization legal_news
+uv run zeeker assets validate ./ui-customization legal_news_project
 ```
 
 The validator checks for:
@@ -72,7 +150,7 @@ The validator checks for:
 - ✅ Best practice recommendations
 - ❌ Banned template names that would break the site
 
-### 3. Deploy to S3
+#### 3. Deploy UI Assets
 
 ```bash
 # Set up environment variables
@@ -82,17 +160,17 @@ export AWS_ACCESS_KEY_ID="your-access-key"
 export AWS_SECRET_ACCESS_KEY="your-secret-key"
 
 # Deploy (dry run first)
-uv run zeeker deploy ./my-customization legal_news --dry-run
+uv run zeeker assets deploy ./ui-customization legal_news_project --dry-run
 
 # Deploy for real
-uv run zeeker deploy ./my-customization legal_news
+uv run zeeker assets deploy ./ui-customization legal_news_project
 ```
 
-### 4. List Deployed Customizations
+#### 4. List Deployed Customizations
 
 ```bash
-# See all database customizations in S3
-uv run zeeker list-databases
+# See all database UI customizations in S3
+uv run zeeker assets list
 ```
 
 ## 📚 How It Works
@@ -112,20 +190,95 @@ Your customizations **overlay** the base assets, so you only need to provide fil
 ```
 s3://your-bucket/
 ├── latest/                          # Your .db files
-│   └── legal_news.db
+│   └── legal_news_project.db
 └── assets/
     ├── default/                     # Base assets (auto-managed)
     │   ├── templates/
     │   ├── static/
     │   └── metadata.json
-    └── databases/                   # Your customizations
-        └── legal_news/              # Matches your .db filename
+    └── databases/                   # Your UI customizations
+        └── legal_news_project/      # Matches your .db filename
             ├── templates/
             ├── static/
             └── metadata.json
 ```
 
-## 🎨 Customization Guide
+## 📊 Database Project Guide
+
+### Project Structure
+
+A Zeeker project consists of:
+
+```
+my-project/
+├── zeeker.toml              # Project configuration
+├── resources/               # Python modules for data fetching
+│   ├── __init__.py
+│   ├── articles.py          # Resource: articles table
+│   └── court_cases.py       # Resource: court_cases table
+├── my-project.db            # Generated SQLite database (gitignored)
+├── metadata.json            # Generated Datasette metadata
+├── .gitignore               # Git ignore rules
+└── README.md                # Project documentation
+```
+
+### Resource Development
+
+Each resource is a Python module that implements `fetch_data()`:
+
+```python
+"""
+Articles resource for legal news data.
+"""
+
+def fetch_data():
+    """
+    Fetch data for the articles table.
+    
+    Returns:
+        List[Dict[str, Any]]: List of records to insert into database
+    """
+    # Your data fetching logic here
+    # This could be:
+    # - API calls (requests.get, etc.)
+    # - File reading (CSV, JSON, XML, etc.) 
+    # - Database queries (from other sources)
+    # - Web scraping (BeautifulSoup, Scrapy, etc.)
+    # - Any other data source
+    
+    return [
+        {
+            "id": 1,
+            "title": "Legal Update",
+            "content": "...",
+            "published_date": "2024-01-15",
+            "tags": ["privacy", "legislation"]  # JSON stored automatically
+        },
+        # ... more records
+    ]
+
+def transform_data(raw_data):
+    """
+    Optional: Transform/clean data before database insertion.
+    """
+    # Clean and transform data
+    for item in raw_data:
+        item['title'] = item['title'].strip().title()
+        # Add computed fields, clean data, etc.
+    return raw_data
+```
+
+### sqlite-utils Integration
+
+Zeeker uses Simon Willison's sqlite-utils for robust database operations:
+
+- **Automatic table creation** with proper schema detection
+- **Type inference** from data (INTEGER, TEXT, REAL, JSON)
+- **Safe data insertion** without SQL injection risks
+- **JSON support** for complex data structures
+- **Better error handling** than raw SQL
+
+## 🎨 UI Customization Guide
 
 ### CSS Customization
 
@@ -133,19 +286,19 @@ Create scoped styles that only affect your database:
 
 ```css
 /* Scope to your database to avoid conflicts */
-[data-database="legal_news"] {
+[data-database="legal_news_project"] {
     --color-accent-primary: #e74c3c;
     --color-accent-secondary: #c0392b;
 }
 
 /* Custom header styling */
-.page-database[data-database="legal_news"] .database-title {
+.page-database[data-database="legal_news_project"] .database-title {
     color: var(--color-accent-primary);
     text-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
 }
 
 /* Custom table styling */
-.page-database[data-database="legal_news"] .card {
+.page-database[data-database="legal_news_project"] .card {
     border-left: 4px solid var(--color-accent-primary);
     transition: transform 0.2s ease;
 }
@@ -158,8 +311,8 @@ Add database-specific functionality:
 ```javascript
 // Defensive programming - ensure we're on the right database
 function isDatabasePage() {
-    return window.location.pathname.includes('/legal_news') ||
-           document.body.dataset.database === 'legal_news';
+    return window.location.pathname.includes('/legal_news_project') ||
+           document.body.dataset.database === 'legal_news_project';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -167,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return; // Exit if not our database
     }
 
-    console.log('Custom JS loaded for legal_news database');
+    console.log('Custom JS loaded for legal_news_project database');
     
     // Add custom search suggestions
     const searchInput = document.querySelector('.hero-search-input');
@@ -184,10 +337,10 @@ Create database-specific templates using **safe naming patterns**:
 #### ✅ Safe Template Names
 
 ```
-database-legal_news.html          # Database-specific page
-table-legal_news-headlines.html   # Table-specific page
-custom-legal_news-dashboard.html  # Custom page
-_partial-header.html              # Partial template
+database-legal_news_project.html          # Database-specific page
+table-legal_news_project-articles.html    # Table-specific page
+custom-legal_news_project-dashboard.html  # Custom page
+_partial-header.html                       # Partial template
 ```
 
 #### ❌ Banned Template Names
@@ -231,13 +384,13 @@ Provide a complete Datasette metadata structure:
   "license_url": "https://creativecommons.org/licenses/by/4.0/",
   "source_url": "https://example.com/legal-news",
   "extra_css_urls": [
-    "/static/databases/legal_news/custom.css"
+    "/static/databases/legal_news_project/custom.css"
   ],
   "extra_js_urls": [
-    "/static/databases/legal_news/custom.js"
+    "/static/databases/legal_news_project/custom.js"
   ],
   "databases": {
-    "legal_news": {
+    "legal_news_project": {
       "description": "Latest Singapore legal developments",
       "title": "Legal News"
     }
@@ -247,34 +400,58 @@ Provide a complete Datasette metadata structure:
 
 ## 🔧 CLI Reference
 
-### Commands
+### Database Project Commands
 
 | Command | Description |
 |---------|-------------|
-| `generate DATABASE_NAME OUTPUT_PATH` | Generate new customization |
-| `validate CUSTOMIZATION_PATH DATABASE_NAME` | Validate customization |
-| `deploy LOCAL_PATH DATABASE_NAME` | Deploy to S3 |
-| `list-databases` | List deployed customizations |
+| `zeeker init PROJECT_NAME` | Initialize new database project |
+| `zeeker add RESOURCE_NAME` | Add data resource to project |
+| `zeeker build` | Build SQLite database from resources |
+| `zeeker deploy` | Deploy database to S3 |
 
-### Generate Options
+### UI Customization Commands
+
+| Command | Description |
+|---------|-------------|
+| `zeeker assets generate DATABASE_NAME OUTPUT_PATH` | Generate UI customization assets |
+| `zeeker assets validate ASSETS_PATH DATABASE_NAME` | Validate UI assets |
+| `zeeker assets deploy LOCAL_PATH DATABASE_NAME` | Deploy UI assets to S3 |
+| `zeeker assets list` | List deployed UI customizations |
+
+### Project Commands Options
 
 ```bash
-uv run zeeker generate DATABASE_NAME OUTPUT_PATH [OPTIONS]
+# Initialize project
+zeeker init PROJECT_NAME [--path PATH]
 
-Options:
-  --title TEXT          Database title
-  --description TEXT    Database description  
-  --primary-color TEXT  Primary color (default: #3498db)
-  --accent-color TEXT   Accent color (default: #e74c3c)
+# Add resource with Datasette options
+zeeker add RESOURCE_NAME \
+  --description TEXT \
+  --facets FIELD \
+  --sort FIELD \
+  --size NUMBER
+
+# Deploy with dry run
+zeeker deploy [--dry-run]
 ```
 
-### Deploy Options
+### UI Asset Commands Options
 
 ```bash
-uv run zeeker deploy LOCAL_PATH DATABASE_NAME [OPTIONS]
+# Generate UI assets
+zeeker assets generate DATABASE_NAME OUTPUT_PATH \
+  --title TEXT \
+  --description TEXT \
+  --primary-color TEXT \
+  --accent-color TEXT
 
-Options:
-  --dry-run    Show what would be uploaded without uploading
+# Deploy UI assets with options
+zeeker assets deploy LOCAL_PATH DATABASE_NAME \
+  --dry-run \
+  --sync \
+  --clean \
+  --yes \
+  --diff
 ```
 
 ## 🧪 Development
@@ -314,10 +491,10 @@ uv run pytest
 uv run pytest --cov=zeeker
 
 # Run specific test file
-uv run pytest tests/test_zeeker.py
+uv run pytest tests/test_project.py
 
 # Run specific test
-uv run pytest tests/test_zeeker.py::TestZeekerValidator::test_validate_template_name_banned_templates
+uv run pytest tests/test_validator.py::TestTemplateValidation::test_banned_templates_rejected
 ```
 
 ### Project Structure
@@ -326,10 +503,20 @@ uv run pytest tests/test_zeeker.py::TestZeekerValidator::test_validate_template_
 zeeker/
 ├── zeeker/
 │   ├── __init__.py
-│   └── cli.py                 # Main CLI and library code
+│   ├── cli.py                 # Main CLI interface
+│   └── core/                  # Core functionality modules
+│       ├── __init__.py
+│       ├── project.py         # Project management
+│       ├── validator.py       # Asset validation
+│       ├── generator.py       # Asset generation
+│       ├── deployer.py        # S3 deployment
+│       └── types.py           # Data structures
 ├── tests/
 │   ├── conftest.py           # Test fixtures and configuration
-│   └── test_zeeker.py        # Comprehensive test suite
+│   ├── test_project.py       # Project management tests
+│   ├── test_validator.py     # Validation tests
+│   ├── test_generator.py     # Generation tests
+│   └── test_deployer.py      # Deployment tests
 ├── database_customization_guide.md  # Detailed user guide
 ├── pyproject.toml            # Project configuration
 └── README.md                 # This file
@@ -356,11 +543,12 @@ Generated code automatically scopes to your database:
 }
 ```
 
-### Metadata Validation
+### Database Operations
 
-- **JSON Structure**: Validates proper JSON format
-- **Required Fields**: Warns about missing recommended fields
-- **URL Patterns**: Validates CSS/JS URL patterns for proper loading
+- **sqlite-utils Integration**: Automatic schema detection and type inference
+- **Safe Data Insertion**: No SQL injection risks
+- **JSON Support**: Complex data structures handled automatically
+- **Error Handling**: Comprehensive validation and error reporting
 
 ## 🌐 Environment Variables
 
@@ -375,34 +563,53 @@ Required for deployment:
 
 ## 📖 Examples
 
-### Generate Legal Database Customization
+### Complete Database Project Example
 
 ```bash
-uv run zeeker generate legal_cases ./legal-customization \
-  --title "Legal Cases Database" \
-  --description "Singapore court cases and legal precedents" \
-  --primary-color "#2c3e50" \
-  --accent-color "#e67e22"
+# Create project for Singapore legal data
+uv run zeeker init singapore_legal
+
+cd singapore_legal
+
+# Add resources
+uv run zeeker add court_cases \
+  --description "Singapore court case summaries" \
+  --facets court_level --facets case_type \
+  --sort "decision_date desc"
+
+uv run zeeker add legislation \
+  --description "Singapore legislation and amendments" \
+  --facets ministry --facets status \
+  --sort "effective_date desc"
+
+# Implement data fetching in resources/*.py files
+# Then build and deploy
+uv run zeeker build
+uv run zeeker deploy
 ```
 
-### Generate Tech News Customization
+### UI Customization Examples
 
 ```bash
-uv run zeeker generate tech_news ./tech-customization \
+# Generate Legal Database Customization
+uv run zeeker assets generate singapore_legal ./legal-customization \
+  --title "Singapore Legal Database" \
+  --description "Court cases and legislation for Singapore" \
+  --primary-color "#2c3e50" \
+  --accent-color "#e67e22"
+
+# Generate Tech News Customization
+uv run zeeker assets generate tech_news ./tech-customization \
   --title "Tech News" \
   --description "Latest technology news and trends" \
   --primary-color "#9b59b6" \
   --accent-color "#8e44ad"
-```
 
-### Validate Before Deploy
+# Always validate before deploying
+uv run zeeker assets validate ./legal-customization singapore_legal
 
-```bash
-# Always validate first
-uv run zeeker validate ./legal-customization legal_cases
-
-# Then deploy
-uv run zeeker deploy ./legal-customization legal_cases
+# Then deploy UI assets
+uv run zeeker assets deploy ./legal-customization singapore_legal
 ```
 
 ## 🤝 Contributing
@@ -420,7 +627,20 @@ This project is licensed under the terms specified in the project configuration.
 
 ## 🆘 Troubleshooting
 
-### Common Issues
+### Database Project Issues
+
+**Build Fails**
+- Check that all resource files have `fetch_data()` function
+- Verify data is returned as list of dictionaries
+- Check for syntax errors in resource files
+- Ensure you're in a project directory (has `zeeker.toml`)
+
+**Deploy Fails**
+- Verify environment variables are set correctly
+- Check that database file was built successfully
+- Ensure S3 bucket exists and has correct permissions
+
+### UI Customization Issues
 
 **Templates Not Loading**
 - Check template names don't use banned patterns
