@@ -114,7 +114,7 @@ facets = ["role", "department"]
 
         # Check file content
         content = resource_file.read_text()
-        assert "def fetch_data():" in content
+        assert "def fetch_data(existing_table):" in content
         assert "users" in content
 
         # Check project updated
@@ -147,7 +147,7 @@ facets = ["role", "department"]
         template = manager._generate_resource_template("test_resource")
 
         assert "test_resource" in template
-        assert "def fetch_data():" in template
+        assert "def fetch_data(existing_table):" in template
         assert "sqlite-utils" in template
         assert "TODO: Implement" in template
 
@@ -160,7 +160,7 @@ facets = ["role", "department"]
 
         # Create mock resource with fetch_data
         resource_content = """
-def fetch_data():
+def fetch_data(existing_table):
     return [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
 """
         (manager.resources_path / "users.py").write_text(resource_content)
@@ -232,7 +232,7 @@ def fetch_data():
 
         # Create resource that returns wrong type
         resource_content = """
-def fetch_data():
+def fetch_data(existing_table):
     return "not a list"
 """
         (manager.resources_path / "users.py").write_text(resource_content)
@@ -253,7 +253,7 @@ def fetch_data():
 
         # Create resource with both fetch_data and transform_data
         resource_content = """
-def fetch_data():
+def fetch_data(existing_table):
     return [{"id": 1, "name": "alice"}, {"id": 2, "name": "bob"}]
 
 def transform_data(data):

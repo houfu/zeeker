@@ -221,9 +221,13 @@ The database is built using sqlite-utils, which provides:
 • Safe data insertion without SQL injection risks
 """
 
-def fetch_data():
+def fetch_data(existing_table):
     """
     Fetch data for the {resource_name} table.
+
+    Args:
+        existing_table: sqlite-utils Table object if table exists, None for new table
+                       Use this to check for existing data and avoid duplicates
 
     Returns:
         List[Dict[str, Any]]: List of records to insert into database
@@ -234,11 +238,18 @@ def fetch_data():
     • Handle JSON for complex data structures
     • Add new columns if data structure changes
 
-    Example:
-        return [
-            {{"id": 1, "name": "Example", "created": "2024-01-01"}},
-            {{"id": 2, "name": "Another", "created": "2024-01-02"}},
-        ]
+    Example usage:
+        if existing_table:
+            # Check existing data to avoid duplicates
+            existing_ids = {{row["id"] for row in existing_table.rows}}
+            # Fetch only new data not in existing_ids
+            return [record for record in new_data if record["id"] not in existing_ids]
+        else:
+            # Fresh table - fetch all data
+            return [
+                {{"id": 1, "name": "Example", "created": "2024-01-01"}},
+                {{"id": 2, "name": "Another", "created": "2024-01-02"}},
+            ]
     """
     # TODO: Implement your data fetching logic here
     # This could be:
@@ -304,11 +315,8 @@ def transform_data(raw_data):
         project = self.load_project()
         db_path = self.project_path / project.database
 
-        # Remove existing database
-        if db_path.exists():
-            db_path.unlink()
-
-        # Create new database using sqlite-utils
+        # Open existing database or create new one using sqlite-utils
+        # Don't delete existing database - let resources check existing data for duplicates
         db = sqlite_utils.Database(str(db_path))
 
         try:
@@ -368,8 +376,9 @@ def transform_data(raw_data):
                 result.errors.append(f"Resource '{resource_name}' missing fetch_data() function")
                 return result
 
-            # Fetch data
-            raw_data = module.fetch_data()
+            # Fetch data - pass existing table if it exists for duplicate checking
+            existing_table = db[resource_name] if db[resource_name].exists() else None
+            raw_data = module.fetch_data(existing_table)
 
             # Optional transformation
             if hasattr(module, "transform_data"):

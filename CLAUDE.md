@@ -80,7 +80,7 @@ Generated assets are automatically scoped to prevent conflicts:
 #### Database Project Flow
 1. `init` creates project structure with `zeeker.toml`
 2. `add` creates resource Python modules in `resources/`
-3. `build` executes `fetch_data()` functions and builds SQLite database
+3. `build` executes `fetch_data(existing_table)` functions and builds SQLite database
 4. `deploy` uploads database to S3 `latest/` directory
 
 #### UI Customization Flow
@@ -96,7 +96,7 @@ project/
 ├── zeeker.toml              # Project configuration
 ├── resources/               # Python modules for data fetching
 │   ├── __init__.py
-│   └── resource_name.py     # Implements fetch_data() function
+│   └── resource_name.py     # Implements fetch_data(existing_table) function
 ├── project_name.db          # Generated SQLite database (gitignored)
 ├── metadata.json            # Generated Datasette metadata
 └── README.md                # Auto-generated documentation
@@ -104,7 +104,9 @@ project/
 
 #### Resource Modules
 Each resource must implement:
-- `fetch_data()` - Returns List[Dict[str, Any]] for database insertion
+- `fetch_data(existing_table)` - Returns List[Dict[str, Any]] for database insertion
+  - `existing_table`: sqlite-utils Table object if table exists, None for new table
+  - Use this to check existing data and avoid duplicates
 - `transform_data()` - Optional data transformation function
 
 ### Environment Variables

@@ -58,7 +58,7 @@ def sample_resource_file(sample_project_dir):
 Sample resource for testing.
 """
 
-def fetch_data():
+def fetch_data(existing_table):
     """Fetch sample data."""
     return [
         {"id": 1, "name": "Alice", "role": "admin"},
