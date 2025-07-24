@@ -24,7 +24,7 @@ def cli():
 @cli.command()
 @click.argument("project_name")
 @click.option(
-    "--path", type=click.Path(), help="Project directory path (default: current directory)"
+    "--path", type=click.Path(), help="Project directory path (default: ./{project_name})"
 )
 def init(project_name, path):
     """Initialize a new Zeeker project.
@@ -34,7 +34,7 @@ def init(project_name, path):
     Example:
         zeeker init my-project
     """
-    project_path = Path(path) if path else Path.cwd()
+    project_path = Path(path) if path else Path.cwd() / project_name
     manager = ZeekerProjectManager(project_path)
 
     result = manager.init_project(project_name)
@@ -48,7 +48,11 @@ def init(project_name, path):
         click.echo(f"✅ {info}")
 
     click.echo("\nNext steps:")
-    click.echo(f"  1. cd {project_path.relative_to(Path.cwd()) if path else '.'}")
+    try:
+        relative_path = project_path.relative_to(Path.cwd())
+        click.echo(f"  1. cd {relative_path}")
+    except ValueError:
+        click.echo(f"  1. cd {project_path}")
     click.echo("  2. zeeker add <resource_name>")
     click.echo("  3. zeeker build")
     click.echo("  4. zeeker deploy")
