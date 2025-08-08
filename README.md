@@ -1,5 +1,10 @@
 # Zeeker Database Management Tool
 
+[![PyPI version](https://badge.fury.io/py/zeeker.svg)](https://badge.fury.io/py/zeeker)
+[![Test Status](https://github.com/houfu/zeeker/workflows/Test/badge.svg)](https://github.com/houfu/zeeker/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 A Python library and CLI tool for creating, managing, and deploying databases and customizations for Zeeker's Datasette-based system. Zeeker uses a **three-pass asset system** that allows you to manage complete database projects and customize individual databases without breaking overall site functionality.
 
 ## 🚀 Features
