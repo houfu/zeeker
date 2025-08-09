@@ -7,7 +7,7 @@ import json
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 # Meta table constants
 META_TABLE_SCHEMAS = "_zeeker_schemas"
@@ -18,7 +18,7 @@ META_TABLE_NAMES = [META_TABLE_SCHEMAS, META_TABLE_UPDATES]
 class ZeekerSchemaConflictError(Exception):
     """Raised when schema changes detected without migration handler."""
 
-    def __init__(self, resource_name: str, old_schema: Dict[str, str], new_schema: Dict[str, str]):
+    def __init__(self, resource_name: str, old_schema: dict[str, str], new_schema: dict[str, str]):
         self.resource_name = resource_name
         self.old_schema = old_schema
         self.new_schema = new_schema
@@ -49,8 +49,8 @@ class ZeekerSchemaConflictError(Exception):
                 "",
                 "To resolve this conflict:",
                 f"1. Add migrate_schema() function to resources/{resource_name}.py",
-                f"2. Or delete the database file to rebuild from scratch",
-                f"3. Or use --force-schema-reset flag",
+                "2. Or delete the database file to rebuild from scratch",
+                "3. Or use --force-schema-reset flag",
             ]
         )
 
@@ -62,9 +62,9 @@ class ValidationResult:
     """Result of validation operations."""
 
     is_valid: bool
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    info: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    info: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -73,19 +73,19 @@ class DatabaseCustomization:
 
     database_name: str
     base_path: Path
-    templates: Dict[str, str] = field(default_factory=dict)
-    static_files: Dict[str, bytes] = field(default_factory=dict)
-    metadata: Optional[Dict[str, Any]] = None
+    templates: dict[str, str] = field(default_factory=dict)
+    static_files: dict[str, bytes] = field(default_factory=dict)
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
 class DeploymentChanges:
     """Represents the changes to be made during deployment."""
 
-    uploads: List[str] = field(default_factory=list)
-    updates: List[str] = field(default_factory=list)
-    deletions: List[str] = field(default_factory=list)
-    unchanged: List[str] = field(default_factory=list)
+    uploads: list[str] = field(default_factory=list)
+    updates: list[str] = field(default_factory=list)
+    deletions: list[str] = field(default_factory=list)
+    unchanged: list[str] = field(default_factory=list)
 
     @property
     def has_changes(self) -> bool:
@@ -102,7 +102,7 @@ class ZeekerProject:
 
     name: str
     database: str
-    resources: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    resources: dict[str, dict[str, Any]] = field(default_factory=dict)
     root_path: Path = field(default_factory=Path)
 
     @classmethod
@@ -140,14 +140,16 @@ database = "{self.database}"
                     # Format arrays nicely
                     formatted_list = "[" + ", ".join(f'"{item}"' for item in value) + "]"
                     toml_content += f"{key} = {formatted_list}\n"
-                elif isinstance(value, (int, float, bool)):
+                elif isinstance(value, bool):
+                    toml_content += f"{key} = {str(value).lower()}\n"
+                elif isinstance(value, (int, float)):
                     toml_content += f"{key} = {value}\n"
             toml_content += "\n"
 
         with open(toml_path, "w", encoding="utf-8") as f:
             f.write(toml_content)
 
-    def to_datasette_metadata(self) -> Dict[str, Any]:
+    def to_datasette_metadata(self) -> dict[str, Any]:
         """Convert project configuration to complete Datasette metadata.json format.
 
         Follows the guide: must provide complete Datasette metadata structure,
@@ -191,9 +193,9 @@ database = "{self.database}"
                 "units",
             ]
 
-            for field in datasette_fields:
-                if field in resource_config:
-                    table_metadata[field] = resource_config[field]
+            for field_name in datasette_fields:
+                if field_name in resource_config:
+                    table_metadata[field_name] = resource_config[field_name]
 
             # Default description if not provided
             if "description" not in table_metadata:
@@ -206,7 +208,7 @@ database = "{self.database}"
         return metadata
 
 
-def calculate_schema_hash(column_definitions: Dict[str, str]) -> str:
+def calculate_schema_hash(column_definitions: dict[str, str]) -> str:
     """Calculate a hash of table schema for change detection.
 
     Args:
@@ -220,7 +222,7 @@ def calculate_schema_hash(column_definitions: Dict[str, str]) -> str:
     return hashlib.sha256(sorted_schema.encode()).hexdigest()[:16]
 
 
-def extract_table_schema(table) -> Dict[str, str]:
+def extract_table_schema(table) -> dict[str, str]:
     """Extract column definitions from a sqlite-utils Table.
 
     Args:

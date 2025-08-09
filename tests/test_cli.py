@@ -2,9 +2,8 @@
 Tests for ZeekerDeployer S3 deployment functionality.
 """
 
-import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from zeeker.core.deployer import ZeekerDeployer

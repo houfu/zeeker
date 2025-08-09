@@ -4,7 +4,7 @@ Asset generation for Zeeker database customizations.
 
 import json
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Any
 
 from .types import DatabaseCustomization
 from .validator import ZeekerValidator
@@ -31,7 +31,7 @@ class ZeekerGenerator:
         for dir_path in dirs:
             dir_path.mkdir(parents=True, exist_ok=True)
 
-    def generate_metadata_template(self, title: str, description: str, **kwargs) -> Dict[str, Any]:
+    def generate_metadata_template(self, title: str, description: str, **kwargs) -> dict[str, Any]:
         """Generate complete Datasette metadata following the guide format."""
         # Use sanitized name for URL paths (matches S3 structure)
         url_name = self.sanitized_name
@@ -120,9 +120,9 @@ document.addEventListener('DOMContentLoaded', function() {{
     if (!isDatabasePage()) {{
         return; // Exit if not our database (safety per guide)
     }}
-    
+
     console.log('Custom JS loaded for {self.database_name} database');
-    
+
     // Initialize custom features safely
     initCustomFeatures();
 }});
@@ -133,7 +133,7 @@ function initCustomFeatures() {{
     if (searchInput) {{
         searchInput.placeholder = 'Search {self.database_name}...';
     }}
-    
+
     // Custom table enhancements
     enhanceTables();
 }}
@@ -148,7 +148,7 @@ function enhanceTables() {{
 }}
 """
 
-    def generate_database_template(self, custom_title: Optional[str] = None) -> str:
+    def generate_database_template(self, custom_title: str | None = None) -> str:
         """Generate safe database template following guide naming conventions."""
         title = custom_title or f"{self.database_name.title()} Database"
 

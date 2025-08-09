@@ -2,13 +2,13 @@
 S3 deployment for Zeeker databases and assets.
 """
 
-import boto3
 import hashlib
 import os
 from pathlib import Path
-from typing import Dict, List
 
-from .types import ValidationResult, DeploymentChanges
+import boto3
+
+from .types import DeploymentChanges, ValidationResult
 
 
 class ZeekerDeployer:
@@ -66,7 +66,7 @@ class ZeekerDeployer:
 
         return result
 
-    def get_existing_files(self, database_name: str) -> Dict[str, str]:
+    def get_existing_files(self, database_name: str) -> dict[str, str]:
         """Get existing files on S3 with their ETags for comparison."""
         files = {}
         try:
@@ -83,7 +83,7 @@ class ZeekerDeployer:
             print(f"Warning: Could not list S3 files: {e}")
         return files
 
-    def get_local_files(self, local_path: Path) -> Dict[str, str]:
+    def get_local_files(self, local_path: Path) -> dict[str, str]:
         """Get local files with their MD5 hashes for comparison."""
         files = {}
         for file_path in local_path.rglob("*"):
@@ -94,7 +94,7 @@ class ZeekerDeployer:
         return files
 
     def calculate_changes(
-        self, local_files: Dict[str, str], existing_files: Dict[str, str], sync: bool, clean: bool
+        self, local_files: dict[str, str], existing_files: dict[str, str], sync: bool, clean: bool
     ) -> DeploymentChanges:
         """Calculate what changes need to be made."""
         changes = DeploymentChanges()
@@ -122,8 +122,8 @@ class ZeekerDeployer:
         self,
         changes: DeploymentChanges,
         database_name: str,
-        local_files: Dict[str, str],
-        existing_files: Dict[str, str],
+        local_files: dict[str, str],
+        existing_files: dict[str, str],
     ):
         """Show a summary of what will be deployed."""
         print(f"\n📋 Deployment Summary for '{database_name}':")
@@ -243,7 +243,7 @@ class ZeekerDeployer:
 
         return result
 
-    def list_assets(self) -> List[str]:
+    def list_assets(self) -> list[str]:
         """List all database assets in S3."""
         try:
             response = self.s3_client.list_objects_v2(

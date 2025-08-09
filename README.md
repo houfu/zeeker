@@ -10,6 +10,7 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 ## 🚀 Features
 
 - **Complete Database Projects**: Create, build, and deploy entire databases with data resources
+- **Document Fragments**: Built-in support for splitting large documents into searchable chunks
 - **Automated Meta Tables**: Schema versioning and update tracking with zero configuration
 - **Schema Conflict Detection**: Safe migration system prevents data corruption from schema changes
 - **Safe UI Customizations**: Template validation prevents breaking core Datasette functionality  
@@ -86,7 +87,13 @@ uv run zeeker add articles \
 uv run zeeker add court_cases \
   --description "Court case summaries" \
   --facets court_level --facets case_type
+
+# Add a resource for large legal documents with fragments support
+uv run zeeker add legal_docs --fragments \
+  --description "Legal documents with searchable fragments"
 ```
+
+**Fragment Support**: The `--fragments` flag creates resources optimized for large documents (legal documents, contracts, research papers). This automatically creates two tables: one for document metadata and another for searchable text fragments.
 
 #### 3. Implement Data Fetching
 

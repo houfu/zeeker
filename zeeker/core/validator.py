@@ -2,11 +2,11 @@
 Validation logic for Zeeker database assets and configurations.
 """
 
-import re
-import json
 import hashlib
+import json
+import re
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 from .types import ValidationResult
 
@@ -68,7 +68,7 @@ class ZeekerValidator:
 
         return result
 
-    def validate_metadata(self, metadata: Dict[str, Any]) -> ValidationResult:
+    def validate_metadata(self, metadata: dict[str, Any]) -> ValidationResult:
         """Validate metadata follows complete Datasette structure per the guide."""
         result = ValidationResult(is_valid=True)
 
@@ -153,7 +153,7 @@ class ZeekerValidator:
                 if not metadata_result.is_valid:
                     result.is_valid = False
 
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 result.is_valid = False
                 result.errors.append(f"Error reading metadata.json: {e}")
 

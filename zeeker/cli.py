@@ -4,14 +4,15 @@ Zeeker CLI - Database customization tool with project management.
 Clean CLI interface that imports functionality from core modules.
 """
 
-import click
 from pathlib import Path
 
-from .core.project import ZeekerProjectManager
-from .core.validator import ZeekerValidator
-from .core.generator import ZeekerGenerator
+import click
+
 from .core.deployer import ZeekerDeployer
+from .core.generator import ZeekerGenerator
+from .core.project import ZeekerProjectManager
 from .core.types import ZeekerSchemaConflictError
+from .core.validator import ZeekerValidator
 
 
 # Main CLI group
@@ -65,13 +66,20 @@ def init(project_name, path):
 @click.option("--facets", multiple=True, help="Datasette facets (can be used multiple times)")
 @click.option("--sort", help="Default sort order")
 @click.option("--size", type=int, help="Default page size")
-def add(resource_name, description, facets, sort, size):
+@click.option(
+    "--fragments", is_flag=True, help="Create a complementary fragments table for large documents"
+)
+def add(resource_name, description, facets, sort, size, fragments):
     """Add a new resource to the project.
 
     Creates a Python file in resources/ with a template for data fetching.
 
-    Example:
+    Use --fragments to create a complementary table for storing document fragments,
+    perfect for handling large legal documents that need to be split into searchable chunks.
+
+    Examples:
         zeeker add users --description "User account data" --facets role --facets department --size 50
+        zeeker add legal_docs --fragments --description "Legal documents with text fragments"
     """
     manager = ZeekerProjectManager()
 
@@ -83,6 +91,8 @@ def add(resource_name, description, facets, sort, size):
         kwargs["sort"] = sort
     if size:
         kwargs["size"] = size
+    if fragments:
+        kwargs["fragments"] = True
 
     result = manager.add_resource(resource_name, description, **kwargs)
 
@@ -130,9 +140,9 @@ def build(force_schema_reset):
         click.echo("❌ Schema conflict detected:")
         click.echo(str(e))
         click.echo("\n💡 To resolve this, you can:")
-        click.echo(f"   • Use --force-schema-reset flag to ignore conflicts")
-        click.echo(f"   • Add a migrate_schema() function to handle the change")
-        click.echo(f"   • Delete the database file to rebuild from scratch")
+        click.echo("   • Use --force-schema-reset flag to ignore conflicts")
+        click.echo("   • Add a migrate_schema() function to handle the change")
+        click.echo("   • Delete the database file to rebuild from scratch")
         return
 
     if result.errors:

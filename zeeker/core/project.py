@@ -11,14 +11,12 @@ from pathlib import Path
 
 import sqlite_utils
 
-from typing import Dict, Optional
-
 from .types import (
+    META_TABLE_SCHEMAS,
+    META_TABLE_UPDATES,
     ValidationResult,
     ZeekerProject,
     ZeekerSchemaConflictError,
-    META_TABLE_SCHEMAS,
-    META_TABLE_UPDATES,
     calculate_schema_hash,
     extract_table_schema,
 )
@@ -134,6 +132,7 @@ This file provides Claude Code with project-specific context and guidance for de
 
 ### Quick Commands
 - `uv run zeeker add RESOURCE_NAME` - Add new resource to this project
+- `uv run zeeker add RESOURCE_NAME --fragments` - Add resource with document fragments support
 - `uv run zeeker build` - Build database from all resources in this project
 - `uv run zeeker deploy` - Deploy this project's database to S3
 
@@ -154,10 +153,17 @@ This file provides Claude Code with project-specific context and guidance for de
 - Record any special data handling requirements
 
 ### Common Schema Issues to Watch
-- **Dates:** Use ISO format strings like "2024-01-15" 
+- **Dates:** Use ISO format strings like "2024-01-15"
 - **Numbers:** Use float for prices/scores that might have decimals
 - **IDs:** Use int for primary keys, str for external system IDs
 - **JSON data:** Use dict/list types for complex data structures
+
+### Fragment Resources
+If using fragment-enabled resources (created with `--fragments`):
+- **Two Tables:** Each fragment resource creates a main table and a `_fragments` table
+- **Schema Freedom:** You design both table schemas through your `fetch_data()` and `fetch_fragments_data()` functions
+- **Linking:** Include some way to link fragments back to main records (your choice of field names)
+- **Use Cases:** Large documents, legal texts, research papers, or any content that benefits from searchable chunks
 
 ## Project-Specific Notes
 
@@ -255,7 +261,11 @@ The main Zeeker development guide is in the repository root CLAUDE.md file.
                 if "size" in resource_config:
                     resource_docs += f"- **Page Size:** {resource_config['size']}\n"
 
-                resource_docs += f"- **Schema:** Check `resources/{resource_name}.py` fetch_data() for current schema\n"
+                if resource_config.get("fragments", False):
+                    resource_docs += f"- **Type:** Fragment-enabled (creates two tables: `{resource_name}` and `{resource_name}_fragments`)\n"
+                    resource_docs += f"- **Schema:** Check `resources/{resource_name}.py` both fetch_data() and fetch_fragments_data() functions\n"
+                else:
+                    resource_docs += f"- **Schema:** Check `resources/{resource_name}.py` fetch_data() for current schema\n"
                 resource_docs += "\n"
         else:
             resource_docs = "## Resources in This Project\n\n*No resources added yet. Use `zeeker add RESOURCE_NAME` to add resources.*\n\n"
@@ -307,7 +317,9 @@ The main Zeeker development guide is in the repository root CLAUDE.md file.
             return result
 
         # Generate resource file
-        template = self._generate_resource_template(resource_name)
+        template = self._generate_resource_template(
+            resource_name, fragments=kwargs.get("fragments", False)
+        )
         resource_file.write_text(template)
 
         # Update project config with resource metadata
@@ -326,6 +338,7 @@ The main Zeeker development guide is in the repository root CLAUDE.md file.
             "columns",
             "units",
             "description_html",
+            "fragments",
         ]
         for field in datasette_fields:
             if field in kwargs:
@@ -360,8 +373,15 @@ The main Zeeker development guide is in the repository root CLAUDE.md file.
 
         return result
 
-    def _generate_resource_template(self, resource_name: str) -> str:
+    def _generate_resource_template(self, resource_name: str, fragments: bool = False) -> str:
         """Generate a Python template for a resource."""
+        if fragments:
+            return self._generate_fragments_template(resource_name)
+        else:
+            return self._generate_standard_template(resource_name)
+
+    def _generate_standard_template(self, resource_name: str) -> str:
+        """Generate standard resource template."""
         return f'''"""
 {resource_name.replace('_', ' ').title()} resource for fetching and processing data.
 
@@ -392,7 +412,7 @@ def fetch_data(existing_table):
     Later runs cannot change existing column types, only add new columns.
 
     Python Type → SQLite Column Type:
-    • int          → INTEGER  
+    • int          → INTEGER
     • float        → REAL
     • str          → TEXT
     • bool         → INTEGER (stored as 0/1)
@@ -432,7 +452,7 @@ def fetch_data(existing_table):
             "id": 1,                           # int → INTEGER (good for primary keys)
             "title": "Example Title",          # str → TEXT
             "score": 85.5,                     # float → REAL (use float even for whole numbers!)
-            "view_count": 100,                 # int → INTEGER 
+            "view_count": 100,                 # int → INTEGER
             "is_published": True,              # bool → INTEGER (0/1)
             "created_date": "2024-01-15",      # str → TEXT (ISO date format recommended)
             "tags": ["news", "technology"],    # list → TEXT (stored as JSON)
@@ -470,6 +490,152 @@ def transform_data(raw_data):
 
 
 # You can add additional helper functions here
+'''
+
+    def _generate_fragments_template(self, resource_name: str) -> str:
+        """Generate template for resource with fragments support."""
+        fragments_table = f"{resource_name}_fragments"
+
+        return f'''"""
+{resource_name.replace('_', ' ').title()} resource with fragments support for large documents.
+
+This module implements TWO tables:
+1. '{resource_name}' - Main table (schema determined by your fetch_data function)
+2. '{fragments_table}' - Fragments table (schema determined by your fetch_fragments_data function)
+
+IMPORTANT: You define both table schemas through your returned data structure.
+Zeeker does not enforce any specific field names or relationships.
+
+The database is built using sqlite-utils with automatic schema detection.
+"""
+
+
+def fetch_data(existing_table):
+    \"\"\"
+    Fetch data for the {resource_name} table.
+
+    Args:
+        existing_table: sqlite-utils Table object if table exists, None for new table
+                       Use this to check for existing data and avoid duplicates
+
+    Returns:
+        List[Dict[str, Any]]: Records for the main table
+
+    IMPORTANT - Schema Considerations:
+    Your FIRST fetch_data() call determines the column types permanently!
+    sqlite-utils infers types from the first ~100 records and locks them in.
+
+    You have complete freedom to define your schema. Common patterns:
+    - Simple: {{"id": 1, "title": "Doc 1", "content": "..."}}
+    - Metadata focused: {{"id": 1, "title": "Doc 1", "source": "...", "date": "..."}}
+    - Complex: {{"id": 1, "title": "Doc 1", "metadata": {{"tags": ["tag1"]}}, "status": "active"}}
+    \"\"\"
+    # TODO: Implement your data fetching logic
+    # This is just an example - replace with your actual schema and data
+    return [
+        {{
+            "id": 1,                              # Required: some kind of identifier
+            "title": "Example Document",          # Your field names and types
+            "content": "Document content...",     # You decide what goes in main vs fragments
+            # Add any other fields your project needs
+        }},
+        # Add more records...
+    ]
+
+
+def fetch_fragments_data(existing_fragments_table):
+    \"\"\"
+    Fetch fragments data for the {fragments_table} table.
+
+    This is called automatically after fetch_data().
+
+    Args:
+        existing_fragments_table: sqlite-utils Table object if exists, None for new table
+                                 Use this to check existing fragments and avoid duplicates
+
+    Returns:
+        List[Dict[str, Any]]: Fragment records with YOUR chosen schema
+
+    IMPORTANT: You have complete freedom to define the fragments schema.
+    Common patterns include:
+
+    1. Simple text chunks:
+       {{"parent_id": 1, "text": "fragment content"}}
+
+    2. Positional fragments:
+       {{"doc_id": 1, "position": 0, "content": "...", "length": 500}}
+
+    3. Semantic fragments:
+       {{"document_id": 1, "section_type": "intro", "text": "...", "page": 1}}
+
+    4. Custom fragments:
+       {{"source_id": 1, "fragment_data": "...", "metadata": {{"type": "citation"}}}}
+
+    The only requirement: some way to link fragments back to main records.
+    \"\"\"
+    # TODO: Implement your fragments logic
+    # This is just an example - replace with your actual implementation
+
+    # Example 1: Simple approach - split content from main table
+    example_text = \"\"\"
+    This is an example document that will be split into fragments.
+    You can implement any splitting logic you need.
+
+    Maybe you want sentence-based fragments, paragraph-based,
+    or even semantic chunks based on document structure.
+
+    The choice is entirely yours based on your project needs.
+    \"\"\"
+
+    # Your splitting logic goes here
+    fragments = []
+    sentences = example_text.split('.')
+    for i, sentence in enumerate(sentences):
+        if sentence.strip():
+            fragments.append({{
+                "parent_id": 1,                   # Link to main table (your choice of field name)
+                "sequence": i,                    # Your choice of ordering
+                "text": sentence.strip(),         # Your choice of content field name
+                # Add any other fields your fragments need
+            }})
+
+    return fragments
+
+
+def transform_data(raw_data):
+    \"\"\"
+    Optional: Transform main table data before database insertion.
+
+    Args:
+        raw_data: The data returned from fetch_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed data
+    \"\"\"
+    # TODO: Add any data transformation logic here
+    return raw_data
+
+
+def transform_fragments_data(raw_fragments):
+    \"\"\"
+    Optional: Transform fragment data before database insertion.
+
+    Args:
+        raw_fragments: The data returned from fetch_fragments_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed fragment data
+    \"\"\"
+    # TODO: Add any fragment processing logic here
+    return raw_fragments
+
+
+# TODO: Add any helper functions your project needs
+# Examples:
+# - Document parsing functions
+# - Text splitting utilities
+# - Data validation functions
+# - API client functions
 '''
 
     def build_database(self, force_schema_reset: bool = False) -> ValidationResult:
@@ -625,6 +791,79 @@ def transform_data(raw_data):
 
         return result
 
+    def _process_fragments_data(
+        self, db: sqlite_utils.Database, resource_name: str, module
+    ) -> ValidationResult:
+        """Process fragments data for a resource with fragments enabled.
+
+        Args:
+            db: sqlite-utils Database instance
+            resource_name: Name of the main resource
+            module: The imported resource module
+
+        Returns:
+            ValidationResult with fragments processing results
+        """
+        result = ValidationResult(is_valid=True)
+        fragments_table_name = f"{resource_name}_fragments"
+
+        # Check if the module has a fetch_fragments_data function
+        if not hasattr(module, "fetch_fragments_data"):
+            result.is_valid = False
+            result.errors.append(
+                f"Resource '{resource_name}' has fragments=True but missing fetch_fragments_data() function"
+            )
+            return result
+
+        try:
+            # Fetch fragments data - pass existing fragments table if it exists
+            existing_fragments_table = (
+                db[fragments_table_name] if db[fragments_table_name].exists() else None
+            )
+            raw_fragments = module.fetch_fragments_data(existing_fragments_table)
+
+            # Optional transformation for fragments
+            if hasattr(module, "transform_fragments_data"):
+                fragments_data = module.transform_fragments_data(raw_fragments)
+            else:
+                fragments_data = raw_fragments
+
+            if not fragments_data:
+                result.warnings.append(f"Resource '{resource_name}' returned no fragments data")
+                return result
+
+            # Validate fragments data structure
+            if not isinstance(fragments_data, list):
+                result.is_valid = False
+                result.errors.append(
+                    f"Resource '{resource_name}' fetch_fragments_data() must return a list of dictionaries, got: {type(fragments_data)}"
+                )
+                return result
+
+            if not all(isinstance(record, dict) for record in fragments_data):
+                result.is_valid = False
+                result.errors.append(
+                    f"Resource '{resource_name}' fetch_fragments_data() must return a list of dictionaries"
+                )
+                return result
+
+            # Use sqlite-utils for robust fragments table creation and data insertion
+            db[fragments_table_name].insert_all(
+                fragments_data,
+                alter=True,  # Auto-add columns if schema changes
+                replace=True,  # Replace existing data for clean rebuild
+            )
+
+            result.info.append(
+                f"Processed {len(fragments_data)} fragment records for table '{fragments_table_name}'"
+            )
+
+        except Exception as e:
+            result.is_valid = False
+            result.errors.append(f"Error processing fragments for resource '{resource_name}': {e}")
+
+        return result
+
     def _ensure_meta_tables(self, db: sqlite_utils.Database) -> None:
         """Create meta tables if they don't exist.
 
@@ -668,7 +907,7 @@ def transform_data(raw_data):
 
     def _get_stored_schema(
         self, db: sqlite_utils.Database, resource_name: str
-    ) -> Optional[Dict[str, str]]:
+    ) -> dict[str, str] | None:
         """Get stored schema information for a resource.
 
         Args:
@@ -692,7 +931,7 @@ def transform_data(raw_data):
             return None
 
     def _update_schema_tracking(
-        self, db: sqlite_utils.Database, resource_name: str, column_definitions: Dict[str, str]
+        self, db: sqlite_utils.Database, resource_name: str, column_definitions: dict[str, str]
     ) -> None:
         """Update schema tracking information for a resource.
 
@@ -859,6 +1098,17 @@ def transform_data(raw_data):
                 alter=True,  # Auto-add columns if schema changes
                 replace=True,  # Replace existing data for clean rebuild
             )
+
+            # Process fragments if enabled for this resource
+            project = self.load_project()
+            resource_config = project.resources.get(resource_name, {})
+            if resource_config.get("fragments", False):
+                fragments_result = self._process_fragments_data(db, resource_name, module)
+                if not fragments_result.is_valid:
+                    result.errors.extend(fragments_result.errors)
+                    result.is_valid = False
+                else:
+                    result.info.extend(fragments_result.info)
 
             # Update meta tables with schema and timestamp tracking
             final_schema = extract_table_schema(db[resource_name])
