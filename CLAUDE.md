@@ -109,6 +109,139 @@ Each resource must implement:
   - Use this to check existing data and avoid duplicates
 - `transform_data()` - Optional data transformation function
 
+### Database Schema Management
+
+#### Automated Meta Tables System
+Zeeker automatically creates and maintains two meta tables for every project:
+
+**`_zeeker_schemas` - Schema Version Tracking:**
+- Tracks schema versions, hashes, and column definitions for each resource
+- Automatically detects when schemas change between builds
+- Provides audit trail for schema evolution
+
+**`_zeeker_updates` - Update Timestamps:**
+- Records last update time for each resource table
+- Tracks record counts and build performance metrics  
+- Helps identify stale data and monitor data freshness
+
+These tables are created automatically during `zeeker build` with zero configuration required.
+
+#### Schema Conflict Detection & Migration
+Zeeker now automatically detects schema changes and provides safe migration options:
+
+**Automatic Detection:**
+- Compares schema hashes to detect changes
+- Fails safe by default to prevent data corruption
+- Provides clear error messages with resolution options
+
+**Schema Conflicts - Three Resolution Options:**
+
+1. **Add Migration Function (Recommended):**
+```python
+# In your resource file (e.g., resources/users.py)
+def fetch_data(existing_table):
+    return [{"id": 1, "name": "Alice", "age": 25}]  # Added 'age' field
+
+def migrate_schema(existing_table, new_schema_info):
+    """Handle schema changes safely."""
+    # Add the new column with default values
+    existing_table.add_column('age', int, fk=None)
+    
+    # Update existing records with default age
+    for row_id in existing_table.pks:
+        existing_table.update(row_id, {'age': 25})
+    
+    return True  # Migration successful
+```
+
+2. **Force Schema Reset:**
+```bash
+# Ignore conflicts and rebuild (development use)
+zeeker build --force-schema-reset
+```
+
+3. **Manual Cleanup:**
+```bash
+# Delete database and rebuild from scratch
+rm project_name.db
+zeeker build
+```
+
+#### Important: Schema Lock-In Behavior
+**Your first `fetch_data()` call permanently determines column types.** Once a table is created, column types cannot be changed, only new columns can be added.
+
+#### How Type Inference Works
+- sqlite-utils examines the first ~100 records from your data
+- Python types are mapped to SQLite column types automatically
+- Schema is locked after first table creation
+- Schema version increments when structure changes
+
+#### Python Type → SQLite Type Mapping
+```python
+# Type mapping examples:
+{
+    "id": 1,                    # int → INTEGER
+    "price": 19.99,             # float → REAL  
+    "name": "Product",          # str → TEXT
+    "active": True,             # bool → INTEGER (0/1)
+    "tags": ["red", "sale"],    # list → TEXT (JSON)
+    "meta": {"size": "large"}   # dict → TEXT (JSON)  
+}
+```
+
+#### Schema Best Practices
+
+**✅ DO:**
+- Use correct Python types in your first data batch
+- Use `float` for any numeric data that might have decimals later
+- Provide consistent data types across all records
+- Use ISO date strings for dates: `"2024-01-15"`
+- Test your first batch carefully before deployment
+- Add `migrate_schema()` functions when changing schemas
+
+**❌ DON'T:**
+- Mix types in the same field (e.g., sometimes int, sometimes string)
+- Use `None` values in key columns on first run (causes inference issues)
+- Assume you can change column types later
+- Use integers for data that might become floats (prices, scores, etc.)
+- Ignore schema conflict errors (they prevent data corruption)
+
+#### Common Schema Issues
+
+**Problem: Price stored as INTEGER instead of REAL**
+```python
+# BAD - First batch uses integers
+[{"price": 20}, {"price": 15}]  # price → INTEGER
+
+# Later batches with decimals get truncated:
+[{"price": 19.99}]  # Stored as 19 (loses decimal!)
+```
+
+**Solution: Use floats from the start**
+```python
+# GOOD - First batch uses floats
+[{"price": 20.0}, {"price": 15.0}]  # price → REAL
+```
+
+**Problem: Mixed data types**
+```python
+# BAD - Inconsistent types
+[{"id": 1}, {"id": "abc"}]  # Causes type confusion
+```
+
+**Solution: Consistent types**
+```python  
+# GOOD - All IDs are integers
+[{"id": 1}, {"id": 2}]  # id → INTEGER
+```
+
+#### Schema Debugging with Meta Tables
+1. **Check Schema Versions:** Query `_zeeker_schemas` table to see schema evolution
+2. **Monitor Data Freshness:** Query `_zeeker_updates` table for last update times
+3. **Compare Environments:** Use schema hashes to detect differences between deployments
+4. **Track Performance:** Review build duration and record counts over time
+5. **Debug Schema Conflicts:** Error messages show exactly what changed
+
 ### Environment Variables
 Required for S3 deployment:
 - `S3_BUCKET` - S3 bucket name
@@ -124,3 +257,4 @@ Tests are organized by markers:
 - `slow` - Long-running tests
 
 Test files follow pytest conventions in `tests/` directory with comprehensive fixtures in `conftest.py`.
+- update documentation after this commit

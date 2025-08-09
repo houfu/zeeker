@@ -11,6 +11,7 @@ from .core.project import ZeekerProjectManager
 from .core.validator import ZeekerValidator
 from .core.generator import ZeekerGenerator
 from .core.deployer import ZeekerDeployer
+from .core.types import ZeekerSchemaConflictError
 
 
 # Main CLI group
@@ -100,7 +101,10 @@ def add(resource_name, description, facets, sort, size):
 
 
 @cli.command()
-def build():
+@click.option(
+    "--force-schema-reset", is_flag=True, help="Ignore schema conflicts and rebuild tables"
+)
+def build(force_schema_reset):
     """Build database from all resources using sqlite-utils.
 
     Runs fetch_data() for each resource and creates/updates the SQLite database.
@@ -111,14 +115,25 @@ def build():
     • Safe data insertion without SQL injection risks
     • JSON support for complex data structures
     • Better error handling than raw SQL
+    • Automatic schema conflict detection with migration support
 
     Generates complete Datasette metadata.json following customization guide format.
+    Creates meta tables for schema versioning and update tracking.
 
     Must be run from a Zeeker project directory (contains zeeker.toml).
     """
     manager = ZeekerProjectManager()
 
-    result = manager.build_database()
+    try:
+        result = manager.build_database(force_schema_reset=force_schema_reset)
+    except ZeekerSchemaConflictError as e:
+        click.echo("❌ Schema conflict detected:")
+        click.echo(str(e))
+        click.echo("\n💡 To resolve this, you can:")
+        click.echo(f"   • Use --force-schema-reset flag to ignore conflicts")
+        click.echo(f"   • Add a migrate_schema() function to handle the change")
+        click.echo(f"   • Delete the database file to rebuild from scratch")
+        return
 
     if result.errors:
         click.echo("❌ Database build failed:")

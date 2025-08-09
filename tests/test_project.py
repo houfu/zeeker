@@ -280,3 +280,336 @@ def transform_data(data):
         # The data should be transformed (names capitalized)
         assert any(item["name"] == "Alice" for item in data)
         assert any(item["name"] == "Bob" for item in data)
+
+
+class TestMetaTables:
+    """Test meta table functionality for schema and update tracking."""
+
+    @pytest.fixture
+    def setup_project(self, temp_dir):
+        """Setup a project with resources for meta table testing."""
+        manager = ZeekerProjectManager(temp_dir)
+        manager.init_project("test_project")
+        manager.add_resource("users", "User data")
+        return manager
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_ensure_meta_tables_created(self, mock_db_class, setup_project):
+        """Test that meta tables are created automatically."""
+        from zeeker.core.types import META_TABLE_SCHEMAS, META_TABLE_UPDATES
+
+        manager = setup_project
+
+        # Mock database and tables
+        mock_db = MagicMock()
+        mock_schema_table = MagicMock()
+        mock_updates_table = MagicMock()
+
+        # Configure exists() to return False (tables don't exist)
+        mock_schema_table.exists.return_value = False
+        mock_updates_table.exists.return_value = False
+        mock_db.__getitem__.side_effect = lambda name: (
+            mock_schema_table if name == META_TABLE_SCHEMAS else mock_updates_table
+        )
+        mock_db_class.return_value = mock_db
+
+        # Create basic resource for testing
+        resource_content = """
+def fetch_data(existing_table):
+    return [{"id": 1, "name": "Alice"}]
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        # Run build
+        manager.build_database()
+
+        # Verify meta tables were created
+        assert mock_schema_table.create.called
+        assert mock_updates_table.create.called
+
+        # Check schema table structure
+        schema_create_call = mock_schema_table.create.call_args
+        assert "resource_name" in schema_create_call[0][0]
+        assert "schema_version" in schema_create_call[0][0]
+        assert "schema_hash" in schema_create_call[0][0]
+        assert "column_definitions" in schema_create_call[0][0]
+
+        # Check updates table structure
+        updates_create_call = mock_updates_table.create.call_args
+        assert "resource_name" in updates_create_call[0][0]
+        assert "last_updated" in updates_create_call[0][0]
+        assert "record_count" in updates_create_call[0][0]
+        assert "build_id" in updates_create_call[0][0]
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_schema_tracking_new_resource(self, mock_db_class, setup_project):
+        """Test schema tracking for a new resource."""
+        from zeeker.core.types import META_TABLE_SCHEMAS
+
+        manager = setup_project
+
+        # Mock database
+        mock_db = MagicMock()
+        mock_schema_table = MagicMock()
+        mock_users_table = MagicMock()
+
+        # Configure meta table to not exist initially
+        mock_schema_table.exists.return_value = True
+        mock_users_table.exists.return_value = False
+
+        # Mock get() to raise NotFoundError (resource not in schema table)
+        mock_schema_table.get.side_effect = Exception("NotFoundError")
+
+        mock_db.__getitem__.side_effect = lambda name: {
+            META_TABLE_SCHEMAS: mock_schema_table,
+            "users": mock_users_table,
+        }.get(name, MagicMock())
+
+        mock_db_class.return_value = mock_db
+
+        # Create resource
+        resource_content = """
+def fetch_data(existing_table):
+    return [{"id": 1, "name": "Alice", "age": 25}]
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        # Run build
+        manager.build_database()
+
+        # Verify schema was inserted with version 1
+        assert mock_schema_table.insert.called
+        insert_call = mock_schema_table.insert.call_args[0][0]
+        assert insert_call["resource_name"] == "users"
+        assert insert_call["schema_version"] == 1
+        assert "schema_hash" in insert_call
+        assert "column_definitions" in insert_call
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_schema_conflict_detection(self, mock_db_class, setup_project):
+        """Test that schema conflicts are detected and handled."""
+        from zeeker.core.types import META_TABLE_SCHEMAS, ZeekerSchemaConflictError
+
+        manager = setup_project
+
+        # Mock database with existing resource
+        mock_db = MagicMock()
+        mock_schema_table = MagicMock()
+        mock_users_table = MagicMock()
+
+        mock_schema_table.exists.return_value = True
+        mock_users_table.exists.return_value = True
+
+        # Mock existing schema (old schema has different hash)
+        mock_schema_table.get.return_value = {
+            "resource_name": "users",
+            "schema_version": 1,
+            "schema_hash": "old_hash_123",
+            "column_definitions": '{"id": "INTEGER", "name": "TEXT"}',
+        }
+
+        mock_db.__getitem__.side_effect = lambda name: {
+            META_TABLE_SCHEMAS: mock_schema_table,
+            "users": mock_users_table,
+        }.get(name, MagicMock())
+
+        mock_db_class.return_value = mock_db
+
+        # Create resource with different schema (added age field)
+        resource_content = """
+def fetch_data(existing_table):
+    return [{"id": 1, "name": "Alice", "age": 25}]
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        # Should raise schema conflict
+        with pytest.raises(ZeekerSchemaConflictError) as exc_info:
+            manager.build_database()
+
+        assert "users" in str(exc_info.value)
+        assert "Schema conflict detected" in str(exc_info.value)
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_schema_migration_success(self, mock_db_class, setup_project):
+        """Test successful schema migration with migrate_schema function."""
+        from zeeker.core.types import META_TABLE_SCHEMAS
+
+        manager = setup_project
+
+        # Mock database
+        mock_db = MagicMock()
+        mock_schema_table = MagicMock()
+        mock_users_table = MagicMock()
+
+        mock_schema_table.exists.return_value = True
+        mock_users_table.exists.return_value = True
+
+        # Mock existing schema
+        mock_schema_table.get.return_value = {
+            "resource_name": "users",
+            "schema_version": 1,
+            "schema_hash": "old_hash_123",
+            "column_definitions": '{"id": "INTEGER", "name": "TEXT"}',
+        }
+
+        mock_db.__getitem__.side_effect = lambda name: {
+            META_TABLE_SCHEMAS: mock_schema_table,
+            "users": mock_users_table,
+        }.get(name, MagicMock())
+
+        mock_db_class.return_value = mock_db
+
+        # Create resource with migration handler
+        resource_content = """
+def fetch_data(existing_table):
+    return [{"id": 1, "name": "Alice", "age": 25}]
+
+def migrate_schema(existing_table, new_schema_info):
+    # Mock migration success
+    return True
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        # Should succeed with migration
+        result = manager.build_database()
+        assert result.is_valid
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_force_schema_reset(self, mock_db_class, setup_project):
+        """Test that force_schema_reset bypasses conflict detection."""
+        from zeeker.core.types import META_TABLE_SCHEMAS
+
+        manager = setup_project
+
+        # Mock database
+        mock_db = MagicMock()
+        mock_schema_table = MagicMock()
+        mock_users_table = MagicMock()
+
+        mock_schema_table.exists.return_value = True
+        mock_users_table.exists.return_value = True
+
+        # Mock existing schema (would normally cause conflict)
+        mock_schema_table.get.return_value = {
+            "resource_name": "users",
+            "schema_version": 1,
+            "schema_hash": "old_hash_123",
+            "column_definitions": '{"id": "INTEGER", "name": "TEXT"}',
+        }
+
+        mock_db.__getitem__.side_effect = lambda name: {
+            META_TABLE_SCHEMAS: mock_schema_table,
+            "users": mock_users_table,
+        }.get(name, MagicMock())
+
+        mock_db_class.return_value = mock_db
+
+        # Create resource with different schema
+        resource_content = """
+def fetch_data(existing_table):
+    return [{"id": 1, "name": "Alice", "age": 25}]
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        # Should succeed with force_schema_reset=True
+        result = manager.build_database(force_schema_reset=True)
+        assert result.is_valid
+
+    @patch("zeeker.core.project.sqlite_utils.Database")
+    def test_timestamp_tracking(self, mock_db_class, setup_project):
+        """Test that resource timestamps are tracked."""
+        from zeeker.core.types import META_TABLE_UPDATES
+
+        manager = setup_project
+
+        # Mock database
+        mock_db = MagicMock()
+        mock_updates_table = MagicMock()
+        mock_users_table = MagicMock()
+
+        mock_updates_table.exists.return_value = True
+        mock_users_table.exists.return_value = False
+        mock_users_table.count = 1
+
+        mock_db.__getitem__.side_effect = lambda name: {
+            META_TABLE_UPDATES: mock_updates_table,
+            "users": mock_users_table,
+        }.get(name, MagicMock())
+
+        mock_db_class.return_value = mock_db
+
+        # Create resource
+        resource_content = """
+def fetch_data(existing_table):
+    return [{"id": 1, "name": "Alice"}]
+"""
+        (manager.resources_path / "users.py").write_text(resource_content)
+
+        # Run build
+        result = manager.build_database()
+        assert result.is_valid
+
+        # Verify timestamp tracking was called
+        assert mock_updates_table.insert.called
+        insert_call = mock_updates_table.insert.call_args[0][0]
+        assert insert_call["resource_name"] == "users"
+        assert "last_updated" in insert_call
+        assert "record_count" in insert_call
+        assert "build_id" in insert_call
+        assert "duration_ms" in insert_call
+
+
+class TestMetaTableUtilities:
+    """Test meta table utility functions."""
+
+    def test_calculate_schema_hash(self):
+        """Test schema hash calculation."""
+        from zeeker.core.types import calculate_schema_hash
+
+        schema1 = {"id": "INTEGER", "name": "TEXT"}
+        schema2 = {"id": "INTEGER", "name": "TEXT"}
+        schema3 = {"id": "INTEGER", "name": "TEXT", "age": "INTEGER"}
+
+        # Same schemas should have same hash
+        assert calculate_schema_hash(schema1) == calculate_schema_hash(schema2)
+
+        # Different schemas should have different hashes
+        assert calculate_schema_hash(schema1) != calculate_schema_hash(schema3)
+
+        # Order shouldn't matter
+        schema_reordered = {"name": "TEXT", "id": "INTEGER"}
+        assert calculate_schema_hash(schema1) == calculate_schema_hash(schema_reordered)
+
+    def test_extract_table_schema(self):
+        """Test table schema extraction."""
+        from zeeker.core.types import extract_table_schema
+
+        # Mock table with columns
+        mock_table = MagicMock()
+        mock_col1 = MagicMock()
+        mock_col1.name = "id"
+        mock_col1.type = "INTEGER"
+        mock_col2 = MagicMock()
+        mock_col2.name = "name"
+        mock_col2.type = "TEXT"
+        mock_table.columns = [mock_col1, mock_col2]
+
+        schema = extract_table_schema(mock_table)
+
+        assert schema == {"id": "INTEGER", "name": "TEXT"}
+
+    def test_schema_conflict_error_message(self):
+        """Test ZeekerSchemaConflictError message formatting."""
+        from zeeker.core.types import ZeekerSchemaConflictError
+
+        old_schema = {"id": "INTEGER", "name": "TEXT"}
+        new_schema = {"id": "INTEGER", "name": "TEXT", "age": "INTEGER", "email": "TEXT"}
+
+        error = ZeekerSchemaConflictError("users", old_schema, new_schema)
+        error_msg = str(error)
+
+        assert "users" in error_msg
+        assert "Schema conflict detected" in error_msg
+        assert "Added columns: age, email" in error_msg
+        assert "migrate_schema() function" in error_msg
+        assert "--force-schema-reset" in error_msg

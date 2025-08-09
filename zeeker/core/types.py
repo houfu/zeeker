@@ -2,10 +2,59 @@
 Core data types and structures for Zeeker.
 """
 
+import hashlib
+import json
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+
+# Meta table constants
+META_TABLE_SCHEMAS = "_zeeker_schemas"
+META_TABLE_UPDATES = "_zeeker_updates"
+META_TABLE_NAMES = [META_TABLE_SCHEMAS, META_TABLE_UPDATES]
+
+
+class ZeekerSchemaConflictError(Exception):
+    """Raised when schema changes detected without migration handler."""
+
+    def __init__(self, resource_name: str, old_schema: Dict[str, str], new_schema: Dict[str, str]):
+        self.resource_name = resource_name
+        self.old_schema = old_schema
+        self.new_schema = new_schema
+
+        # Find schema differences for helpful error message
+        old_cols = set(old_schema.keys())
+        new_cols = set(new_schema.keys())
+        added_cols = new_cols - old_cols
+        removed_cols = old_cols - new_cols
+        changed_types = {
+            col: (old_schema[col], new_schema[col])
+            for col in old_cols & new_cols
+            if old_schema[col] != new_schema[col]
+        }
+
+        msg_parts = [f"Schema conflict detected for resource '{resource_name}'."]
+
+        if added_cols:
+            msg_parts.append(f"Added columns: {', '.join(sorted(added_cols))}")
+        if removed_cols:
+            msg_parts.append(f"Removed columns: {', '.join(sorted(removed_cols))}")
+        if changed_types:
+            for col, (old_type, new_type) in changed_types.items():
+                msg_parts.append(f"Changed '{col}': {old_type} → {new_type}")
+
+        msg_parts.extend(
+            [
+                "",
+                "To resolve this conflict:",
+                f"1. Add migrate_schema() function to resources/{resource_name}.py",
+                f"2. Or delete the database file to rebuild from scratch",
+                f"3. Or use --force-schema-reset flag",
+            ]
+        )
+
+        super().__init__("\n".join(msg_parts))
 
 
 @dataclass
@@ -155,3 +204,29 @@ database = "{self.database}"
             metadata["databases"][db_name]["tables"][resource_name] = table_metadata
 
         return metadata
+
+
+def calculate_schema_hash(column_definitions: Dict[str, str]) -> str:
+    """Calculate a hash of table schema for change detection.
+
+    Args:
+        column_definitions: Dictionary of column_name -> column_type
+
+    Returns:
+        Hex string hash of the schema
+    """
+    # Sort columns for consistent hashing
+    sorted_schema = json.dumps(column_definitions, sort_keys=True)
+    return hashlib.sha256(sorted_schema.encode()).hexdigest()[:16]
+
+
+def extract_table_schema(table) -> Dict[str, str]:
+    """Extract column definitions from a sqlite-utils Table.
+
+    Args:
+        table: sqlite-utils Table object
+
+    Returns:
+        Dictionary mapping column names to their types
+    """
+    return {col.name: col.type for col in table.columns}

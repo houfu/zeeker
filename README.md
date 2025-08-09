@@ -10,6 +10,8 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 ## 🚀 Features
 
 - **Complete Database Projects**: Create, build, and deploy entire databases with data resources
+- **Automated Meta Tables**: Schema versioning and update tracking with zero configuration
+- **Schema Conflict Detection**: Safe migration system prevents data corruption from schema changes
 - **Safe UI Customizations**: Template validation prevents breaking core Datasette functionality  
 - **Database-Specific Styling**: CSS and JavaScript scoped to individual databases
 - **S3 Deployment**: Direct deployment to S3-compatible storage for both databases and assets
@@ -111,6 +113,7 @@ def fetch_data():
 
 ```bash
 # Build SQLite database from all resources
+# Automatically creates meta tables for schema tracking
 uv run zeeker build
 
 # Deploy database to S3
@@ -273,7 +276,7 @@ def transform_data(raw_data):
     return raw_data
 ```
 
-### sqlite-utils Integration
+### sqlite-utils Integration & Meta Tables
 
 Zeeker uses Simon Willison's sqlite-utils for robust database operations:
 
@@ -282,6 +285,38 @@ Zeeker uses Simon Willison's sqlite-utils for robust database operations:
 - **Safe data insertion** without SQL injection risks
 - **JSON support** for complex data structures
 - **Better error handling** than raw SQL
+
+#### Automated Meta Tables System
+
+Every database automatically includes two meta tables:
+
+**`_zeeker_schemas`** - Schema Version Tracking:
+- Tracks schema versions, hashes, and column definitions
+- Automatically detects schema changes between builds
+- Provides audit trail for schema evolution
+
+**`_zeeker_updates`** - Update Timestamps:
+- Records last update time and record counts for each resource
+- Tracks build performance and data freshness
+- Helps identify stale data sources
+
+#### Schema Conflict Detection
+
+When schemas change, Zeeker provides safe resolution options:
+
+1. **Migration Functions** - Add custom `migrate_schema()` to handle changes
+2. **Force Reset** - Use `--force-schema-reset` flag to rebuild
+3. **Manual Cleanup** - Delete database file and rebuild from scratch
+
+**Example Migration:**
+```python
+def migrate_schema(existing_table, new_schema_info):
+    """Handle adding 'age' column to users table."""
+    existing_table.add_column('age', int, fk=None)
+    for row_id in existing_table.pks:
+        existing_table.update(row_id, {'age': 25})  # Default age
+    return True
+```
 
 ## 🎨 UI Customization Guide
 
@@ -411,7 +446,8 @@ Provide a complete Datasette metadata structure:
 |---------|-------------|
 | `zeeker init PROJECT_NAME` | Initialize new database project |
 | `zeeker add RESOURCE_NAME` | Add data resource to project |
-| `zeeker build` | Build SQLite database from resources |
+| `zeeker build` | Build SQLite database from resources with automated meta tables |
+| `zeeker build --force-schema-reset` | Build database ignoring schema conflicts (for development) |
 | `zeeker deploy` | Deploy database to S3 |
 
 ### UI Customization Commands
@@ -435,6 +471,9 @@ zeeker add RESOURCE_NAME \
   --facets FIELD \
   --sort FIELD \
   --size NUMBER
+
+# Build with schema management options
+zeeker build [--force-schema-reset]
 
 # Deploy with dry run
 zeeker deploy [--dry-run]
@@ -634,11 +673,39 @@ This project is licensed under the terms specified in the project configuration.
 
 ### Database Project Issues
 
+**Schema Conflict Detected**
+```
+❌ Schema conflict detected:
+Schema conflict detected for resource 'users'.
+Added columns: age
+```
+
+**Resolution Options:**
+1. **Add Migration Function** (Recommended):
+```python
+# In resources/users.py
+def migrate_schema(existing_table, new_schema_info):
+    existing_table.add_column('age', int, fk=None)
+    return True
+```
+
+2. **Use Force Reset Flag**:
+```bash
+zeeker build --force-schema-reset
+```
+
+3. **Manual Database Reset**:
+```bash
+rm project_name.db
+zeeker build
+```
+
 **Build Fails**
 - Check that all resource files have `fetch_data()` function
 - Verify data is returned as list of dictionaries
 - Check for syntax errors in resource files
 - Ensure you're in a project directory (has `zeeker.toml`)
+- Review schema conflict errors and add migration functions if needed
 
 **Deploy Fails**
 - Verify environment variables are set correctly
