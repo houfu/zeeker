@@ -5,7 +5,9 @@ This module handles building SQLite databases from resources, including
 S3 synchronization capabilities for multi-machine workflows.
 """
 
+import asyncio
 import importlib.util
+import inspect
 import json
 import sqlite3
 import time
@@ -35,6 +37,76 @@ class DatabaseBuilder:
         self.project = project
         self.resources_path = project_path / "resources"
         self.schema_manager = SchemaManager()
+
+    def _call_fetch_data(self, fetch_data_func, existing_table):
+        """Call fetch_data function, handling both sync and async variants.
+
+        Args:
+            fetch_data_func: The fetch_data function from the resource module
+            existing_table: sqlite-utils Table object or None
+
+        Returns:
+            List[Dict[str, Any]]: The data returned by fetch_data
+        """
+        if inspect.iscoroutinefunction(fetch_data_func):
+            # Async function - run in event loop
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If loop is already running, we need to run in a new thread
+                    import concurrent.futures
+
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(asyncio.run, fetch_data_func(existing_table))
+                        return future.result()
+                else:
+                    return loop.run_until_complete(fetch_data_func(existing_table))
+            except RuntimeError:
+                # No event loop, create one
+                return asyncio.run(fetch_data_func(existing_table))
+        else:
+            # Sync function - call directly
+            return fetch_data_func(existing_table)
+
+    def _call_fetch_fragments_data(
+        self, fetch_fragments_func, existing_fragments_table, main_data_context=None
+    ):
+        """Call fetch_fragments_data function, handling both sync and async variants.
+
+        Args:
+            fetch_fragments_func: The fetch_fragments_data function from the resource module
+            existing_fragments_table: sqlite-utils Table object or None
+            main_data_context: Raw data from fetch_data for context passing
+
+        Returns:
+            List[Dict[str, Any]]: The fragment data returned by fetch_fragments_data
+        """
+        if inspect.iscoroutinefunction(fetch_fragments_func):
+            # Async function - run in event loop
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If loop is already running, we need to run in a new thread
+                    import concurrent.futures
+
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run,
+                            fetch_fragments_func(existing_fragments_table, main_data_context),
+                        )
+                        return future.result()
+                else:
+                    return loop.run_until_complete(
+                        fetch_fragments_func(existing_fragments_table, main_data_context)
+                    )
+            except RuntimeError:
+                # No event loop, create one
+                return asyncio.run(
+                    fetch_fragments_func(existing_fragments_table, main_data_context)
+                )
+        else:
+            # Sync function - call directly
+            return fetch_fragments_func(existing_fragments_table, main_data_context)
 
     def build_database(
         self, force_schema_reset: bool = False, sync_from_s3: bool = False
@@ -193,7 +265,9 @@ class DatabaseBuilder:
             if existing_table and not force_schema_reset:
                 # Check for schema conflicts
                 try:
-                    sample_data = fetch_data(existing_table)[:5]  # Small sample for schema check
+                    sample_data = self._call_fetch_data(fetch_data, existing_table)[
+                        :5
+                    ]  # Small sample for schema check
                     if sample_data:
                         schema_result = self.schema_manager.check_schema_conflicts(
                             db, resource_name, sample_data, module
@@ -220,7 +294,7 @@ class DatabaseBuilder:
                     try:
                         fetch_data = getattr(module, "fetch_data")
                         existing_table = db[resource_name] if db[resource_name].exists() else None
-                        main_data_context = fetch_data(existing_table)
+                        main_data_context = self._call_fetch_data(fetch_data, existing_table)
                     except Exception:
                         # If we can't get context, fragments will work without it
                         main_data_context = None
@@ -308,7 +382,7 @@ class DatabaseBuilder:
             existing_table = db[resource_name] if db[resource_name].exists() else None
 
             # Fetch the data
-            raw_data = fetch_data(existing_table)
+            raw_data = self._call_fetch_data(fetch_data, existing_table)
 
             if not isinstance(raw_data, list):
                 result.is_valid = False
@@ -393,22 +467,24 @@ class DatabaseBuilder:
             )
 
             # Fetch fragments data with optional main data context
-            import inspect
-
             sig = inspect.signature(fetch_fragments_data)
 
             if len(sig.parameters) >= 2 and main_data_context is not None:
                 # Enhanced signature: fetch_fragments_data(existing_fragments_table, main_data_context)
                 try:
-                    raw_fragments = fetch_fragments_data(
-                        existing_fragments_table, main_data_context
+                    raw_fragments = self._call_fetch_fragments_data(
+                        fetch_fragments_data, existing_fragments_table, main_data_context
                     )
                 except TypeError:
                     # Fallback to old signature if function doesn't accept context
-                    raw_fragments = fetch_fragments_data(existing_fragments_table)
+                    raw_fragments = self._call_fetch_fragments_data(
+                        fetch_fragments_data, existing_fragments_table
+                    )
             else:
                 # Original signature: fetch_fragments_data(existing_fragments_table)
-                raw_fragments = fetch_fragments_data(existing_fragments_table)
+                raw_fragments = self._call_fetch_fragments_data(
+                    fetch_fragments_data, existing_fragments_table
+                )
 
             if not isinstance(raw_fragments, list):
                 result.is_valid = False

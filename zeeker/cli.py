@@ -88,7 +88,13 @@ def init(project_name, path):
 @click.option(
     "--fragments", is_flag=True, help="Create a complementary fragments table for large documents"
 )
-def add(resource_name, description, facets, sort, size, fragments):
+@click.option(
+    "--async",
+    "is_async",
+    is_flag=True,
+    help="Generate async templates for concurrent data fetching",
+)
+def add(resource_name, description, facets, sort, size, fragments, is_async):
     """Add a new resource to the project.
 
     Creates a Python file in resources/ with a template for data fetching.
@@ -96,9 +102,14 @@ def add(resource_name, description, facets, sort, size, fragments):
     Use --fragments to create a complementary table for storing document fragments,
     perfect for handling large legal documents that need to be split into searchable chunks.
 
+    Use --async to generate async/await templates for concurrent data fetching from APIs,
+    databases, or other async sources for better performance.
+
     Examples:
         zeeker add users --description "User account data" --facets role --facets department --size 50
         zeeker add legal_docs --fragments --description "Legal documents with text fragments"
+        zeeker add api_data --async --description "Data from external APIs with concurrent fetching"
+        zeeker add large_docs --fragments --async --description "Async document processing with fragments"
     """
     manager = ZeekerProjectManager()
 
@@ -112,6 +123,8 @@ def add(resource_name, description, facets, sort, size, fragments):
         kwargs["size"] = size
     if fragments:
         kwargs["fragments"] = True
+    if is_async:
+        kwargs["is_async"] = True
 
     result = manager.add_resource(resource_name, description, **kwargs)
 

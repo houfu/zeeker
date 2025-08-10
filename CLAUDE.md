@@ -25,6 +25,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `uv run zeeker init PROJECT_NAME` - Initialize new database project
 - `uv run zeeker add RESOURCE_NAME` - Add data resource to project
 - `uv run zeeker add RESOURCE_NAME --fragments` - Add resource with fragments support for large documents
+- `uv run zeeker add RESOURCE_NAME --async` - Add resource with async/await support for concurrent data fetching
+- `uv run zeeker add RESOURCE_NAME --fragments --async` - Add resource with both fragments and async support
 - `uv run zeeker build` - Build SQLite database from resources
 - `uv run zeeker build --sync-from-s3` - Build database with S3 sync (download existing DB first)
 - `uv run zeeker build --force-schema-reset` - Build ignoring schema conflicts
@@ -129,17 +131,197 @@ project/
 ```
 
 #### Resource Modules
-Each resource must implement:
+Each resource must implement either sync or async functions:
+
+**Synchronous Resources:**
 - `fetch_data(existing_table)` - Returns List[Dict[str, Any]] for database insertion
   - `existing_table`: sqlite-utils Table object if table exists, None for new table
   - Use this to check existing data and avoid duplicates
 - `transform_data()` - Optional data transformation function
 
+**Asynchronous Resources:**
+- `async def fetch_data(existing_table)` - Returns List[Dict[str, Any]] for database insertion
+  - Same parameters and behavior as sync version
+  - Use for concurrent API calls, async file I/O, or database operations
+- `async def transform_data()` - Optional async data transformation function
+
 #### Fragment-Enabled Resources
 Resources created with `--fragments` implement additional functions:
-- `fetch_fragments_data(existing_fragments_table)` - Returns fragment records
+
+**Synchronous Fragments:**
+- `fetch_fragments_data(existing_fragments_table, main_data_context=None)` - Returns fragment records
 - `transform_fragments_data()` - Optional fragment transformation
-- `split_text_into_fragments()` - Helper function for intelligent text splitting
+
+**Asynchronous Fragments:**
+- `async def fetch_fragments_data(existing_fragments_table, main_data_context=None)` - Returns fragment records
+- `async def transform_fragments_data()` - Optional async fragment transformation
+
+### Asynchronous Resource Development
+
+Zeeker supports both synchronous and asynchronous resource functions with automatic detection and execution.
+
+#### When to Use Async Resources
+
+Use async resources (`--async` flag) when your data fetching involves:
+- **External API calls** - Multiple concurrent HTTP requests
+- **Database connections** - Async database drivers (asyncpg, aiomysql, motor)
+- **File I/O operations** - Reading many files concurrently
+- **Web scraping** - Concurrent page fetching with aiohttp
+- **Processing pipelines** - CPU-intensive tasks with asyncio
+
+#### Creating Async Resources
+
+```bash
+# Standard async resource
+zeeker add api_data --async --description "Concurrent API data fetching"
+
+# Async resource with fragments
+zeeker add documents --fragments --async --description "Async document processing with fragments"
+```
+
+#### Async Resource Examples
+
+**Basic Async Resource:**
+```python
+import asyncio
+import aiohttp
+from sqlite_utils.db import Table, NotFoundError
+from typing import Optional, List, Dict, Any
+
+async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    """Async data fetching with concurrent API calls."""
+    
+    if existing_table:
+        # Access metadata for incremental updates
+        db = existing_table.db
+        if "_zeeker_updates" in db.table_names():
+            updates_table = db["_zeeker_updates"]
+            try:
+                metadata = updates_table.get(existing_table.name)
+                last_updated = metadata["last_updated"]
+                print(f"Last updated: {last_updated}")
+            except NotFoundError:
+                print("No metadata found - first run")
+    
+    # Concurrent API calls
+    async with aiohttp.ClientSession() as session:
+        urls = [
+            "https://api.example.com/users",
+            "https://api.example.com/posts",
+            "https://api.example.com/comments"
+        ]
+        
+        # Fetch all URLs concurrently
+        tasks = [fetch_url(session, url) for url in urls]
+        results = await asyncio.gather(*tasks)
+        
+        # Combine and process results
+        all_data = []
+        for result in results:
+            all_data.extend(result)
+        
+        return all_data
+
+async def fetch_url(session: aiohttp.ClientSession, url: str) -> List[Dict[str, Any]]:
+    """Helper function for individual API calls."""
+    async with session.get(url) as response:
+        if response.status == 200:
+            data = await response.json()
+            return data.get('items', [])
+        return []
+```
+
+**Async Fragments Resource:**
+```python
+import asyncio
+import aiohttp
+from sqlite_utils.db import Table, NotFoundError
+from typing import Optional, List, Dict, Any
+
+async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    """Async fetch documents for main table."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://api.example.com/documents") as response:
+            documents = await response.json()
+            return [
+                {
+                    "id": doc["id"],
+                    "title": doc["title"],
+                    "content": doc["content"],
+                    "source": "api",
+                    "created_date": doc.get("created", "2024-01-01"),
+                }
+                for doc in documents
+            ]
+
+async def fetch_fragments_data(
+    existing_fragments_table: Optional[Table], 
+    main_data_context: Optional[List[Dict[str, Any]]] = None
+) -> List[Dict[str, Any]]:
+    """Async fragments processing with AI-based chunking."""
+    
+    if main_data_context:
+        fragments = []
+        
+        # Process documents concurrently
+        tasks = [
+            process_document_async(doc) 
+            for doc in main_data_context
+        ]
+        document_fragments = await asyncio.gather(*tasks)
+        
+        # Flatten results
+        for doc_fragments in document_fragments:
+            fragments.extend(doc_fragments)
+        
+        return fragments
+    
+    return []
+
+async def process_document_async(doc: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Process a single document into fragments."""
+    doc_id = doc.get("id")
+    content = doc.get("content", "")
+    
+    # Simulate AI-based chunking (could be OpenAI, Anthropic, etc.)
+    chunks = await ai_chunk_text(content)
+    
+    return [
+        {
+            "parent_id": doc_id,
+            "fragment_num": i,
+            "text": chunk,
+            "char_count": len(chunk),
+            "processing_time": "async"
+        }
+        for i, chunk in enumerate(chunks)
+    ]
+
+async def ai_chunk_text(content: str) -> List[str]:
+    """Example async AI-based text chunking."""
+    await asyncio.sleep(0.1)  # Simulate API call
+    # Simple chunking for example - replace with actual AI service
+    return [content[i:i+500] for i in range(0, len(content), 500)]
+```
+
+#### Performance Benefits
+
+**Concurrent Processing:**
+- **Sync**: Process 100 API calls sequentially = ~100 seconds
+- **Async**: Process 100 API calls concurrently = ~5-10 seconds
+
+**Resource Efficiency:**
+- Single thread handling multiple I/O operations
+- Better memory usage than thread-based concurrency
+- Scales well for I/O-bound operations
+
+#### Async + Fragments = Powerful Combination
+
+Async fragments are perfect for:
+- **Legal document processing** with AI-based chunking
+- **Research paper analysis** with concurrent API calls for metadata
+- **Web scraping** with parallel page processing
+- **Large file processing** with concurrent text analysis
 
 ### Database Schema Management
 

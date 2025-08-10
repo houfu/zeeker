@@ -30,37 +30,54 @@ class ResourceTemplateGenerator:
         else:
             self.env = None
 
-    def generate_resource_template(self, resource_name: str, fragments: bool = False) -> str:
+    def generate_resource_template(
+        self, resource_name: str, fragments: bool = False, is_async: bool = False
+    ) -> str:
         """Generate a Python template for a resource.
 
         Args:
             resource_name: Name of the resource
             fragments: Whether to generate fragments-enabled template
+            is_async: Whether to generate async-enabled template
 
         Returns:
             Generated Python code as string
         """
         if self.env and HAS_JINJA2:
-            return self._generate_jinja2_template(resource_name, fragments)
+            return self._generate_jinja2_template(resource_name, fragments, is_async)
         else:
             # Fallback to string-based templates if Jinja2 not available
-            return self._generate_fallback_template(resource_name, fragments)
+            return self._generate_fallback_template(resource_name, fragments, is_async)
 
-    def _generate_jinja2_template(self, resource_name: str, fragments: bool) -> str:
+    def _generate_jinja2_template(self, resource_name: str, fragments: bool, is_async: bool) -> str:
         """Generate template using Jinja2."""
-        template_file = "fragments.py.j2" if fragments else "resource.py.j2"
+        # Determine template file based on fragments and async flags
+        if fragments and is_async:
+            template_file = "fragments_async.py.j2"
+        elif fragments:
+            template_file = "fragments.py.j2"
+        elif is_async:
+            template_file = "resource_async.py.j2"
+        else:
+            template_file = "resource.py.j2"
 
         try:
             template = self.env.get_template(template_file)
             return template.render(resource_name=resource_name)
         except Exception:
             # Fall back to string-based templates if Jinja2 fails
-            return self._generate_fallback_template(resource_name, fragments)
+            return self._generate_fallback_template(resource_name, fragments, is_async)
 
-    def _generate_fallback_template(self, resource_name: str, fragments: bool) -> str:
+    def _generate_fallback_template(
+        self, resource_name: str, fragments: bool, is_async: bool
+    ) -> str:
         """Generate template using string formatting (fallback)."""
-        if fragments:
+        if fragments and is_async:
+            return self._generate_async_fragments_fallback(resource_name)
+        elif fragments:
             return self._generate_fragments_fallback(resource_name)
+        elif is_async:
+            return self._generate_async_standard_fallback(resource_name)
         else:
             return self._generate_standard_fallback(resource_name)
 
@@ -348,4 +365,66 @@ def transform_fragments_data(raw_fragments):
 # - Text splitting utilities
 # - Data validation functions
 # - API client functions
+'''
+
+    def _generate_async_standard_fallback(self, resource_name: str) -> str:
+        """Generate async resource template using string formatting."""
+        return f'''"""
+{resource_name.replace('_', ' ').title()} resource for fetching and processing data (async version).
+
+This module should implement an async fetch_data() function that returns
+a list of dictionaries to be inserted into the '{resource_name}' table.
+"""
+import asyncio
+
+async def fetch_data(existing_table):
+    \"\"\"
+    Async fetch data for the {resource_name} table.
+
+    TODO: Implement your async data fetching logic here
+    \"\"\"
+    await asyncio.sleep(0.1)  # Placeholder for async operations
+    return [{{"id": 1, "name": "Example", "created": "2024-01-01"}}]
+
+async def transform_data(raw_data):
+    \"\"\"Optional async data transformation.\"\"\"
+    await asyncio.sleep(0)
+    return raw_data
+'''
+
+    def _generate_async_fragments_fallback(self, resource_name: str) -> str:
+        """Generate async fragments resource template using string formatting."""
+        fragments_table = f"{resource_name}_fragments"
+
+        return f'''"""
+{resource_name.replace('_', ' ').title()} resource with fragments support (async version).
+
+This module implements TWO tables with async functionality.
+"""
+import asyncio
+
+async def fetch_data(existing_table):
+    \"\"\"Async fetch data for the {resource_name} table.\"\"\"
+    await asyncio.sleep(0.1)
+    return [{{"id": 1, "title": "Example Document", "content": "Document content..."}}]
+
+async def fetch_fragments_data(existing_fragments_table, main_data_context=None):
+    \"\"\"Async fetch fragments data for the {fragments_table} table.\"\"\"
+    await asyncio.sleep(0.1)
+    if main_data_context:
+        fragments = []
+        for record in main_data_context:
+            fragments.append({{"parent_id": record.get("id"), "text": record.get("content", "")[:100]}})
+        return fragments
+    return [{{"parent_id": 1, "text": "Example fragment"}}]
+
+async def transform_data(raw_data):
+    \"\"\"Optional async data transformation.\"\"\"
+    await asyncio.sleep(0)
+    return raw_data
+
+async def transform_fragments_data(raw_fragments):
+    \"\"\"Optional async fragments transformation.\"\"\"
+    await asyncio.sleep(0)
+    return raw_fragments
 '''

@@ -1,0 +1,166 @@
+"""
+{{ resource_name.replace('_', ' ').title() }} resource for fetching and processing data (async version).
+
+This module should implement an async fetch_data() function that returns
+a list of dictionaries to be inserted into the '{{ resource_name }}' table.
+
+The database is built using sqlite-utils, which provides:
+• Automatic table creation from your data structure
+• Type inference (integers → INTEGER, floats → REAL, strings → TEXT)
+• JSON support for complex data (lists, dicts stored as JSON)
+• Safe data insertion without SQL injection risks
+"""
+import asyncio
+import aiohttp
+from sqlite_utils.db import Table, NotFoundError
+from typing import Optional, List, Dict, Any, Awaitable
+
+async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    """
+    Async fetch data for the {{ resource_name }} table.
+
+    Args:
+        existing_table: sqlite-utils Table object if table exists, None for new table
+                       Use this to check for existing data and avoid duplicates
+
+    Returns:
+        List[Dict[str, Any]]: List of records to insert into database
+
+    IMPORTANT - Schema Considerations:
+    Your FIRST fetch_data() call determines the column types permanently!
+    sqlite-utils infers types from the first ~100 records and locks them in.
+    Later runs cannot change existing column types, only add new columns.
+
+    Python Type → SQLite Column Type:
+    • int          → INTEGER
+    • float        → REAL
+    • str          → TEXT
+    • bool         → INTEGER (stored as 0/1)
+    • dict/list    → TEXT (stored as JSON)
+    • None values  → Can cause type inference issues
+
+    Best Practices:
+    1. Make sure your first batch has correct Python types
+    2. Use consistent data types across all records
+    3. Avoid None/null values in key columns on first run
+    4. Use float (not int) for numbers that might have decimals later
+
+    Example usage:
+        if existing_table:
+            # Access metadata for incremental updates
+            db = existing_table.db
+            if "_zeeker_updates" in db.table_names():
+                updates_table = db["_zeeker_updates"]
+                try:
+                    metadata = updates_table.get(existing_table.name)
+                    last_updated = metadata["last_updated"]  # ISO datetime string
+                    print(f"Last updated: {last_updated}")
+                    # Use last_updated for incremental fetching
+                except NotFoundError:
+                    print("No metadata found - first run")
+            
+            # Check for duplicates and fetch incremental data
+            existing_ids = {row["id"] for row in existing_table.rows}
+            new_data = await fetch_from_api()  # Your async data source
+            return [record for record in new_data if record["id"] not in existing_ids]
+        else:
+            # Fresh table - CRITICAL: Set schema correctly with first batch!
+            return await fetch_initial_data()
+    """
+    # TODO: Implement your async data fetching logic here
+    # This could be:
+    # - Async API calls (aiohttp.get, httpx.get, etc.)
+    # - Async file reading (aiofiles.open, etc.)
+    # - Async database queries (asyncpg, aiomysql, etc.)
+    # - Async web scraping (playwright, selenium, etc.)
+    # - Any other async data source
+
+    # Example async API call using aiohttp
+    async with aiohttp.ClientSession() as session:
+        # Replace with your actual API endpoint
+        async with session.get("https://api.example.com/data") as response:
+            if response.status == 200:
+                data = await response.json()
+                # Process and return data
+                return [
+                    # Example data showing proper types for schema inference:
+                    {
+                        "id": 1,                           # int → INTEGER (good for primary keys)
+                        "title": "Example Title",          # str → TEXT
+                        "score": 85.5,                     # float → REAL (use float even for whole numbers!)
+                        "view_count": 100,                 # int → INTEGER
+                        "is_published": True,              # bool → INTEGER (0/1)
+                        "created_date": "2024-01-15",      # str → TEXT (ISO date format recommended)
+                        "tags": ["news", "technology"],    # list → TEXT (stored as JSON)
+                        "metadata": {"priority": "high"},  # dict → TEXT (stored as JSON)
+                    },
+                    # Add more example records with same structure...
+                ]
+            else:
+                print(f"API request failed with status {response.status}")
+                return []
+
+    # Fallback example data if API call fails
+    return [
+        {
+            "id": 1,
+            "title": "Example Record",
+            "score": 85.5,
+            "view_count": 100,
+            "is_published": True,
+            "created_date": "2024-01-15",
+            "tags": ["example"],
+            "metadata": {"source": "fallback"},
+        }
+    ]
+
+
+async def transform_data(raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Optional: Transform/clean the raw data before database insertion.
+
+    Args:
+        raw_data: The data returned from fetch_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed data
+
+    Examples:
+        # Clean strings
+        for item in raw_data:
+            item['name'] = item['name'].strip().title()
+
+        # Parse dates
+        for item in raw_data:
+            item['created_date'] = datetime.fromisoformat(item['date_string'])
+
+        # Handle complex data (sqlite-utils stores as JSON)
+        for item in raw_data:
+            item['metadata'] = {"tags": ["news", "tech"], "priority": 1}
+    """
+    # TODO: Add any async data transformation logic here
+    await asyncio.sleep(0)  # Placeholder for async operations
+    return raw_data
+
+
+# TODO: Add any helper functions your project needs
+# Examples:
+# - Async API client functions
+# - Async data parsing utilities
+# - Async validation functions
+# - Custom async data transformation functions
+
+async def fetch_from_api():
+    """Example async helper function."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://api.example.com/data") as response:
+            return await response.json()
+
+async def fetch_initial_data():
+    """Example async helper for initial data fetch."""
+    # Your initial data fetching logic here
+    await asyncio.sleep(0.1)  # Simulate async operation
+    return [
+        {"id": 1, "name": "Initial Record", "created": "2024-01-01"},
+        {"id": 2, "name": "Another Record", "created": "2024-01-02"},
+    ]

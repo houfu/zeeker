@@ -50,7 +50,9 @@ class ResourceManager:
 
         # Generate and write resource file
         template = self.template_generator.generate_resource_template(
-            resource_name, fragments=kwargs.get("fragments", False)
+            resource_name,
+            fragments=kwargs.get("fragments", False),
+            is_async=kwargs.get("is_async", False),
         )
         resource_file.write_text(template)
 

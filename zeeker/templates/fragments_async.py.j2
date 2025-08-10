@@ -1,0 +1,228 @@
+"""
+{{ resource_name.replace('_', ' ').title() }} resource with fragments support for large documents (async version).
+
+This module implements TWO tables:
+1. '{{ resource_name }}' - Main table (schema determined by your fetch_data function)
+2. '{{ resource_name }}_fragments' - Fragments table (schema determined by your fetch_fragments_data function)
+
+IMPORTANT: You define both table schemas through your returned data structure.
+Zeeker does not enforce any specific field names or relationships.
+
+The database is built using sqlite-utils with automatic schema detection.
+"""
+import asyncio
+import aiohttp
+from sqlite_utils.db import Table, NotFoundError
+from typing import Optional, List, Dict, Any, Awaitable
+
+
+async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    """
+    Async fetch data for the {{ resource_name }} table.
+
+    Args:
+        existing_table: sqlite-utils Table object if table exists, None for new table
+                       Use this to check for existing data and avoid duplicates
+
+    Returns:
+        List[Dict[str, Any]]: Records for the main table
+
+    IMPORTANT - Schema Considerations:
+    Your FIRST fetch_data() call determines the column types permanently!
+    sqlite-utils infers types from the first ~100 records and locks them in.
+
+    You have complete freedom to define your schema. Common patterns:
+    - Simple: {"id": 1, "title": "Doc 1", "content": "..."}
+    - Metadata focused: {"id": 1, "title": "Doc 1", "source": "...", "date": "..."}
+    - Complex: {"id": 1, "title": "Doc 1", "metadata": {"tags": ["tag1"]}, "status": "active"}
+    
+    Accessing metadata for incremental updates:
+        if existing_table:
+            db = existing_table.db
+            if "_zeeker_updates" in db.table_names():
+                updates_table = db["_zeeker_updates"]
+                try:
+                    metadata = updates_table.get(existing_table.name)
+                    last_updated = metadata["last_updated"]  # ISO datetime string
+                    record_count = metadata["record_count"]  # Current row count
+                    print(f"Last updated: {last_updated}, Records: {record_count}")
+                except NotFoundError:
+                    print("No metadata found - first run")
+    """
+    # TODO: Implement your async data fetching logic
+    # This is just an example - replace with your actual schema and data
+    
+    # Example async document fetching
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://api.example.com/documents") as response:
+            if response.status == 200:
+                documents = await response.json()
+                return [
+                    {
+                        "id": doc["id"],  # Required: some kind of identifier
+                        "title": doc["title"],  # Your field names and types
+                        "content": doc["content"],  # You decide what goes in main vs fragments
+                        "source": doc.get("source", "api"),
+                        "created_date": doc.get("created", "2024-01-01"),
+                        # Add any other fields your project needs
+                    }
+                    for doc in documents
+                ]
+    
+    # Fallback example data
+    return [
+        {
+            "id": 1,  # Required: some kind of identifier
+            "title": "Example Document",  # Your field names and types
+            "content": "Document content...",  # You decide what goes in main vs fragments
+            # Add any other fields your project needs
+        },
+        # Add more records...
+    ]
+
+
+async def fetch_fragments_data(existing_fragments_table: Optional[Table], main_data_context: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+    """
+    Async fetch fragments data for the {{ resource_name }}_fragments table.
+
+    This is called automatically after fetch_data().
+
+    Args:
+        existing_fragments_table: sqlite-utils Table object if exists, None for new table
+                                 Use this to check existing fragments and avoid duplicates
+        main_data_context: Raw data from fetch_data() to avoid duplicate API calls (optional)
+                          Contains the same data returned by your fetch_data() function
+
+    Returns:
+        List[Dict[str, Any]]: Fragment records with YOUR chosen schema
+
+    IMPORTANT: You have complete freedom to define the fragments schema.
+    Common patterns include:
+
+    1. Simple text chunks:
+       {"parent_id": 1, "text": "fragment content"}
+
+    2. Positional fragments:
+       {"doc_id": 1, "position": 0, "content": "...", "length": 500}
+
+    3. Semantic fragments:
+       {"document_id": 1, "section_type": "intro", "text": "...", "page": 1}
+
+    4. Custom fragments:
+       {"source_id": 1, "fragment_data": "...", "metadata": {"type": "citation"}}
+
+    The only requirement: some way to link fragments back to main records.
+    """
+    # TODO: Implement your async fragments logic
+    # This is just an example - replace with your actual implementation
+
+    # OPTION 1: Use main_data_context to avoid duplicate API calls
+    if main_data_context:
+        fragments = []
+        for main_record in main_data_context:
+            # Use data already fetched in fetch_data() - no duplicate API calls!
+            doc_content = main_record.get("content", "")  # Or however you store content
+            doc_id = main_record.get("id")  # Or your identifier field
+
+            # Async text processing (e.g., AI-based chunking)
+            chunks = await async_split_content(doc_content)
+            
+            for i, chunk in enumerate(chunks):
+                if chunk.strip():
+                    fragments.append(
+                        {
+                            "parent_id": doc_id,  # Link to main table record
+                            "fragment_num": i,  # Fragment ordering
+                            "text": chunk.strip(),  # Fragment content
+                            "char_count": len(chunk),  # Your metadata
+                        }
+                    )
+        return fragments
+
+    # OPTION 2: Fallback to independent async data fetch (for backward compatibility)
+    # This runs when main_data_context is None (e.g., testing, old resources)
+    example_text = """
+    This is an example document that will be split into fragments.
+    You can implement any splitting logic you need.
+
+    Maybe you want sentence-based fragments, paragraph-based,
+    or even semantic chunks based on document structure.
+
+    The choice is entirely yours based on your project needs.
+    """
+
+    # Your async splitting logic goes here
+    fragments = []
+    chunks = await async_split_content(example_text)
+    
+    for i, chunk in enumerate(chunks):
+        if chunk.strip():
+            fragments.append(
+                {
+                    "parent_id": 1,  # Link to main table (your choice of field name)
+                    "sequence": i,  # Your choice of ordering
+                    "text": chunk.strip(),  # Your choice of content field name
+                    # Add any other fields your fragments need
+                }
+            )
+
+    return fragments
+
+
+async def transform_data(raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Optional: Transform main table data before database insertion.
+
+    Args:
+        raw_data: The data returned from fetch_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed data
+    """
+    # TODO: Add any async data transformation logic here
+    await asyncio.sleep(0)  # Placeholder for async operations
+    return raw_data
+
+
+async def transform_fragments_data(raw_fragments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Optional: Transform fragment data before database insertion.
+
+    Args:
+        raw_fragments: The data returned from fetch_fragments_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed fragment data
+    """
+    # TODO: Add any async fragment processing logic here
+    await asyncio.sleep(0)  # Placeholder for async operations
+    return raw_fragments
+
+
+# TODO: Add any async helper functions your project needs
+# Examples:
+# - Async document parsing functions
+# - Async text splitting utilities
+# - Async data validation functions
+# - Async API client functions
+
+async def async_split_content(content: str) -> List[str]:
+    """Example async text splitting function."""
+    # Simulate async processing (e.g., AI-based chunking)
+    await asyncio.sleep(0.1)
+    
+    # Simple paragraph-based splitting for example
+    paragraphs = content.split('\n\n')
+    return [p.strip() for p in paragraphs if p.strip()]
+
+async def async_fetch_documents():
+    """Example async document fetching."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://api.example.com/documents") as response:
+            return await response.json()
+
+async def async_process_document(doc_content: str) -> List[str]:
+    """Example async document processing."""
+    # Could call AI services, external APIs, etc.
+    await asyncio.sleep(0.1)
+    return doc_content.split('\n\n')
