@@ -748,3 +748,300 @@ Test files follow pytest conventions in `tests/` directory with comprehensive fi
 - `tests/test_fragments.py` - Comprehensive fragments feature testing
 - Tests cover CLI flag, template generation, database building, and error handling
 - Integration tests validate both main and fragments table creation
+
+## Common Code Recipes
+
+### Web Content Extraction with Jina Reader
+
+For extracting clean text content from web pages or documents, use the Jina Reader API:
+
+```python
+import os
+import httpx
+import click
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=1, max=10))
+async def get_jina_reader_content(link: str) -> str:
+    """Fetch content from the Jina reader link."""
+    jina_token = os.environ.get("JINA_API_TOKEN")
+    if not jina_token:
+        click.echo("JINA_API_TOKEN environment variable not set", err=True)
+        return ""
+    jina_link = f"https://r.jina.ai/{link}"
+    headers = {
+        "Authorization": f"Bearer {jina_token}",
+        "X-Retain-Images": "none",
+        "X-Target-Selector": "article",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            r = await client.get(jina_link, headers=headers)
+        return r.text
+    except httpx.RequestError as e:
+        click.echo(f"Error fetching content from Jina reader: {e}", err=True)
+        return ""
+```
+
+**Usage in async resources:**
+```python
+async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    """Fetch articles using Jina Reader for clean text extraction."""
+    
+    urls = [
+        "https://example.com/article1",
+        "https://example.com/article2", 
+        "https://example.com/article3"
+    ]
+    
+    articles = []
+    for url in urls:
+        content = await get_jina_reader_content(url)
+        if content:
+            articles.append({
+                "url": url,
+                "title": content.split('\n')[0][:200],  # First line as title
+                "content": content,
+                "extracted_at": datetime.now().isoformat()
+            })
+    
+    return articles
+```
+
+**Required dependencies:**
+```bash
+uv add httpx tenacity click
+```
+
+**Environment setup:**
+```bash
+export JINA_API_TOKEN="your_jina_api_token"
+```
+
+This recipe provides:
+- **Retry logic** with exponential backoff for reliable fetching
+- **Clean text extraction** without ads, navigation, or formatting
+- **Article-focused content** using X-Target-Selector
+- **Error handling** with user-friendly messages
+- **Async/await support** for concurrent processing
+
+### Hash ID Generation for Primary Keys
+
+For creating deterministic, unique identifiers from multiple data elements:
+
+```python
+def get_hash_id(elements: list[str], delimiter: str = "|") -> str:
+    """Generate a hash ID from a list of strings.
+
+    Args:
+        elements: List of strings to be hashed.
+        delimiter: String used to join elements (default: "|").
+
+    Returns:
+        A hexadecimal MD5 hash of the joined elements.
+
+    Examples:
+        >>> get_hash_id(["2025-05-16", "Meeting Notes"])
+        '1a2b3c4d5e6f7g8h9i0j'
+
+        >>> get_hash_id(["user123", "login", "192.168.1.1"], delimiter=":")
+        '7h8i9j0k1l2m3n4o5p6q'
+    """
+    import hashlib
+
+    if not elements:
+        raise ValueError("At least one element is required")
+
+    joined_string = delimiter.join(str(element) for element in elements)
+    return hashlib.md5(joined_string.encode()).hexdigest()
+```
+
+**Usage in resources:**
+```python
+def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    """Fetch data with hash-based primary keys."""
+    
+    raw_data = [
+        {"date": "2025-05-16", "title": "Meeting Notes", "content": "..."},
+        {"date": "2025-05-17", "title": "Project Update", "content": "..."},
+    ]
+    
+    records = []
+    for item in raw_data:
+        # Create deterministic hash ID from key fields
+        hash_id = get_hash_id([item["date"], item["title"]])
+        
+        records.append({
+            "id": hash_id,
+            "date": item["date"], 
+            "title": item["title"],
+            "content": item["content"],
+            "created_at": datetime.now().isoformat()
+        })
+    
+    return records
+```
+
+**Use cases:**
+- **Deterministic IDs** - Same input always generates same hash
+- **Composite keys** - Hash multiple fields into single primary key
+- **Distributed systems** - No auto-increment conflicts across machines
+- **Data deduplication** - Easily detect duplicate records
+- **Foreign key relationships** - Predictable IDs for linking tables
+
+**Best practices:**
+- Include all fields that make a record unique
+- Use consistent field ordering for reproducible hashes
+- Consider date/time precision (day vs. hour vs. minute)
+- Hash stable identifiers, not volatile data like timestamps
+
+**Example with fragments:**
+```python
+def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    return [{
+        "id": get_hash_id(["doc1", "2025-05-16"]),
+        "title": "Document 1",
+        "source": "example.com"
+    }]
+
+def fetch_fragments_data(existing_fragments_table: Optional[Table], main_data_context=None) -> List[Dict[str, Any]]:
+    if main_data_context:
+        fragments = []
+        for doc in main_data_context:
+            for i, chunk in enumerate(split_text(doc["content"])):
+                fragments.append({
+                    "id": get_hash_id([doc["id"], str(i)]),  # Fragment hash ID
+                    "parent_id": doc["id"],                   # Main table hash ID
+                    "fragment_num": i,
+                    "text": chunk
+                })
+        return fragments
+```
+
+### AI-Powered Text Summarization
+
+For generating concise summaries of long-form content using OpenAI:
+
+```python
+import os
+import click
+from openai import AsyncOpenAI
+
+SYSTEM_PROMPT_TEXT = """
+As an expert in legal affairs, your task is to provide summaries of legal news articles for time-constrained attorneys in an engaging, conversational style. These summaries should highlight the critical legal aspects, relevant precedents, and implications of the issues discussed in the articles. The summary should be in 1 narrative paragraph and should not be longer than 100 words, but ensure they efficiently deliver the key legal insights, making them beneficial for quick comprehension. The end goal is to help the lawyers understand the crux of the articles without having to read them in their entirety.
+"""
+
+async def get_summary(text: str) -> str:
+    """Generate a summary of the article text using OpenAI."""
+    if not os.environ.get("OPENAI_API_KEY"):
+        click.echo("OPENAI_API_KEY environment variable not set", err=True)
+        return ""
+    
+    client = AsyncOpenAI(max_retries=3, timeout=60)
+    try:
+        response = await client.responses.create(
+            model="gpt-5-mini",
+            input=[
+                {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT_TEXT}]},
+                {
+                    "role": "user", 
+                    "content": [
+                        {"type": "input_text", "text": f"Here is an article to summarise:\n {text}"}
+                    ],
+                },
+            ],
+            text={"format": {"type": "text"}},
+            reasoning={"effort": "low", "summary": "auto"},
+            store=False,
+        )
+        return response.output_text
+    except Exception as e:
+        click.echo(f"Error generating summary from OpenAI: {e}", err=True)
+        return ""
+```
+
+**Usage with web content extraction:**
+```python
+async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    """Fetch articles with AI-generated summaries."""
+    
+    urls = [
+        "https://lawblog.example.com/new-precedent",
+        "https://legal-news.example.com/court-decision"
+    ]
+    
+    articles = []
+    for url in urls:
+        # Get clean content
+        full_text = await get_jina_reader_content(url)
+        if not full_text:
+            continue
+            
+        # Generate AI summary
+        summary = await get_summary(full_text)
+        
+        # Create record with hash ID
+        article_id = get_hash_id([url, full_text[:100]])
+        
+        articles.append({
+            "id": article_id,
+            "url": url,
+            "title": full_text.split('\n')[0][:200],
+            "full_text": full_text,
+            "ai_summary": summary,
+            "extracted_at": datetime.now().isoformat(),
+            "word_count": len(full_text.split())
+        })
+    
+    return articles
+```
+
+**Customizing the system prompt:**
+```python
+# For different domains, adjust the SYSTEM_PROMPT_TEXT
+TECH_SUMMARY_PROMPT = """
+You are a technical expert summarizing technology articles for software engineers. 
+Focus on technical details, implementation insights, and practical implications.
+Keep summaries under 100 words in a single paragraph.
+"""
+
+BUSINESS_SUMMARY_PROMPT = """  
+You are a business analyst summarizing market news for executives.
+Highlight financial impact, strategic implications, and market trends.
+Keep summaries under 100 words in a single paragraph.
+"""
+
+async def get_summary(text: str, domain: str = "legal") -> str:
+    """Generate domain-specific summary."""
+    prompts = {
+        "legal": SYSTEM_PROMPT_TEXT,
+        "tech": TECH_SUMMARY_PROMPT, 
+        "business": BUSINESS_SUMMARY_PROMPT
+    }
+    
+    system_prompt = prompts.get(domain, SYSTEM_PROMPT_TEXT)
+    # ... rest of function with system_prompt
+```
+
+**Required dependencies:**
+```bash
+uv add openai click
+```
+
+**Environment setup:**
+```bash
+export OPENAI_API_KEY="your_openai_api_key"
+```
+
+**Features:**
+- **Domain-specific summaries** - Customizable system prompts for different fields
+- **Error handling** - Graceful fallback when API is unavailable
+- **Retry logic** - Built-in retries for reliability  
+- **Async support** - Non-blocking for concurrent processing
+- **Cost control** - Uses efficient models with controlled output length
+
+**Cost optimization tips:**
+- Use `gpt-4o-mini` for cost-effective summarization
+- Truncate very long texts before sending to API
+- Cache summaries using hash IDs to avoid re-processing
+- Consider batching multiple texts in single API calls
