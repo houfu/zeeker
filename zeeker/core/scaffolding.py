@@ -91,6 +91,9 @@ description = "Zeeker database project for {project_name}"
 dependencies = ["zeeker"]
 requires-python = ">=3.12"
 
+[dependency-groups]
+dev = ["black>=25.1.0", "ruff>=0.8.0"]
+
 # Add project-specific dependencies here as needed:
 # dependencies = [
 #     "zeeker",
@@ -101,6 +104,18 @@ requires-python = ">=3.12"
 #     "pdfplumber",      # For PDF text extraction
 #     "openpyxl",        # For Excel file reading
 # ]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # Focus on essential errors, warnings, and imports
+ignore = ["E501"]  # Line too long (handled by black)
 """
         pyproject_path = self.project_path / "pyproject.toml"
         pyproject_path.write_text(pyproject_content)
@@ -187,6 +202,13 @@ This project uses uv for dependency management. Common dependencies for data pro
 
 Add dependencies with: `uv add package_name`
 
+## Development
+
+Format and lint code:
+- `uv run black .` - Format code with black
+- `uv run ruff check .` - Lint code with ruff  
+- `uv run ruff check --fix .` - Auto-fix ruff issues
+
 ## Resources
 
 """
@@ -234,6 +256,11 @@ This project uses **uv** for dependency management with an isolated virtual envi
 - `uv run zeeker add RESOURCE_NAME --fragments` - Add resource with document fragments support
 - `uv run zeeker build` - Build database from all resources in this project
 - `uv run zeeker deploy` - Deploy this project's database to S3
+
+### Code Formatting
+- `uv run black .` - Format code with black
+- `uv run ruff check .` - Lint code with ruff  
+- `uv run ruff check --fix .` - Auto-fix ruff issues
 
 ### Testing This Project
 - `uv run pytest` - Run tests (if added to project)

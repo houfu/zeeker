@@ -94,6 +94,16 @@ class TestZeekerProjectManager:
         assert 'dependencies = ["zeeker"]' in content
         assert 'requires-python = ">=3.12"' in content
 
+        # Check dev dependencies
+        assert "[dependency-groups]" in content
+        assert 'dev = ["black>=25.1.0", "ruff>=0.8.0"]' in content
+
+        # Check tool configuration
+        assert "[tool.black]" in content
+        assert "line-length = 100" in content
+        assert "[tool.ruff]" in content
+        assert "[tool.ruff.lint]" in content
+
         # Should NOT have build system (not a package, just dependencies)
         assert "[build-system]" not in content
 
@@ -149,7 +159,7 @@ facets = ["role", "department"]
 
         # Check file content
         content = resource_file.read_text()
-        assert "def fetch_data(existing_table):" in content
+        assert "def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:" in content
         assert "users" in content
 
         # Check project updated
@@ -184,7 +194,7 @@ facets = ["role", "department"]
         )
 
         assert "test_resource" in template
-        assert "def fetch_data(existing_table):" in template
+        assert "def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:" in template
         assert "sqlite-utils" in template
         assert "TODO: Implement" in template
 
