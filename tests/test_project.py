@@ -51,6 +51,7 @@ class TestZeekerProjectManager:
         assert manager.toml_path.exists()
         assert manager.resources_path.exists()
         assert (manager.resources_path / "__init__.py").exists()
+        assert (manager.project_path / "pyproject.toml").exists()
         assert (manager.project_path / ".gitignore").exists()
         assert (manager.project_path / "README.md").exists()
 
@@ -58,6 +59,12 @@ class TestZeekerProjectManager:
         toml_content = manager.toml_path.read_text()
         assert "test_project" in toml_content
         assert "test_project.db" in toml_content
+
+        # Check pyproject.toml content
+        pyproject_content = (manager.project_path / "pyproject.toml").read_text()
+        assert 'name = "test_project"' in pyproject_content
+        assert 'dependencies = ["zeeker"]' in pyproject_content
+        assert 'requires-python = ">=3.12"' in pyproject_content
 
     def test_init_project_already_exists(self, manager):
         """Test project initialization fails when project already exists."""
@@ -67,6 +74,34 @@ class TestZeekerProjectManager:
 
         assert not result.is_valid
         assert "already contains zeeker.toml" in result.errors[0]
+
+    def test_init_project_pyproject_toml_content(self, manager):
+        """Test pyproject.toml has correct structure and content."""
+        result = manager.init_project("my_test_project")
+
+        assert result.is_valid
+        pyproject_path = manager.project_path / "pyproject.toml"
+        assert pyproject_path.exists()
+
+        content = pyproject_path.read_text()
+
+        # Check required fields
+        assert "[project]" in content
+        assert 'name = "my_test_project"' in content
+        assert 'description = "Zeeker database project for my_test_project"' in content
+        assert 'dependencies = ["zeeker"]' in content
+        assert 'requires-python = ">=3.12"' in content
+
+        # Check build system
+        assert "[build-system]" in content
+        assert 'requires = ["hatchling"]' in content
+        assert 'build-backend = "hatchling.build"' in content
+
+        # Check commented examples exist
+        assert "# Add project-specific dependencies here" in content
+        assert '"requests"' in content
+        assert '"pandas"' in content
+        assert "# For HTTP API calls" in content
 
     def test_load_project_success(self, manager):
         """Test loading an existing project."""
@@ -144,7 +179,9 @@ facets = ["role", "department"]
 
     def test_generate_resource_template(self, manager):
         """Test resource template generation."""
-        template = manager.resource_manager.template_generator.generate_resource_template("test_resource")
+        template = manager.resource_manager.template_generator.generate_resource_template(
+            "test_resource"
+        )
 
         assert "test_resource" in template
         assert "def fetch_data(existing_table):" in template

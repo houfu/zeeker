@@ -4,6 +4,7 @@ Zeeker CLI - Database customization tool with project management.
 Clean CLI interface that imports functionality from core modules.
 """
 
+import subprocess
 from pathlib import Path
 
 import click
@@ -49,15 +50,33 @@ def init(project_name, path):
     for info in result.info:
         click.echo(f"✅ {info}")
 
+    # Run uv sync to create virtual environment and install dependencies
+    click.echo("\n🔄 Setting up virtual environment...")
+    try:
+        sync_result = subprocess.run(
+            ["uv", "sync"], cwd=project_path, capture_output=True, text=True, check=False
+        )
+
+        if sync_result.returncode == 0:
+            click.echo("✅ Virtual environment created and dependencies installed")
+        else:
+            click.echo(f"⚠️  uv sync failed: {sync_result.stderr.strip()}")
+            click.echo("   You can run 'uv sync' manually in the project directory")
+    except FileNotFoundError:
+        click.echo("⚠️  uv not found - skipping virtual environment setup")
+        click.echo(
+            "   Install uv (https://docs.astral.sh/uv/) or use pip/poetry for dependency management"
+        )
+
     click.echo("\nNext steps:")
     try:
         relative_path = project_path.relative_to(Path.cwd())
         click.echo(f"  1. cd {relative_path}")
     except ValueError:
         click.echo(f"  1. cd {project_path}")
-    click.echo("  2. zeeker add <resource_name>")
-    click.echo("  3. zeeker build")
-    click.echo("  4. zeeker deploy")
+    click.echo("  2. uv run zeeker add <resource_name>")
+    click.echo("  3. uv run zeeker build")
+    click.echo("  4. uv run zeeker deploy")
 
 
 @cli.command()
@@ -138,7 +157,9 @@ def build(force_schema_reset, sync_from_s3):
     manager = ZeekerProjectManager()
 
     try:
-        result = manager.build_database(force_schema_reset=force_schema_reset, sync_from_s3=sync_from_s3)
+        result = manager.build_database(
+            force_schema_reset=force_schema_reset, sync_from_s3=sync_from_s3
+        )
     except ZeekerSchemaConflictError as e:
         click.echo("❌ Schema conflict detected:")
         click.echo(str(e))

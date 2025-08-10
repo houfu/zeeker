@@ -52,6 +52,7 @@ class ProjectScaffolder:
 
         # Create all project files
         self._create_resources_package()
+        pyproject_path = self._create_pyproject_toml(project_name)
         self._create_gitignore()
         readme_path = self._create_readme(project_name)
         claude_path = self._create_claude_md(project_name)
@@ -60,6 +61,7 @@ class ProjectScaffolder:
 
         # Add file creation info with safe path handling
         self._add_creation_info(result, self.toml_path)
+        self._add_creation_info(result, pyproject_path)
         self._add_creation_info(result, self.resources_path, is_directory=True)
         self._add_creation_info(result, self.project_path / ".gitignore")
         self._add_creation_info(result, readme_path)
@@ -72,6 +74,40 @@ class ProjectScaffolder:
         self.resources_path.mkdir(exist_ok=True)
         init_file = self.resources_path / "__init__.py"
         init_file.write_text('"""Resources package for data fetching."""\n')
+
+    def _create_pyproject_toml(self, project_name: str) -> Path:
+        """Create pyproject.toml file with zeeker dependency.
+
+        Args:
+            project_name: Name of the project
+
+        Returns:
+            Path to the created pyproject.toml file
+        """
+        pyproject_content = f"""[project]
+name = "{project_name}"
+description = "Zeeker database project for {project_name}"
+dependencies = ["zeeker"]
+requires-python = ">=3.12"
+
+# Add project-specific dependencies here as needed:
+# dependencies = [
+#     "zeeker",
+#     "requests",        # For HTTP API calls
+#     "beautifulsoup4",  # For web scraping and HTML parsing
+#     "pandas",          # For data processing and analysis
+#     "lxml",            # For XML parsing
+#     "pdfplumber",      # For PDF text extraction
+#     "openpyxl",        # For Excel file reading
+# ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+"""
+        pyproject_path = self.project_path / "pyproject.toml"
+        pyproject_path.write_text(pyproject_content)
+        return pyproject_path
 
     def _create_gitignore(self) -> None:
         """Create .gitignore file with standard exclusions."""
@@ -111,28 +147,48 @@ A Zeeker project for managing the {project_name} database.
 
 ## Getting Started
 
-1. Add resources:
+1. Add dependencies for your data sources:
    ```bash
-   zeeker add my_resource --description "Description of the resource"
+   uv add requests beautifulsoup4  # Example: web scraping dependencies
    ```
 
-2. Implement data fetching in `resources/my_resource.py`
-
-3. Build the database:
+2. Add resources:
    ```bash
-   zeeker build
+   uv run zeeker add my_resource --description "Description of the resource"
    ```
 
-4. Deploy to S3:
+3. Implement data fetching in `resources/my_resource.py`
+
+4. Build the database:
    ```bash
-   zeeker deploy
+   uv run zeeker build
+   ```
+
+5. Deploy to S3:
+   ```bash
+   uv run zeeker deploy
    ```
 
 ## Project Structure
 
+- `pyproject.toml` - Project dependencies and metadata
 - `zeeker.toml` - Project configuration
 - `resources/` - Python modules for data fetching
 - `{project_name}.db` - Generated SQLite database (gitignored)
+- `.venv/` - Virtual environment (gitignored)
+
+## Dependencies
+
+This project uses uv for dependency management. Common dependencies for data projects:
+
+- `requests` - HTTP API calls
+- `beautifulsoup4` - Web scraping and HTML parsing
+- `pandas` - Data processing and analysis
+- `lxml` - XML parsing
+- `pdfplumber` - PDF text extraction
+- `openpyxl` - Excel file reading
+
+Add dependencies with: `uv add package_name`
 
 ## Resources
 
@@ -161,6 +217,19 @@ This file provides Claude Code with project-specific context and guidance for de
 **Database:** {project_name}.db
 **Purpose:** Database project for {project_name} data management
 
+## Development Environment
+
+This project uses **uv** for dependency management with an isolated virtual environment:
+
+- `pyproject.toml` - Project dependencies and metadata
+- `.venv/` - Isolated virtual environment (auto-created)
+- All commands should be run with `uv run` prefix
+
+### Dependency Management
+- **Add dependencies:** `uv add package_name` (e.g., `uv add requests pandas`)
+- **Install dependencies:** `uv sync` (automatically creates .venv if needed)
+- **Common packages:** requests, beautifulsoup4, pandas, lxml, pdfplumber, openpyxl
+
 ## Development Commands
 
 ### Quick Commands
@@ -173,6 +242,12 @@ This file provides Claude Code with project-specific context and guidance for de
 - `uv run pytest` - Run tests (if added to project)
 - Check generated `{project_name}.db` after build
 - Verify metadata.json structure
+
+### Working with Dependencies
+When implementing resources that need external libraries:
+1. **First add the dependency:** `uv add library_name`
+2. **Then use in your resource:** `import library_name` in `resources/resource_name.py`
+3. **Build works automatically:** `uv run zeeker build` uses the isolated environment
 
 ## Resources in This Project
 
