@@ -1,0 +1,113 @@
+"""
+{{ resource_name.replace('_', ' ').title() }} resource for fetching and processing data.
+
+This module should implement a fetch_data() function that returns
+a list of dictionaries to be inserted into the '{{ resource_name }}' table.
+
+The database is built using sqlite-utils, which provides:
+• Automatic table creation from your data structure
+• Type inference (integers → INTEGER, floats → REAL, strings → TEXT)
+• JSON support for complex data (lists, dicts stored as JSON)
+• Safe data insertion without SQL injection risks
+"""
+
+def fetch_data(existing_table):
+    """
+    Fetch data for the {{ resource_name }} table.
+
+    Args:
+        existing_table: sqlite-utils Table object if table exists, None for new table
+                       Use this to check for existing data and avoid duplicates
+
+    Returns:
+        List[Dict[str, Any]]: List of records to insert into database
+
+    IMPORTANT - Schema Considerations:
+    Your FIRST fetch_data() call determines the column types permanently!
+    sqlite-utils infers types from the first ~100 records and locks them in.
+    Later runs cannot change existing column types, only add new columns.
+
+    Python Type → SQLite Column Type:
+    • int          → INTEGER
+    • float        → REAL
+    • str          → TEXT
+    • bool         → INTEGER (stored as 0/1)
+    • dict/list    → TEXT (stored as JSON)
+    • None values  → Can cause type inference issues
+
+    Best Practices:
+    1. Make sure your first batch has correct Python types
+    2. Use consistent data types across all records
+    3. Avoid None/null values in key columns on first run
+    4. Use float (not int) for numbers that might have decimals later
+
+    Example usage:
+        if existing_table:
+            # Table exists - check for duplicates and fetch incremental data
+            existing_ids = {row["id"] for row in existing_table.rows}
+            new_data = fetch_from_api()  # Your data source
+            return [record for record in new_data if record["id"] not in existing_ids]
+        else:
+            # Fresh table - CRITICAL: Set schema correctly with first batch!
+            return [
+                {"id": 1, "name": "Example", "created": "2024-01-01"},
+                {"id": 2, "name": "Another", "created": "2024-01-02"},
+            ]
+    """
+    # TODO: Implement your data fetching logic here
+    # This could be:
+    # - API calls (requests.get, etc.)
+    # - File reading (CSV, JSON, XML, etc.)
+    # - Database queries (from other sources)
+    # - Web scraping (BeautifulSoup, Scrapy, etc.)
+    # - Any other data source
+
+    return [
+        # Example data showing proper types for schema inference:
+        {
+            "id": 1,                           # int → INTEGER (good for primary keys)
+            "title": "Example Title",          # str → TEXT
+            "score": 85.5,                     # float → REAL (use float even for whole numbers!)
+            "view_count": 100,                 # int → INTEGER
+            "is_published": True,              # bool → INTEGER (0/1)
+            "created_date": "2024-01-15",      # str → TEXT (ISO date format recommended)
+            "tags": ["news", "technology"],    # list → TEXT (stored as JSON)
+            "metadata": {"priority": "high"},  # dict → TEXT (stored as JSON)
+        },
+        # Add more example records with same structure...
+    ]
+
+
+def transform_data(raw_data):
+    """
+    Optional: Transform/clean the raw data before database insertion.
+
+    Args:
+        raw_data: The data returned from fetch_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed data
+
+    Examples:
+        # Clean strings
+        for item in raw_data:
+            item['name'] = item['name'].strip().title()
+
+        # Parse dates
+        for item in raw_data:
+            item['created_date'] = datetime.fromisoformat(item['date_string'])
+
+        # Handle complex data (sqlite-utils stores as JSON)
+        for item in raw_data:
+            item['metadata'] = {"tags": ["news", "tech"], "priority": 1}
+    """
+    # TODO: Add any data transformation logic here
+    return raw_data
+
+
+# TODO: Add any helper functions your project needs
+# Examples:
+# - API client functions
+# - Data parsing utilities
+# - Validation functions
+# - Custom data transformation functions

@@ -4,13 +4,16 @@ Zeeker CLI - Database customization tool with project management.
 Clean CLI interface that imports functionality from core modules.
 """
 
-import click
+import subprocess
 from pathlib import Path
 
-from .core.project import ZeekerProjectManager
-from .core.validator import ZeekerValidator
-from .core.generator import ZeekerGenerator
+import click
+
 from .core.deployer import ZeekerDeployer
+from .core.generator import ZeekerGenerator
+from .core.project import ZeekerProjectManager
+from .core.types import ZeekerSchemaConflictError
+from .core.validator import ZeekerValidator
 
 
 # Main CLI group
@@ -47,15 +50,33 @@ def init(project_name, path):
     for info in result.info:
         click.echo(f"✅ {info}")
 
+    # Run uv sync to create virtual environment and install dependencies
+    click.echo("\n🔄 Setting up virtual environment...")
+    try:
+        sync_result = subprocess.run(
+            ["uv", "sync"], cwd=project_path, capture_output=True, text=True, check=False
+        )
+
+        if sync_result.returncode == 0:
+            click.echo("✅ Virtual environment created and dependencies installed")
+        else:
+            click.echo(f"⚠️  uv sync failed: {sync_result.stderr.strip()}")
+            click.echo("   You can run 'uv sync' manually in the project directory")
+    except FileNotFoundError:
+        click.echo("⚠️  uv not found - skipping virtual environment setup")
+        click.echo(
+            "   Install uv (https://docs.astral.sh/uv/) or use pip/poetry for dependency management"
+        )
+
     click.echo("\nNext steps:")
     try:
         relative_path = project_path.relative_to(Path.cwd())
         click.echo(f"  1. cd {relative_path}")
     except ValueError:
         click.echo(f"  1. cd {project_path}")
-    click.echo("  2. zeeker add <resource_name>")
-    click.echo("  3. zeeker build")
-    click.echo("  4. zeeker deploy")
+    click.echo("  2. uv run zeeker add <resource_name>")
+    click.echo("  3. uv run zeeker build")
+    click.echo("  4. uv run zeeker deploy")
 
 
 @cli.command()
@@ -64,13 +85,20 @@ def init(project_name, path):
 @click.option("--facets", multiple=True, help="Datasette facets (can be used multiple times)")
 @click.option("--sort", help="Default sort order")
 @click.option("--size", type=int, help="Default page size")
-def add(resource_name, description, facets, sort, size):
+@click.option(
+    "--fragments", is_flag=True, help="Create a complementary fragments table for large documents"
+)
+def add(resource_name, description, facets, sort, size, fragments):
     """Add a new resource to the project.
 
     Creates a Python file in resources/ with a template for data fetching.
 
-    Example:
+    Use --fragments to create a complementary table for storing document fragments,
+    perfect for handling large legal documents that need to be split into searchable chunks.
+
+    Examples:
         zeeker add users --description "User account data" --facets role --facets department --size 50
+        zeeker add legal_docs --fragments --description "Legal documents with text fragments"
     """
     manager = ZeekerProjectManager()
 
@@ -82,6 +110,8 @@ def add(resource_name, description, facets, sort, size):
         kwargs["sort"] = sort
     if size:
         kwargs["size"] = size
+    if fragments:
+        kwargs["fragments"] = True
 
     result = manager.add_resource(resource_name, description, **kwargs)
 
@@ -100,7 +130,13 @@ def add(resource_name, description, facets, sort, size):
 
 
 @cli.command()
-def build():
+@click.option(
+    "--force-schema-reset", is_flag=True, help="Ignore schema conflicts and rebuild tables"
+)
+@click.option(
+    "--sync-from-s3", is_flag=True, help="Download existing database from S3 before building"
+)
+def build(force_schema_reset, sync_from_s3):
     """Build database from all resources using sqlite-utils.
 
     Runs fetch_data() for each resource and creates/updates the SQLite database.
@@ -111,14 +147,27 @@ def build():
     • Safe data insertion without SQL injection risks
     • JSON support for complex data structures
     • Better error handling than raw SQL
+    • Automatic schema conflict detection with migration support
 
     Generates complete Datasette metadata.json following customization guide format.
+    Creates meta tables for schema versioning and update tracking.
 
     Must be run from a Zeeker project directory (contains zeeker.toml).
     """
     manager = ZeekerProjectManager()
 
-    result = manager.build_database()
+    try:
+        result = manager.build_database(
+            force_schema_reset=force_schema_reset, sync_from_s3=sync_from_s3
+        )
+    except ZeekerSchemaConflictError as e:
+        click.echo("❌ Schema conflict detected:")
+        click.echo(str(e))
+        click.echo("\n💡 To resolve this, you can:")
+        click.echo("   • Use --force-schema-reset flag to ignore conflicts")
+        click.echo("   • Add a migrate_schema() function to handle the change")
+        click.echo("   • Delete the database file to rebuild from scratch")
+        return
 
     if result.errors:
         click.echo("❌ Database build failed:")

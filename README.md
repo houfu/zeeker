@@ -10,9 +10,12 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 ## 🚀 Features
 
 - **Complete Database Projects**: Create, build, and deploy entire databases with data resources
+- **Document Fragments**: Built-in support for splitting large documents into searchable chunks
+- **Automated Meta Tables**: Schema versioning and update tracking with zero configuration
+- **Schema Conflict Detection**: Safe migration system prevents data corruption from schema changes
 - **Safe UI Customizations**: Template validation prevents breaking core Datasette functionality  
 - **Database-Specific Styling**: CSS and JavaScript scoped to individual databases
-- **S3 Deployment**: Direct deployment to S3-compatible storage for both databases and assets
+- **S3 Deployment & Sync**: Direct deployment to S3-compatible storage with multi-machine sync capabilities
 - **sqlite-utils Integration**: Robust database operations with automatic schema detection
 - **Validation & Testing**: Comprehensive validation before deployment
 - **Best Practices**: Generates code following Datasette and web development standards
@@ -33,6 +36,46 @@ Customize the appearance of individual databases:
 - Generate UI assets with `zeeker assets generate`
 - Validate customizations with `zeeker assets validate`
 - Deploy UI assets with `zeeker assets deploy`
+
+## 🔄 Multi-Machine Workflows with S3 Sync
+
+Zeeker's S3 sync feature enables seamless collaboration across different development environments:
+
+### When to Use S3 Sync
+
+**Perfect for:**
+- Multiple developers working on the same database project
+- Switching between development machines (laptop, desktop, cloud)
+- Incremental data updates without duplicating records
+- Production data updates from different scheduled jobs
+
+### How S3 Sync Works
+
+1. **First Build**: `zeeker build` creates database locally
+2. **Deploy**: `zeeker deploy` uploads to S3 `latest/{database}.db`
+3. **Other Machine**: `zeeker build --sync-from-s3` downloads existing database first
+4. **Incremental Update**: Your `fetch_data(existing_table)` can check for existing records
+
+### Example Workflow
+
+```bash
+# Machine A: Initial build and deploy
+zeeker build
+zeeker deploy
+
+# Machine B: Sync existing data, then add new records
+zeeker build --sync-from-s3  # Downloads existing DB first
+zeeker deploy                # Uploads updated DB
+
+# Machine A: Get latest updates
+zeeker build --sync-from-s3  # Gets Machine B's updates
+```
+
+**Key Benefits:**
+- ✅ No duplicate data when switching machines
+- ✅ Incremental updates instead of full rebuilds  
+- ✅ Automatic handling of missing S3 databases
+- ✅ Same AWS credentials used for both sync and deploy
 
 ## 📦 Installation
 
@@ -84,7 +127,13 @@ uv run zeeker add articles \
 uv run zeeker add court_cases \
   --description "Court case summaries" \
   --facets court_level --facets case_type
+
+# Add a resource for large legal documents with fragments support
+uv run zeeker add legal_docs --fragments \
+  --description "Legal documents with searchable fragments"
 ```
+
+**Fragment Support**: The `--fragments` flag creates resources optimized for large documents (legal documents, contracts, research papers). This automatically creates two tables: one for document metadata and another for searchable text fragments.
 
 #### 3. Implement Data Fetching
 
@@ -111,7 +160,11 @@ def fetch_data():
 
 ```bash
 # Build SQLite database from all resources
+# Automatically creates meta tables for schema tracking
 uv run zeeker build
+
+# Or sync from S3 first for incremental updates across machines
+uv run zeeker build --sync-from-s3
 
 # Deploy database to S3
 uv run zeeker deploy
@@ -273,7 +326,7 @@ def transform_data(raw_data):
     return raw_data
 ```
 
-### sqlite-utils Integration
+### sqlite-utils Integration & Meta Tables
 
 Zeeker uses Simon Willison's sqlite-utils for robust database operations:
 
@@ -282,6 +335,38 @@ Zeeker uses Simon Willison's sqlite-utils for robust database operations:
 - **Safe data insertion** without SQL injection risks
 - **JSON support** for complex data structures
 - **Better error handling** than raw SQL
+
+#### Automated Meta Tables System
+
+Every database automatically includes two meta tables:
+
+**`_zeeker_schemas`** - Schema Version Tracking:
+- Tracks schema versions, hashes, and column definitions
+- Automatically detects schema changes between builds
+- Provides audit trail for schema evolution
+
+**`_zeeker_updates`** - Update Timestamps:
+- Records last update time and record counts for each resource
+- Tracks build performance and data freshness
+- Helps identify stale data sources
+
+#### Schema Conflict Detection
+
+When schemas change, Zeeker provides safe resolution options:
+
+1. **Migration Functions** - Add custom `migrate_schema()` to handle changes
+2. **Force Reset** - Use `--force-schema-reset` flag to rebuild
+3. **Manual Cleanup** - Delete database file and rebuild from scratch
+
+**Example Migration:**
+```python
+def migrate_schema(existing_table, new_schema_info):
+    """Handle adding 'age' column to users table."""
+    existing_table.add_column('age', int, fk=None)
+    for row_id in existing_table.pks:
+        existing_table.update(row_id, {'age': 25})  # Default age
+    return True
+```
 
 ## 🎨 UI Customization Guide
 
@@ -411,7 +496,9 @@ Provide a complete Datasette metadata structure:
 |---------|-------------|
 | `zeeker init PROJECT_NAME` | Initialize new database project |
 | `zeeker add RESOURCE_NAME` | Add data resource to project |
-| `zeeker build` | Build SQLite database from resources |
+| `zeeker build` | Build SQLite database from resources with automated meta tables |
+| `zeeker build --sync-from-s3` | Build database with S3 sync (download existing DB for incremental updates) |
+| `zeeker build --force-schema-reset` | Build database ignoring schema conflicts (for development) |
 | `zeeker deploy` | Deploy database to S3 |
 
 ### UI Customization Commands
@@ -435,6 +522,9 @@ zeeker add RESOURCE_NAME \
   --facets FIELD \
   --sort FIELD \
   --size NUMBER
+
+# Build with schema management options
+zeeker build [--force-schema-reset]
 
 # Deploy with dry run
 zeeker deploy [--dry-run]
@@ -634,11 +724,39 @@ This project is licensed under the terms specified in the project configuration.
 
 ### Database Project Issues
 
+**Schema Conflict Detected**
+```
+❌ Schema conflict detected:
+Schema conflict detected for resource 'users'.
+Added columns: age
+```
+
+**Resolution Options:**
+1. **Add Migration Function** (Recommended):
+```python
+# In resources/users.py
+def migrate_schema(existing_table, new_schema_info):
+    existing_table.add_column('age', int, fk=None)
+    return True
+```
+
+2. **Use Force Reset Flag**:
+```bash
+zeeker build --force-schema-reset
+```
+
+3. **Manual Database Reset**:
+```bash
+rm project_name.db
+zeeker build
+```
+
 **Build Fails**
 - Check that all resource files have `fetch_data()` function
 - Verify data is returned as list of dictionaries
 - Check for syntax errors in resource files
 - Ensure you're in a project directory (has `zeeker.toml`)
+- Review schema conflict errors and add migration functions if needed
 
 **Deploy Fails**
 - Verify environment variables are set correctly

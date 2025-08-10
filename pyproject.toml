@@ -8,7 +8,7 @@ dependencies = [ "boto3>=1.38.32", "click>=8.2.1", "jinja2>=3.1.6", "pyyaml>=6.0
 license = "MIT"
 
 [dependency-groups]
-dev = [ "black>=25.1.0", "pytest>=8.4.0", "toml>=0.10.2",]
+dev = [ "black>=25.1.0", "pytest>=8.4.0", "toml>=0.10.2", "ruff>=0.8.0",]
 
 [build-system]
 requires = [ "hatchling",]
@@ -22,3 +22,11 @@ line-length = 100
 target-version = [ "py312",]
 include = "\\.pyi?$"
 extend-exclude = "/(\n  # directories\n  \\.eggs\n  | \\.git\n  | \\.hg\n  | \\.mypy_cache\n  | \\.tox\n  | \\.venv\n  | build\n  | dist\n)/\n"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # Focus on essential errors, warnings, and imports
+ignore = ["E501"]  # Line too long (handled by black)

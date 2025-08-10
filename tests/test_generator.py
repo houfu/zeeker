@@ -3,7 +3,7 @@ Tests for ZeekerGenerator - asset generation functionality.
 """
 
 import json
-from pathlib import Path
+
 import pytest
 
 from zeeker.core.generator import ZeekerGenerator
