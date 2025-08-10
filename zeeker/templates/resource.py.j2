@@ -10,8 +10,10 @@ The database is built using sqlite-utils, which provides:
 • JSON support for complex data (lists, dicts stored as JSON)
 • Safe data insertion without SQL injection risks
 """
+from sqlite_utils.db import Table, NotFoundError
+from typing import Optional, List, Dict, Any
 
-def fetch_data(existing_table):
+def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     """
     Fetch data for the {{ resource_name }} table.
 
@@ -43,7 +45,19 @@ def fetch_data(existing_table):
 
     Example usage:
         if existing_table:
-            # Table exists - check for duplicates and fetch incremental data
+            # Access metadata for incremental updates
+            db = existing_table.db
+            if "_zeeker_updates" in db.table_names():
+                updates_table = db["_zeeker_updates"]
+                try:
+                    metadata = updates_table.get(existing_table.name)
+                    last_updated = metadata["last_updated"]  # ISO datetime string
+                    print(f"Last updated: {last_updated}")
+                    # Use last_updated for incremental fetching
+                except NotFoundError:
+                    print("No metadata found - first run")
+            
+            # Check for duplicates and fetch incremental data
             existing_ids = {row["id"] for row in existing_table.rows}
             new_data = fetch_from_api()  # Your data source
             return [record for record in new_data if record["id"] not in existing_ids]
@@ -78,7 +92,7 @@ def fetch_data(existing_table):
     ]
 
 
-def transform_data(raw_data):
+def transform_data(raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Optional: Transform/clean the raw data before database insertion.
 

@@ -156,6 +156,56 @@ Zeeker automatically creates and maintains two meta tables for every project:
 - Tracks record counts and build performance metrics  
 - Helps identify stale data and monitor data freshness
 
+#### Accessing Metadata in Resources
+
+You can access metadata tables within your `fetch_data()` function to implement incremental updates:
+
+```python
+from sqlite_utils.db import Table
+from sqlite_utils import NotFoundError
+from typing import Optional, List, Dict, Any
+
+def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
+    if existing_table:
+        db = existing_table.db
+        
+        # Access the _zeeker_updates table
+        if "_zeeker_updates" in db.table_names():
+            updates_table = db["_zeeker_updates"]
+            
+            try:
+                # Get metadata for this table (returns Dict[str, Any])
+                metadata = updates_table.get(existing_table.name)
+                
+                last_updated: str = metadata["last_updated"]    # ISO datetime string
+                record_count: int = metadata["record_count"]    # Current row count
+                build_id: str = metadata["build_id"]            # Build identifier
+                duration_ms: int = metadata["duration_ms"]      # Last build time
+                
+                print(f"Last updated: {last_updated}")
+                print(f"Current records: {record_count}")
+                
+                # Use for incremental updates
+                # Example: fetch only data newer than last_updated
+                
+            except NotFoundError:
+                print("No metadata found - first run")
+        
+        # Access other tables in the database
+        if "other_resource" in db.table_names():
+            other_table = db["other_resource"]
+            # Query other tables as needed
+    
+    return your_data
+```
+
+**Metadata Table Schema:**
+- `resource_name` (str): Table name (primary key)
+- `last_updated` (str): ISO datetime string of last update
+- `record_count` (int): Number of records in table
+- `build_id` (str): Unique build identifier
+- `duration_ms` (int): Build duration in milliseconds
+
 These tables are created automatically during `zeeker build` with zero configuration required.
 
 #### Schema Conflict Detection & Migration

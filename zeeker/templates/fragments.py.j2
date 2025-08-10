@@ -10,9 +10,11 @@ Zeeker does not enforce any specific field names or relationships.
 
 The database is built using sqlite-utils with automatic schema detection.
 """
+from sqlite_utils.db import Table, NotFoundError
+from typing import Optional, List, Dict, Any
 
 
-def fetch_data(existing_table):
+def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     """
     Fetch data for the {{ resource_name }} table.
 
@@ -31,6 +33,19 @@ def fetch_data(existing_table):
     - Simple: {"id": 1, "title": "Doc 1", "content": "..."}
     - Metadata focused: {"id": 1, "title": "Doc 1", "source": "...", "date": "..."}
     - Complex: {"id": 1, "title": "Doc 1", "metadata": {"tags": ["tag1"]}, "status": "active"}
+    
+    Accessing metadata for incremental updates:
+        if existing_table:
+            db = existing_table.db
+            if "_zeeker_updates" in db.table_names():
+                updates_table = db["_zeeker_updates"]
+                try:
+                    metadata = updates_table.get(existing_table.name)
+                    last_updated = metadata["last_updated"]  # ISO datetime string
+                    record_count = metadata["record_count"]  # Current row count
+                    print(f"Last updated: {last_updated}, Records: {record_count}")
+                except NotFoundError:
+                    print("No metadata found - first run")
     """
     # TODO: Implement your data fetching logic
     # This is just an example - replace with your actual schema and data
@@ -45,7 +60,7 @@ def fetch_data(existing_table):
     ]
 
 
-def fetch_fragments_data(existing_fragments_table, main_data_context=None):
+def fetch_fragments_data(existing_fragments_table: Optional[Table], main_data_context: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
     """
     Fetch fragments data for the {{ resource_name }}_fragments table.
 
@@ -131,7 +146,7 @@ def fetch_fragments_data(existing_fragments_table, main_data_context=None):
     return fragments
 
 
-def transform_data(raw_data):
+def transform_data(raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Optional: Transform main table data before database insertion.
 
@@ -145,7 +160,7 @@ def transform_data(raw_data):
     return raw_data
 
 
-def transform_fragments_data(raw_fragments):
+def transform_fragments_data(raw_fragments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Optional: Transform fragment data before database insertion.
 
