@@ -114,7 +114,10 @@ def add(resource_name, description, facets, sort, size, fragments):
 @click.option(
     "--force-schema-reset", is_flag=True, help="Ignore schema conflicts and rebuild tables"
 )
-def build(force_schema_reset):
+@click.option(
+    "--sync-from-s3", is_flag=True, help="Download existing database from S3 before building"
+)
+def build(force_schema_reset, sync_from_s3):
     """Build database from all resources using sqlite-utils.
 
     Runs fetch_data() for each resource and creates/updates the SQLite database.
@@ -135,7 +138,7 @@ def build(force_schema_reset):
     manager = ZeekerProjectManager()
 
     try:
-        result = manager.build_database(force_schema_reset=force_schema_reset)
+        result = manager.build_database(force_schema_reset=force_schema_reset, sync_from_s3=sync_from_s3)
     except ZeekerSchemaConflictError as e:
         click.echo("❌ Schema conflict detected:")
         click.echo(str(e))

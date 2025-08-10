@@ -232,3 +232,45 @@ def extract_table_schema(table) -> dict[str, str]:
         Dictionary mapping column names to their types
     """
     return {col.name: col.type for col in table.columns}
+
+
+def infer_schema_from_data(data: list[dict[str, Any]]) -> dict[str, str]:
+    """Infer schema from a list of data records.
+
+    Args:
+        data: List of dictionary records
+
+    Returns:
+        Dictionary mapping column names to their inferred SQLite types
+    """
+    if not data:
+        return {}
+
+    # Get all columns from all records
+    all_columns = set()
+    for record in data:
+        all_columns.update(record.keys())
+
+    schema = {}
+    for column in all_columns:
+        # Look at values in this column to infer type
+        values = [record.get(column) for record in data if column in record]
+        non_null_values = [v for v in values if v is not None]
+
+        if not non_null_values:
+            schema[column] = "TEXT"  # Default for all NULL
+            continue
+
+        # Check types in order of specificity
+        if all(isinstance(v, bool) for v in non_null_values):
+            schema[column] = "INTEGER"  # bools stored as integers
+        elif all(isinstance(v, int) for v in non_null_values):
+            schema[column] = "INTEGER"
+        elif all(isinstance(v, (int, float)) for v in non_null_values):
+            schema[column] = "REAL"
+        elif all(isinstance(v, (dict, list)) for v in non_null_values):
+            schema[column] = "TEXT"  # JSON stored as text
+        else:
+            schema[column] = "TEXT"  # Default fallback
+
+    return schema

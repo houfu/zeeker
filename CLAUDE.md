@@ -26,6 +26,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `uv run zeeker add RESOURCE_NAME` - Add data resource to project
 - `uv run zeeker add RESOURCE_NAME --fragments` - Add resource with fragments support for large documents
 - `uv run zeeker build` - Build SQLite database from resources
+- `uv run zeeker build --sync-from-s3` - Build database with S3 sync (download existing DB first)
+- `uv run zeeker build --force-schema-reset` - Build ignoring schema conflicts
 - `uv run zeeker deploy` - Deploy database to S3
 - `uv run zeeker assets generate DATABASE_NAME OUTPUT_PATH` - Generate UI customization assets
 - `uv run zeeker assets validate ASSETS_PATH DATABASE_NAME` - Validate UI assets
@@ -37,8 +39,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Zeeker is a Python CLI tool for creating and managing databases with UI customizations for Datasette:
 
 - **zeeker/cli.py**: Main CLI interface using Click framework
-- **zeeker/core/**: Core functionality modules
-  - **project.py**: Project management and database building using sqlite-utils
+- **zeeker/core/**: Core functionality modules (refactored for clean separation of concerns)
+  - **project.py**: High-level project management operations
+  - **database.py**: Database building with S3 sync capabilities using sqlite-utils
+  - **schema.py**: Schema versioning, conflict detection, and meta table management
+  - **templates.py**: Jinja2 template generation with fallback support
+  - **scaffolding.py**: Project initialization and file structure creation
+  - **resources.py**: Resource management and configuration
   - **validator.py**: Asset validation against safety rules
   - **generator.py**: UI asset generation (templates, CSS, JS)
   - **deployer.py**: S3 deployment functionality
@@ -89,7 +96,15 @@ Generated assets are automatically scoped to prevent conflicts:
 1. `init` creates project structure with `zeeker.toml`
 2. `add` creates resource Python modules in `resources/`
 3. `build` executes `fetch_data(existing_table)` functions and builds SQLite database
-4. `deploy` uploads database to S3 `latest/` directory
+4. `build --sync-from-s3` downloads existing database from S3 before building (enables incremental updates across machines)
+5. `deploy` uploads database to S3 `latest/` directory
+
+#### S3 Database Synchronization
+The `--sync-from-s3` flag enables multi-machine workflows by:
+- Downloading existing database from S3 `latest/{database_name}.db` before building
+- Allowing `fetch_data(existing_table)` functions to check for existing data
+- Enabling incremental updates without duplicating data
+- Gracefully handling missing S3 databases (continues with local build)
 
 #### UI Customization Flow
 1. `assets generate` creates templates, CSS, JS with safe naming
@@ -434,11 +449,13 @@ To convert existing resources to use fragments:
 4. **Rebuild**: Run `zeeker build` to create fragments table
 
 ### Environment Variables
-Required for S3 deployment:
+Required for S3 deployment and sync:
 - `S3_BUCKET` - S3 bucket name
 - `AWS_ACCESS_KEY_ID` - AWS access key
 - `AWS_SECRET_ACCESS_KEY` - AWS secret key  
 - `S3_ENDPOINT_URL` - Optional S3 endpoint URL
+
+Note: The same AWS credentials used for `zeeker deploy` are used for `--sync-from-s3`
 
 ### Testing Strategy
 Tests are organized by markers:

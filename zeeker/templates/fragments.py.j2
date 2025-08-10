@@ -1,0 +1,140 @@
+"""
+{{ resource_name.replace('_', ' ').title() }} resource with fragments support for large documents.
+
+This module implements TWO tables:
+1. '{{ resource_name }}' - Main table (schema determined by your fetch_data function)
+2. '{{ resource_name }}_fragments' - Fragments table (schema determined by your fetch_fragments_data function)
+
+IMPORTANT: You define both table schemas through your returned data structure.
+Zeeker does not enforce any specific field names or relationships.
+
+The database is built using sqlite-utils with automatic schema detection.
+"""
+
+
+def fetch_data(existing_table):
+    """
+    Fetch data for the {{ resource_name }} table.
+
+    Args:
+        existing_table: sqlite-utils Table object if table exists, None for new table
+                       Use this to check for existing data and avoid duplicates
+
+    Returns:
+        List[Dict[str, Any]]: Records for the main table
+
+    IMPORTANT - Schema Considerations:
+    Your FIRST fetch_data() call determines the column types permanently!
+    sqlite-utils infers types from the first ~100 records and locks them in.
+
+    You have complete freedom to define your schema. Common patterns:
+    - Simple: {"id": 1, "title": "Doc 1", "content": "..."}
+    - Metadata focused: {"id": 1, "title": "Doc 1", "source": "...", "date": "..."}
+    - Complex: {"id": 1, "title": "Doc 1", "metadata": {"tags": ["tag1"]}, "status": "active"}
+    """
+    # TODO: Implement your data fetching logic
+    # This is just an example - replace with your actual schema and data
+    return [
+        {
+            "id": 1,                              # Required: some kind of identifier
+            "title": "Example Document",          # Your field names and types
+            "content": "Document content...",     # You decide what goes in main vs fragments
+            # Add any other fields your project needs
+        },
+        # Add more records...
+    ]
+
+
+def fetch_fragments_data(existing_fragments_table):
+    """
+    Fetch fragments data for the {{ resource_name }}_fragments table.
+
+    This is called automatically after fetch_data().
+
+    Args:
+        existing_fragments_table: sqlite-utils Table object if exists, None for new table
+                                 Use this to check existing fragments and avoid duplicates
+
+    Returns:
+        List[Dict[str, Any]]: Fragment records with YOUR chosen schema
+
+    IMPORTANT: You have complete freedom to define the fragments schema.
+    Common patterns include:
+
+    1. Simple text chunks:
+       {"parent_id": 1, "text": "fragment content"}
+
+    2. Positional fragments:
+       {"doc_id": 1, "position": 0, "content": "...", "length": 500}
+
+    3. Semantic fragments:
+       {"document_id": 1, "section_type": "intro", "text": "...", "page": 1}
+
+    4. Custom fragments:
+       {"source_id": 1, "fragment_data": "...", "metadata": {"type": "citation"}}
+
+    The only requirement: some way to link fragments back to main records.
+    """
+    # TODO: Implement your fragments logic
+    # This is just an example - replace with your actual implementation
+
+    # Example 1: Simple approach - split content from main table
+    example_text = """
+    This is an example document that will be split into fragments.
+    You can implement any splitting logic you need.
+
+    Maybe you want sentence-based fragments, paragraph-based,
+    or even semantic chunks based on document structure.
+
+    The choice is entirely yours based on your project needs.
+    """
+
+    # Your splitting logic goes here
+    fragments = []
+    sentences = example_text.split('.')
+    for i, sentence in enumerate(sentences):
+        if sentence.strip():
+            fragments.append({
+                "parent_id": 1,                   # Link to main table (your choice of field name)
+                "sequence": i,                    # Your choice of ordering
+                "text": sentence.strip(),         # Your choice of content field name
+                # Add any other fields your fragments need
+            })
+
+    return fragments
+
+
+def transform_data(raw_data):
+    """
+    Optional: Transform main table data before database insertion.
+
+    Args:
+        raw_data: The data returned from fetch_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed data
+    """
+    # TODO: Add any data transformation logic here
+    return raw_data
+
+
+def transform_fragments_data(raw_fragments):
+    """
+    Optional: Transform fragment data before database insertion.
+
+    Args:
+        raw_fragments: The data returned from fetch_fragments_data()
+
+    Returns:
+        List[Dict[str, Any]]: Transformed fragment data
+    """
+    # TODO: Add any fragment processing logic here
+    return raw_fragments
+
+
+# TODO: Add any helper functions your project needs
+# Examples:
+# - Document parsing functions
+# - Text splitting utilities
+# - Data validation functions
+# - API client functions

@@ -15,7 +15,7 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 - **Schema Conflict Detection**: Safe migration system prevents data corruption from schema changes
 - **Safe UI Customizations**: Template validation prevents breaking core Datasette functionality  
 - **Database-Specific Styling**: CSS and JavaScript scoped to individual databases
-- **S3 Deployment**: Direct deployment to S3-compatible storage for both databases and assets
+- **S3 Deployment & Sync**: Direct deployment to S3-compatible storage with multi-machine sync capabilities
 - **sqlite-utils Integration**: Robust database operations with automatic schema detection
 - **Validation & Testing**: Comprehensive validation before deployment
 - **Best Practices**: Generates code following Datasette and web development standards
@@ -36,6 +36,46 @@ Customize the appearance of individual databases:
 - Generate UI assets with `zeeker assets generate`
 - Validate customizations with `zeeker assets validate`
 - Deploy UI assets with `zeeker assets deploy`
+
+## 🔄 Multi-Machine Workflows with S3 Sync
+
+Zeeker's S3 sync feature enables seamless collaboration across different development environments:
+
+### When to Use S3 Sync
+
+**Perfect for:**
+- Multiple developers working on the same database project
+- Switching between development machines (laptop, desktop, cloud)
+- Incremental data updates without duplicating records
+- Production data updates from different scheduled jobs
+
+### How S3 Sync Works
+
+1. **First Build**: `zeeker build` creates database locally
+2. **Deploy**: `zeeker deploy` uploads to S3 `latest/{database}.db`
+3. **Other Machine**: `zeeker build --sync-from-s3` downloads existing database first
+4. **Incremental Update**: Your `fetch_data(existing_table)` can check for existing records
+
+### Example Workflow
+
+```bash
+# Machine A: Initial build and deploy
+zeeker build
+zeeker deploy
+
+# Machine B: Sync existing data, then add new records
+zeeker build --sync-from-s3  # Downloads existing DB first
+zeeker deploy                # Uploads updated DB
+
+# Machine A: Get latest updates
+zeeker build --sync-from-s3  # Gets Machine B's updates
+```
+
+**Key Benefits:**
+- ✅ No duplicate data when switching machines
+- ✅ Incremental updates instead of full rebuilds  
+- ✅ Automatic handling of missing S3 databases
+- ✅ Same AWS credentials used for both sync and deploy
 
 ## 📦 Installation
 
@@ -122,6 +162,9 @@ def fetch_data():
 # Build SQLite database from all resources
 # Automatically creates meta tables for schema tracking
 uv run zeeker build
+
+# Or sync from S3 first for incremental updates across machines
+uv run zeeker build --sync-from-s3
 
 # Deploy database to S3
 uv run zeeker deploy
@@ -454,6 +497,7 @@ Provide a complete Datasette metadata structure:
 | `zeeker init PROJECT_NAME` | Initialize new database project |
 | `zeeker add RESOURCE_NAME` | Add data resource to project |
 | `zeeker build` | Build SQLite database from resources with automated meta tables |
+| `zeeker build --sync-from-s3` | Build database with S3 sync (download existing DB for incremental updates) |
 | `zeeker build --force-schema-reset` | Build database ignoring schema conflicts (for development) |
 | `zeeker deploy` | Deploy database to S3 |
 
