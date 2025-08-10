@@ -86,6 +86,7 @@ class ProjectScaffolder:
         """
         pyproject_content = f"""[project]
 name = "{project_name}"
+version = "0.1.0"
 description = "Zeeker database project for {project_name}"
 dependencies = ["zeeker"]
 requires-python = ">=3.12"
@@ -100,10 +101,6 @@ requires-python = ">=3.12"
 #     "pdfplumber",      # For PDF text extraction
 #     "openpyxl",        # For Excel file reading
 # ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 """
         pyproject_path = self.project_path / "pyproject.toml"
         pyproject_path.write_text(pyproject_content)

@@ -63,6 +63,7 @@ class TestZeekerProjectManager:
         # Check pyproject.toml content
         pyproject_content = (manager.project_path / "pyproject.toml").read_text()
         assert 'name = "test_project"' in pyproject_content
+        assert 'version = "0.1.0"' in pyproject_content
         assert 'dependencies = ["zeeker"]' in pyproject_content
         assert 'requires-python = ">=3.12"' in pyproject_content
 
@@ -88,14 +89,13 @@ class TestZeekerProjectManager:
         # Check required fields
         assert "[project]" in content
         assert 'name = "my_test_project"' in content
+        assert 'version = "0.1.0"' in content
         assert 'description = "Zeeker database project for my_test_project"' in content
         assert 'dependencies = ["zeeker"]' in content
         assert 'requires-python = ">=3.12"' in content
 
-        # Check build system
-        assert "[build-system]" in content
-        assert 'requires = ["hatchling"]' in content
-        assert 'build-backend = "hatchling.build"' in content
+        # Should NOT have build system (not a package, just dependencies)
+        assert "[build-system]" not in content
 
         # Check commented examples exist
         assert "# Add project-specific dependencies here" in content

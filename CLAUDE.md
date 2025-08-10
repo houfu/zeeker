@@ -93,7 +93,7 @@ Generated assets are automatically scoped to prevent conflicts:
 ### Data Flow
 
 #### Database Project Flow
-1. `init` creates project structure with `zeeker.toml`
+1. `init` creates project structure with `pyproject.toml`, `zeeker.toml`, and automated virtual environment setup
 2. `add` creates resource Python modules in `resources/`
 3. `build` executes `fetch_data(existing_table)` functions and builds SQLite database
 4. `build --sync-from-s3` downloads existing database from S3 before building (enables incremental updates across machines)
@@ -116,12 +116,15 @@ The `--sync-from-s3` flag enables multi-machine workflows by:
 #### Database Projects
 ```
 project/
+├── pyproject.toml           # Project dependencies and metadata (PEP 621 compliant)
 ├── zeeker.toml              # Project configuration
 ├── resources/               # Python modules for data fetching
 │   ├── __init__.py
 │   └── resource_name.py     # Implements fetch_data(existing_table) function
+├── .venv/                   # Isolated virtual environment (gitignored)
 ├── project_name.db          # Generated SQLite database (gitignored)
 ├── metadata.json            # Generated Datasette metadata
+├── CLAUDE.md                # Project-specific development guide
 └── README.md                # Auto-generated documentation
 ```
 

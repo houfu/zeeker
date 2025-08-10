@@ -17,6 +17,8 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 - **Database-Specific Styling**: CSS and JavaScript scoped to individual databases
 - **S3 Deployment & Sync**: Direct deployment to S3-compatible storage with multi-machine sync capabilities
 - **sqlite-utils Integration**: Robust database operations with automatic schema detection
+- **Isolated Environments**: Automatic pyproject.toml generation and virtual environment setup per project
+- **Dependency Management**: Built-in support for project-specific dependencies with uv integration
 - **Validation & Testing**: Comprehensive validation before deployment
 - **Best Practices**: Generates code following Datasette and web development standards
 
@@ -106,11 +108,14 @@ pip install zeeker
 #### 1. Create a New Database Project
 
 ```bash
-# Initialize a new project
+# Initialize a new project (creates pyproject.toml, zeeker.toml, resources/, and sets up virtual environment)
 uv run zeeker init legal_news_project
 
 # Navigate to project directory
 cd legal_news_project
+
+# Add project-specific dependencies (example)
+uv add requests beautifulsoup4 pandas
 ```
 
 #### 2. Add Data Resources
@@ -269,14 +274,17 @@ A Zeeker project consists of:
 
 ```
 my-project/
+├── pyproject.toml           # Project dependencies and metadata (PEP 621 compliant)
 ├── zeeker.toml              # Project configuration
 ├── resources/               # Python modules for data fetching
 │   ├── __init__.py
 │   ├── articles.py          # Resource: articles table
 │   └── court_cases.py       # Resource: court_cases table
+├── .venv/                   # Isolated virtual environment (gitignored)
 ├── my-project.db            # Generated SQLite database (gitignored)
 ├── metadata.json            # Generated Datasette metadata
 ├── .gitignore               # Git ignore rules
+├── CLAUDE.md                # Development guide for Claude Code
 └── README.md                # Project documentation
 ```
 
