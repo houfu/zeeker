@@ -148,5 +148,145 @@ fragments = true
     assert any("missing fetch_fragments_data() function" in error for error in build_result.errors)
 
 
+def test_context_passing_to_fragments(temp_project_dir):
+    """Test that main_data_context is passed from fetch_data to fetch_fragments_data."""
+    # Initialize project
+    manager = ZeekerProjectManager(temp_project_dir)
+    init_result = manager.init_project("test_project")
+    assert init_result.is_valid
+
+    # Create a resource that uses context passing
+    resource_content = '''
+# Track calls to verify context passing works
+fetch_data_calls = []
+fetch_fragments_calls = []
+
+def fetch_data(existing_table):
+    """Fetch main table data."""
+    fetch_data_calls.append("fetch_data_called")
+    return [
+        {"id": 1, "title": "Document 1", "content": "This is document 1 content for fragmentation."},
+        {"id": 2, "title": "Document 2", "content": "This is document 2 content for fragmentation."}
+    ]
+
+def fetch_fragments_data(existing_fragments_table, main_data_context=None):
+    """Fetch fragments with context passing."""
+    fetch_fragments_calls.append(("fetch_fragments_called", main_data_context is not None))
+
+    if main_data_context:
+        # Use context data - no duplicate fetch needed
+        fragments = []
+        for doc in main_data_context:
+            # Split content into fragments
+            sentences = doc["content"].split(".")
+            for i, sentence in enumerate(sentences):
+                if sentence.strip():
+                    fragments.append({
+                        "doc_id": doc["id"],
+                        "fragment_num": i,
+                        "text": sentence.strip(),
+                        "from_context": True  # Mark as using context
+                    })
+        return fragments
+    else:
+        # Fallback without context
+        return [
+            {"doc_id": 999, "fragment_num": 0, "text": "fallback fragment", "from_context": False}
+        ]
+'''
+
+    # Create resource with fragments enabled
+    resource_file = temp_project_dir / "resources" / "context_test.py"
+    resource_file.write_text(resource_content)
+
+    # Update TOML to enable fragments
+    toml_content = """[project]
+name = "test_project"
+database = "test_project.db"
+
+[resource.context_test]
+description = "Test context passing"
+fragments = true
+"""
+    (temp_project_dir / "zeeker.toml").write_text(toml_content)
+
+    # Build database - this should pass context
+    build_result = manager.build_database()
+    assert build_result.is_valid
+
+    # Verify database was created with fragments
+    db_path = temp_project_dir / "test_project.db"
+    assert db_path.exists()
+
+    # Check that fragments used context data (not fallback)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Check fragments were created from context
+    cursor.execute("SELECT * FROM context_test_fragments WHERE from_context = 1")
+    context_fragments = cursor.fetchall()
+    assert len(context_fragments) > 0, "Should have fragments created from context"
+
+    # Check no fallback fragments were created
+    cursor.execute("SELECT * FROM context_test_fragments WHERE from_context = 0")
+    fallback_fragments = cursor.fetchall()
+    assert (
+        len(fallback_fragments) == 0
+    ), "Should not have fallback fragments when context is available"
+
+    conn.close()
+
+
+def test_backward_compatibility_without_context(temp_project_dir):
+    """Test that resources without main_data_context parameter still work."""
+    # Initialize project
+    manager = ZeekerProjectManager(temp_project_dir)
+    init_result = manager.init_project("test_project")
+    assert init_result.is_valid
+
+    # Create a resource with OLD signature (no main_data_context parameter)
+    resource_content = '''
+def fetch_data(existing_table):
+    """Fetch main table data."""
+    return [{"id": 1, "title": "Old Style Document"}]
+
+def fetch_fragments_data(existing_fragments_table):
+    """Old style fragments function without context parameter."""
+    return [
+        {"doc_id": 1, "fragment_num": 0, "text": "old style fragment"},
+        {"doc_id": 1, "fragment_num": 1, "text": "another old fragment"}
+    ]
+'''
+
+    resource_file = temp_project_dir / "resources" / "old_style.py"
+    resource_file.write_text(resource_content)
+
+    # Update TOML
+    toml_content = """[project]
+name = "test_project"
+database = "test_project.db"
+
+[resource.old_style]
+description = "Test backward compatibility"
+fragments = true
+"""
+    (temp_project_dir / "zeeker.toml").write_text(toml_content)
+
+    # Build should still work with old-style function
+    build_result = manager.build_database()
+    assert build_result.is_valid
+
+    # Verify fragments table was created
+    db_path = temp_project_dir / "test_project.db"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM old_style_fragments")
+    fragments_count = cursor.fetchone()[0]
+    assert fragments_count == 2, "Should have created fragments with old-style function"
+
+    conn.close()
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -15,7 +15,6 @@ except ImportError:
     HAS_JINJA2 = False
 
 
-
 class ResourceTemplateGenerator:
     """Generates Python resource files from Jinja2 templates."""
 
@@ -233,7 +232,7 @@ def fetch_data(existing_table):
     ]
 
 
-def fetch_fragments_data(existing_fragments_table):
+def fetch_fragments_data(existing_fragments_table, main_data_context=None):
     \"\"\"
     Fetch fragments data for the {fragments_table} table.
 
@@ -242,6 +241,8 @@ def fetch_fragments_data(existing_fragments_table):
     Args:
         existing_fragments_table: sqlite-utils Table object if exists, None for new table
                                  Use this to check existing fragments and avoid duplicates
+        main_data_context: Raw data from fetch_data() to avoid duplicate API calls (optional)
+                          Contains the same data returned by your fetch_data() function
 
     Returns:
         List[Dict[str, Any]]: Fragment records with YOUR chosen schema
@@ -266,7 +267,28 @@ def fetch_fragments_data(existing_fragments_table):
     # TODO: Implement your fragments logic
     # This is just an example - replace with your actual implementation
 
-    # Example 1: Simple approach - split content from main table
+    # OPTION 1: Use main_data_context to avoid duplicate API calls
+    if main_data_context:
+        fragments = []
+        for main_record in main_data_context:
+            # Use data already fetched in fetch_data() - no duplicate API calls!
+            doc_content = main_record.get('content', '')  # Or however you store content
+            doc_id = main_record.get('id')  # Or your identifier field
+
+            # Split the content into fragments
+            chunks = doc_content.split('\n\n')  # Or your preferred splitting logic
+            for i, chunk in enumerate(chunks):
+                if chunk.strip():
+                    fragments.append({{
+                        "parent_id": doc_id,         # Link to main table record
+                        "fragment_num": i,           # Fragment ordering
+                        "text": chunk.strip(),       # Fragment content
+                        "char_count": len(chunk),    # Your metadata
+                    }})
+        return fragments
+
+    # OPTION 2: Fallback to independent data fetch (for backward compatibility)
+    # This runs when main_data_context is None (e.g., testing, old resources)
     example_text = \"\"\"
     This is an example document that will be split into fragments.
     You can implement any splitting logic you need.

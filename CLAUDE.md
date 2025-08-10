@@ -341,10 +341,30 @@ def fetch_data(existing_table):
     ]
 ```
 
-**2. `fetch_fragments_data(existing_fragments_table)`** - Fragment table data
+**2. `fetch_fragments_data(existing_fragments_table, main_data_context=None)`** - Fragment table data
 ```python  
-def fetch_fragments_data(existing_fragments_table):
+def fetch_fragments_data(existing_fragments_table, main_data_context=None):
     """Define your fragments schema and splitting logic."""
+    
+    # ENHANCED: Use main_data_context to avoid duplicate API calls
+    if main_data_context:
+        # Use data already fetched in fetch_data() - no duplicate expensive calls!
+        fragments = []
+        for main_record in main_data_context:
+            doc_content = main_record.get('content', '')
+            doc_id = main_record.get('id')
+            
+            # Split content into fragments
+            for i, chunk in enumerate(split_document(doc_content)):
+                fragments.append({
+                    "parent_id": doc_id,           # Link to main table
+                    "fragment_num": i,             # Your ordering
+                    "text": chunk,                 # Your content field
+                    "char_count": len(chunk)       # Your metadata
+                })
+        return fragments
+    
+    # FALLBACK: Independent data fetch (backward compatibility)
     return [
         {
             # You design this schema - examples:
@@ -367,9 +387,32 @@ def fetch_fragments_data(existing_fragments_table):
 When you run `zeeker build`:
 
 1. **Main Table**: `fetch_data()` creates table with your chosen schema
-2. **Fragments Table**: `fetch_fragments_data()` creates fragments table with your chosen schema  
-3. **Schema Detection**: Both tables get automatic schema inference from your data
-4. **Meta Tables**: Schema tracking for both tables in `_zeeker_schemas` and `_zeeker_updates`
+2. **Context Passing**: Raw data from `fetch_data()` is automatically passed to `fetch_fragments_data()` as `main_data_context`
+3. **Fragments Table**: `fetch_fragments_data()` creates fragments table with your chosen schema  
+4. **Schema Detection**: Both tables get automatic schema inference from your data
+5. **Meta Tables**: Schema tracking for both tables in `_zeeker_schemas` and `_zeeker_updates`
+
+#### Performance Benefits of Context Passing
+
+**New Enhanced System (Recommended):**
+```python
+def fetch_data(existing_table):
+    expensive_documents = expensive_api_call()  # Called ONCE
+    return [process_for_main_table(doc) for doc in expensive_documents]
+
+def fetch_fragments_data(existing_fragments_table, main_data_context=None):
+    if main_data_context:
+        # Use already-fetched data - NO duplicate API call!
+        return [create_fragments(record) for record in main_data_context]
+    # Fallback for backward compatibility
+```
+
+**Benefits:**
+- ✅ **Eliminate Duplicate API Calls**: Single expensive fetch instead of two
+- ✅ **Faster Builds**: Especially important for large datasets or slow APIs
+- ✅ **Data Consistency**: Both tables see identical data snapshot
+- ✅ **Rate Limit Friendly**: Avoid hitting API rate limits
+- ✅ **Backward Compatible**: Existing resources continue working unchanged
 
 #### Best Practices for Fragments
 

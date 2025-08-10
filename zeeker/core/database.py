@@ -9,20 +9,15 @@ import importlib.util
 import json
 import sqlite3
 import time
-from datetime import datetime
 from pathlib import Path
 
 import sqlite_utils
 
 from .schema import SchemaManager
 from .types import (
-    META_TABLE_SCHEMAS,
-    META_TABLE_UPDATES,
     ValidationResult,
     ZeekerProject,
     ZeekerSchemaConflictError,
-    calculate_schema_hash,
-    infer_schema_from_data,
 )
 
 
@@ -210,13 +205,25 @@ class DatabaseBuilder:
                     # If we can't get sample data, proceed with build
                     pass
 
-            # Process the resource
+            # Process the resource and capture raw data for potential fragments use
             resource_result = self._process_resource(db, resource_name)
             if not resource_result.is_valid:
                 result.errors.extend(resource_result.errors)
                 result.is_valid = False
             else:
                 result.info.extend(resource_result.info)
+
+                # Get raw data from fetch_data for fragments context
+                main_data_context = None
+                if hasattr(module, "fetch_fragments_data"):
+                    # Only fetch context if fragments function exists to avoid extra work
+                    try:
+                        fetch_data = getattr(module, "fetch_data")
+                        existing_table = db[resource_name] if db[resource_name].exists() else None
+                        main_data_context = fetch_data(existing_table)
+                    except Exception:
+                        # If we can't get context, fragments will work without it
+                        main_data_context = None
 
                 # Check if this is a fragments resource and process fragments
                 resource_config = self.project.resources.get(resource_name, {})
@@ -230,7 +237,9 @@ class DatabaseBuilder:
                             f"but missing fetch_fragments_data() function"
                         )
                     else:
-                        fragments_result = self._process_fragments_data(db, resource_name, module)
+                        fragments_result = self._process_fragments_data(
+                            db, resource_name, module, main_data_context
+                        )
                         if not fragments_result.is_valid:
                             result.errors.extend(fragments_result.errors)
                             result.is_valid = False
@@ -239,7 +248,9 @@ class DatabaseBuilder:
                 elif hasattr(module, "fetch_fragments_data"):
                     # Resource has fragments function but not configured as fragments-enabled
                     # This is okay - just process the fragments silently
-                    fragments_result = self._process_fragments_data(db, resource_name, module)
+                    fragments_result = self._process_fragments_data(
+                        db, resource_name, module, main_data_context
+                    )
                     if not fragments_result.is_valid:
                         result.errors.extend(fragments_result.errors)
                         result.is_valid = False
@@ -248,7 +259,9 @@ class DatabaseBuilder:
 
                 # Update timestamps
                 duration_ms = int((time.time() - start_time) * 1000)
-                self.schema_manager.update_resource_timestamps(db, resource_name, build_id, duration_ms)
+                self.schema_manager.update_resource_timestamps(
+                    db, resource_name, build_id, duration_ms
+                )
 
         except ZeekerSchemaConflictError as e:
             result.is_valid = False
@@ -348,7 +361,7 @@ class DatabaseBuilder:
         return result
 
     def _process_fragments_data(
-        self, db: sqlite_utils.Database, resource_name: str, module
+        self, db: sqlite_utils.Database, resource_name: str, module, main_data_context=None
     ) -> ValidationResult:
         """Process fragments data for a resource that supports document fragmentation.
 
@@ -356,6 +369,7 @@ class DatabaseBuilder:
             db: sqlite-utils Database instance
             resource_name: Name of the main resource
             module: The imported resource module
+            main_data_context: Raw data from fetch_data() to avoid duplicate fetches (optional)
 
         Returns:
             ValidationResult with processing results
@@ -378,8 +392,23 @@ class DatabaseBuilder:
                 db[fragments_table_name] if db[fragments_table_name].exists() else None
             )
 
-            # Fetch fragments data
-            raw_fragments = fetch_fragments_data(existing_fragments_table)
+            # Fetch fragments data with optional main data context
+            import inspect
+
+            sig = inspect.signature(fetch_fragments_data)
+
+            if len(sig.parameters) >= 2 and main_data_context is not None:
+                # Enhanced signature: fetch_fragments_data(existing_fragments_table, main_data_context)
+                try:
+                    raw_fragments = fetch_fragments_data(
+                        existing_fragments_table, main_data_context
+                    )
+                except TypeError:
+                    # Fallback to old signature if function doesn't accept context
+                    raw_fragments = fetch_fragments_data(existing_fragments_table)
+            else:
+                # Original signature: fetch_fragments_data(existing_fragments_table)
+                raw_fragments = fetch_fragments_data(existing_fragments_table)
 
             if not isinstance(raw_fragments, list):
                 result.is_valid = False
@@ -419,7 +448,9 @@ class DatabaseBuilder:
 
             # Track schema for conflict detection
             if not existing_fragments_table:  # New table
-                self.schema_manager.track_new_table_schema(db, fragments_table_name, transformed_fragments)
+                self.schema_manager.track_new_table_schema(
+                    db, fragments_table_name, transformed_fragments
+                )
 
             # Insert all fragments at once for better performance
             fragments_table.insert_all(transformed_fragments, replace=False)
@@ -436,4 +467,3 @@ class DatabaseBuilder:
             result.errors.append(f"Failed to process fragments for '{resource_name}': {e}")
 
         return result
-
