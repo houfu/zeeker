@@ -13,6 +13,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `uv run pytest tests/test_project.py` - Run specific test file
 - `uv run pytest tests/test_validator.py::TestTemplateValidation::test_banned_templates_rejected` - Run specific test
 
+### Coverage Testing
+- `uv run pytest --cov=zeeker` - Run tests with coverage report
+- `uv run pytest --cov=zeeker --cov-report=html` - Generate HTML coverage report in htmlcov/
+- `uv run pytest --cov=zeeker --cov-report=term-missing` - Show missing lines in terminal
+- `uv run pytest --cov=zeeker --cov-branch` - Include branch coverage analysis
+
 ### Code Formatting
 - `uv run black .` - Format code following black style (line length: 100)
 

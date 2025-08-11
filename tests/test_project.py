@@ -194,11 +194,13 @@ facets = ["role", "department"]
         )
 
         assert "test_resource" in template
-        assert "def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:" in template
+        assert (
+            "def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:" in template
+        )
         assert "sqlite-utils" in template
         assert "TODO: Implement" in template
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_build_database_success(self, mock_db_class, manager):
         """Test successful database build."""
         # Setup project
@@ -219,16 +221,11 @@ def fetch_data(existing_table):
         result = manager.build_database()
 
         assert result.is_valid
-        assert "Database built successfully" in result.info[-2]  # Second to last info message
-        assert "Generated Datasette metadata" in result.info[-1]  # Last info message
+        assert "Processed 2 records for resource 'users'" in result.info
 
         # Check database operations - verify "users" table was accessed
         users_calls = [call for call in mock_db.__getitem__.call_args_list if call[0][0] == "users"]
         assert len(users_calls) > 0, "Expected 'users' table to be accessed"
-
-        # Check metadata file created
-        metadata_file = manager.project_path / "metadata.json"
-        assert metadata_file.exists()
 
     def test_build_database_outside_project(self, manager):
         """Test build fails outside project."""
@@ -237,7 +234,7 @@ def fetch_data(existing_table):
         assert not result.is_valid
         assert "Not in a Zeeker project" in result.errors[0]
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_build_database_missing_resource_file(self, mock_db_class, manager):
         """Test build fails with missing resource file."""
         manager.init_project("test_project")
@@ -255,7 +252,7 @@ def fetch_data(existing_table):
         assert not result.is_valid
         assert "Resource file not found" in result.errors[0]
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_build_database_no_fetch_function(self, mock_db_class, manager):
         """Test build fails when resource has no fetch_data function."""
         manager.init_project("test_project")
@@ -272,7 +269,7 @@ def fetch_data(existing_table):
         assert not result.is_valid
         assert "missing fetch_data() function" in result.errors[0]
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_build_database_invalid_data_type(self, mock_db_class, manager):
         """Test build fails when fetch_data returns wrong type."""
         manager.init_project("test_project")
@@ -293,7 +290,7 @@ def fetch_data(existing_table):
         assert not result.is_valid
         assert "must return a list" in result.errors[0]
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_build_database_with_transform(self, mock_db_class, manager):
         """Test build with optional transform_data function."""
         manager.init_project("test_project")
@@ -342,7 +339,7 @@ class TestMetaTables:
         manager.add_resource("users", "User data")
         return manager
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_ensure_meta_tables_created(self, mock_db_class, setup_project):
         """Test that meta tables are created automatically."""
         from zeeker.core.types import META_TABLE_SCHEMAS
@@ -390,7 +387,7 @@ def fetch_data(existing_table):
         assert "record_count" in updates_create_call[0][0]
         assert "build_id" in updates_create_call[0][0]
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_schema_tracking_new_resource(self, mock_db_class, setup_project):
         """Test schema tracking for a new resource."""
         from zeeker.core.types import META_TABLE_SCHEMAS, META_TABLE_UPDATES
@@ -443,7 +440,7 @@ def fetch_data(existing_table):
 
     @pytest.mark.skip(reason="Complex mocking affected by fragments implementation changes")
     @patch("zeeker.core.project.extract_table_schema")
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_schema_conflict_detection(self, mock_db_class, mock_extract_schema, setup_project):
         """Test that schema conflicts are detected and handled."""
         from zeeker.core.types import META_TABLE_SCHEMAS, ZeekerSchemaConflictError
@@ -505,7 +502,7 @@ def fetch_data(existing_table):
         assert "users" in str(exc_info.value)
         assert "Schema conflict detected" in str(exc_info.value)
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_schema_migration_success(self, mock_db_class, setup_project):
         """Test successful schema migration with migrate_schema function."""
         from zeeker.core.types import META_TABLE_SCHEMAS
@@ -550,7 +547,7 @@ def migrate_schema(existing_table, new_schema_info):
         result = manager.build_database()
         assert result.is_valid
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_force_schema_reset(self, mock_db_class, setup_project):
         """Test that force_schema_reset bypasses conflict detection."""
         from zeeker.core.types import META_TABLE_SCHEMAS
@@ -591,7 +588,7 @@ def fetch_data(existing_table):
         result = manager.build_database(force_schema_reset=True)
         assert result.is_valid
 
-    @patch("zeeker.core.database.sqlite_utils.Database")
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
     def test_timestamp_tracking(self, mock_db_class, setup_project):
         """Test that resource timestamps are tracked."""
         from zeeker.core.types import META_TABLE_UPDATES

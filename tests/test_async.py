@@ -2,23 +2,21 @@
 
 import asyncio
 import tempfile
+import pytest
 from pathlib import Path
 
-import pytest
-
 from zeeker.core.database import DatabaseBuilder
+from zeeker.core.database.async_executor import AsyncExecutor
 from zeeker.core.project import ZeekerProjectManager
 from zeeker.core.types import ZeekerProject
 
 
-class TestAsyncResourceDetection:
-    """Test async function detection and execution."""
+class TestAsyncExecutor:
+    """Test AsyncExecutor functionality."""
 
-    def test_sync_function_detection(self, tmp_path):
-        """Test that sync functions are detected correctly."""
-        project = ZeekerProject(name="test_project", database="test.db", resources={})
-
-        builder = DatabaseBuilder(tmp_path, project)
+    def test_sync_function_execution(self):
+        """Test that sync functions are executed correctly."""
+        executor = AsyncExecutor()
 
         def sync_fetch_data(existing_table):
             return [{"id": 1, "name": "test"}]
@@ -27,14 +25,12 @@ class TestAsyncResourceDetection:
         assert not asyncio.iscoroutinefunction(sync_fetch_data)
 
         # Should call sync function directly
-        result = builder._call_fetch_data(sync_fetch_data, None)
+        result = executor.call_fetch_data(sync_fetch_data, None)
         assert result == [{"id": 1, "name": "test"}]
 
-    def test_async_function_detection(self, tmp_path):
-        """Test that async functions are detected correctly."""
-        project = ZeekerProject(name="test_project", database="test.db", resources={})
-
-        builder = DatabaseBuilder(tmp_path, project)
+    def test_async_function_execution(self):
+        """Test that async functions are executed correctly."""
+        executor = AsyncExecutor()
 
         async def async_fetch_data(existing_table):
             await asyncio.sleep(0.001)  # Minimal async operation
@@ -44,14 +40,12 @@ class TestAsyncResourceDetection:
         assert asyncio.iscoroutinefunction(async_fetch_data)
 
         # Should execute async function and return result
-        result = builder._call_fetch_data(async_fetch_data, None)
+        result = executor.call_fetch_data(async_fetch_data, None)
         assert result == [{"id": 1, "name": "async_test"}]
 
-    def test_async_fragments_function_detection(self, tmp_path):
-        """Test async fragments function detection and execution."""
-        project = ZeekerProject(name="test_project", database="test.db", resources={})
-
-        builder = DatabaseBuilder(tmp_path, project)
+    def test_async_fragments_function_execution(self):
+        """Test async fragments function execution."""
+        executor = AsyncExecutor()
 
         async def async_fetch_fragments_data(existing_fragments_table, main_data_context=None):
             await asyncio.sleep(0.001)
@@ -60,12 +54,12 @@ class TestAsyncResourceDetection:
             return [{"parent_id": 1, "text": "fragment"}]
 
         # Test without context
-        result = builder._call_fetch_fragments_data(async_fetch_fragments_data, None)
+        result = executor.call_fetch_fragments_data(async_fetch_fragments_data, None)
         assert result == [{"parent_id": 1, "text": "fragment"}]
 
         # Test with context
         context = [{"id": 1, "content": "test content"}]
-        result = builder._call_fetch_fragments_data(async_fetch_fragments_data, None, context)
+        result = executor.call_fetch_fragments_data(async_fetch_fragments_data, None, context)
         assert result == [{"parent_id": 1, "text": "fragment from context"}]
 
 
@@ -74,8 +68,7 @@ class TestAsyncTemplateGeneration:
 
     def test_add_async_resource(self, tmp_path):
         """Test adding async resource generates correct template."""
-        manager = ZeekerProjectManager()
-        manager.project_path = tmp_path
+        manager = ZeekerProjectManager(tmp_path)
 
         # Create basic project structure
         (tmp_path / "zeeker.toml").write_text(
@@ -88,9 +81,6 @@ database = "test.db"
 """
         )
         (tmp_path / "resources").mkdir()
-
-        # Load project
-        manager.project = manager._load_project_config()
 
         # Add async resource
         result = manager.add_resource("async_test", "Async test resource", is_async=True)
@@ -109,8 +99,7 @@ database = "test.db"
 
     def test_add_async_fragments_resource(self, tmp_path):
         """Test adding async fragments resource generates correct template."""
-        manager = ZeekerProjectManager()
-        manager.project_path = tmp_path
+        manager = ZeekerProjectManager(tmp_path)
 
         # Create basic project structure
         (tmp_path / "zeeker.toml").write_text(
@@ -123,9 +112,6 @@ database = "test.db"
 """
         )
         (tmp_path / "resources").mkdir()
-
-        # Load project
-        manager.project = manager._load_project_config()
 
         # Add async fragments resource
         result = manager.add_resource(
@@ -248,13 +234,13 @@ async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
 async def fetch_fragments_data(existing_fragments_table: Optional[Table], main_data_context: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
     """Async fetch fragments."""
     await asyncio.sleep(0.001)
-
+    
     if main_data_context:
         fragments = []
         for doc in main_data_context:
             doc_id = doc.get("id")
             content = doc.get("content", "")
-
+            
             # Simple splitting for test
             words = content.split()
             for i, word in enumerate(words):
@@ -264,7 +250,7 @@ async def fetch_fragments_data(existing_fragments_table: Optional[Table], main_d
                     "text": word
                 })
         return fragments
-
+    
     return []
 '''
         (resources_dir / "async_docs.py").write_text(async_fragments_content)

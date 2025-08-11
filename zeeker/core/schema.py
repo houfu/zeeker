@@ -212,16 +212,19 @@ class SchemaManager:
                         self.update_schema_tracking(db, resource_name, new_column_definitions)
                     else:
                         raise ZeekerSchemaConflictError(
-                            resource_name, stored_schema, new_column_definitions
+                            resource_name,
+                            stored_schema["column_definitions"],
+                            new_column_definitions,
                         )
-                except Exception as e:
+                except Exception:
+                    # Migration failed, raise conflict error
                     raise ZeekerSchemaConflictError(
-                        resource_name, stored_schema, new_column_definitions, str(e)
+                        resource_name, stored_schema["column_definitions"], new_column_definitions
                     )
             else:
                 # No migration function, raise conflict error
                 raise ZeekerSchemaConflictError(
-                    resource_name, stored_schema, new_column_definitions
+                    resource_name, stored_schema["column_definitions"], new_column_definitions
                 )
 
         return result
