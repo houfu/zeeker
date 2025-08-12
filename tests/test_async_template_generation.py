@@ -1,10 +1,10 @@
 """Tests for async template generation and validation."""
 
-import tempfile
-import pytest
-from pathlib import Path
 import ast
-import inspect
+import tempfile
+from pathlib import Path
+
+import pytest
 
 from zeeker.core.project import ZeekerProjectManager
 

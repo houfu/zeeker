@@ -169,14 +169,20 @@ A Zeeker project for managing the {project_name} database.
    uv run zeeker add my_resource --description "Description of the resource"
    ```
 
-3. Implement data fetching in `resources/my_resource.py`
+3. Create `.env` file for credentials (optional):
+   ```bash
+   # Create .env file with API keys and S3 credentials
+   echo "MY_API_KEY=your_api_key_here" > .env
+   ```
 
-4. Build the database:
+4. Implement data fetching in `resources/my_resource.py`
+
+5. Build the database:
    ```bash
    uv run zeeker build
    ```
 
-5. Deploy to S3:
+6. Deploy to S3:
    ```bash
    uv run zeeker deploy
    ```
@@ -186,6 +192,7 @@ A Zeeker project for managing the {project_name} database.
 - `pyproject.toml` - Project dependencies and metadata
 - `zeeker.toml` - Project configuration
 - `resources/` - Python modules for data fetching
+- `.env` - Environment variables (gitignored, create manually)
 - `{project_name}.db` - Generated SQLite database (gitignored)
 - `.venv/` - Virtual environment (gitignored)
 
@@ -202,11 +209,26 @@ This project uses uv for dependency management. Common dependencies for data pro
 
 Add dependencies with: `uv add package_name`
 
+## Environment Variables
+
+Zeeker automatically loads `.env` files during build and deployment:
+
+```bash
+# S3 deployment (required for deploy)
+S3_BUCKET=your-bucket-name
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+
+# API keys for your resources
+JINA_API_TOKEN=your-jina-token
+OPENAI_API_KEY=your-openai-key
+```
+
 ## Development
 
 Format and lint code:
 - `uv run black .` - Format code with black
-- `uv run ruff check .` - Lint code with ruff  
+- `uv run ruff check .` - Lint code with ruff
 - `uv run ruff check --fix .` - Auto-fix ruff issues
 
 ## Resources
@@ -249,6 +271,35 @@ This project uses **uv** for dependency management with an isolated virtual envi
 - **Install dependencies:** `uv sync` (automatically creates .venv if needed)
 - **Common packages:** requests, beautifulsoup4, pandas, lxml, pdfplumber, openpyxl
 
+### Environment Variables
+Zeeker automatically loads `.env` files when running build, deploy, and asset commands:
+
+- **Create `.env` file:** Store sensitive credentials and configuration
+- **Auto-loaded:** Environment variables are available in your resources during `zeeker build`
+- **S3 deployment:** Required for `zeeker deploy` and `zeeker assets deploy`
+
+**Example `.env` file:**
+```
+# S3 deployment credentials
+S3_BUCKET=my-datasette-bucket
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+S3_ENDPOINT_URL=https://s3.amazonaws.com
+
+# API keys for data resources
+JINA_API_TOKEN=your_jina_token
+OPENAI_API_KEY=your_openai_key
+```
+
+**Usage in resources:**
+```python
+import os
+
+def fetch_data(existing_table):
+    api_key = os.getenv("MY_API_KEY")  # Loaded from .env automatically
+    # ... rest of your code
+```
+
 ## Development Commands
 
 ### Quick Commands
@@ -259,7 +310,7 @@ This project uses **uv** for dependency management with an isolated virtual envi
 
 ### Code Formatting
 - `uv run black .` - Format code with black
-- `uv run ruff check .` - Lint code with ruff  
+- `uv run ruff check .` - Lint code with ruff
 - `uv run ruff check --fix .` - Auto-fix ruff issues
 
 ### Testing This Project

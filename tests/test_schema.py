@@ -1,18 +1,17 @@
 """Comprehensive tests for schema management functionality."""
 
 import json
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock
+
 import pytest
 import sqlite_utils
-import tempfile
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from zeeker.core.schema import SchemaManager
 from zeeker.core.types import (
     META_TABLE_SCHEMAS,
     META_TABLE_UPDATES,
-    ValidationResult,
     ZeekerSchemaConflictError,
     calculate_schema_hash,
     extract_table_schema,

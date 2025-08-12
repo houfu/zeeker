@@ -75,7 +75,7 @@ class AsyncExecutor:
         """Execute an async fetch_data function."""
         try:
             # Check if we're already in an async context
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # If loop is already running, we need to run in a new thread
             import concurrent.futures
 
@@ -105,7 +105,7 @@ class AsyncExecutor:
 
         try:
             # Check if we're already in an async context
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # If loop is already running, we need to run in a new thread
             import concurrent.futures
 

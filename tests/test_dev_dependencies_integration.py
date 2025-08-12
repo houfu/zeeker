@@ -1,10 +1,11 @@
 """Integration tests for dev dependencies in generated projects."""
 
-import tempfile
-import subprocess
-import pytest
-from pathlib import Path
 import os
+import subprocess
+import tempfile
+from pathlib import Path
+
+import pytest
 
 from zeeker.core.project import ZeekerProjectManager
 

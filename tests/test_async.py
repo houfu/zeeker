@@ -2,8 +2,9 @@
 
 import asyncio
 import tempfile
-import pytest
 from pathlib import Path
+
+import pytest
 
 from zeeker.core.database import DatabaseBuilder
 from zeeker.core.database.async_executor import AsyncExecutor
@@ -234,13 +235,13 @@ async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
 async def fetch_fragments_data(existing_fragments_table: Optional[Table], main_data_context: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
     """Async fetch fragments."""
     await asyncio.sleep(0.001)
-    
+
     if main_data_context:
         fragments = []
         for doc in main_data_context:
             doc_id = doc.get("id")
             content = doc.get("content", "")
-            
+
             # Simple splitting for test
             words = content.split()
             for i, word in enumerate(words):
@@ -250,7 +251,7 @@ async def fetch_fragments_data(existing_fragments_table: Optional[Table], main_d
                     "text": word
                 })
         return fragments
-    
+
     return []
 '''
         (resources_dir / "async_docs.py").write_text(async_fragments_content)

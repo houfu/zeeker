@@ -733,11 +733,43 @@ To convert existing resources to use fragments:
 4. **Rebuild**: Run `zeeker build` to create fragments table
 
 ### Environment Variables
-Required for S3 deployment and sync:
+
+**Automatic .env Loading:**
+Zeeker automatically loads `.env` files when running:
+- `zeeker build` - Environment variables available to resource functions
+- `zeeker deploy` - S3 credentials loaded from .env
+- `zeeker assets deploy` - S3 credentials loaded from .env
+- `zeeker assets list` - S3 credentials loaded from .env
+
+**Required for S3 deployment and sync:**
 - `S3_BUCKET` - S3 bucket name
 - `AWS_ACCESS_KEY_ID` - AWS access key
 - `AWS_SECRET_ACCESS_KEY` - AWS secret key  
 - `S3_ENDPOINT_URL` - Optional S3 endpoint URL
+
+**Example .env file:**
+```bash
+# S3 deployment credentials
+S3_BUCKET=my-datasette-bucket
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+
+# API keys for resource functions
+JINA_API_TOKEN=your_jina_token
+OPENAI_API_KEY=your_openai_key
+```
+
+**Usage in resources:**
+```python
+import os
+
+def fetch_data(existing_table):
+    # Environment variables from .env are automatically available
+    api_key = os.getenv("MY_API_KEY")
+    if not api_key:
+        raise ValueError("MY_API_KEY not found in environment")
+    # ... rest of your code
+```
 
 Note: The same AWS credentials used for `zeeker deploy` are used for `--sync-from-s3`
 

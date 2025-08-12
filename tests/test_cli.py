@@ -1,8 +1,5 @@
 """Comprehensive tests for Zeeker CLI commands using Click's CliRunner."""
 
-import json
-import os
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

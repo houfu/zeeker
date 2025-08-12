@@ -1,21 +1,18 @@
 """Tests for individual database package components."""
 
-import asyncio
+import os
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
 import sqlite_utils
-from unittest.mock import MagicMock, Mock, patch
-from pathlib import Path
-import tempfile
-import os
-from typing import List, Dict, Any, Optional
 
 from zeeker.core.database.async_executor import AsyncExecutor
-from zeeker.core.database.s3_sync import S3Synchronizer
-from zeeker.core.database.processor import ResourceProcessor
 from zeeker.core.database.builder import DatabaseBuilder
-from zeeker.core.schema import SchemaManager
+from zeeker.core.database.processor import ResourceProcessor
+from zeeker.core.database.s3_sync import S3Synchronizer
 from zeeker.core.types import ValidationResult
-from sqlite_utils.db import Table
 
 
 class TestAsyncExecutor:
@@ -364,7 +361,7 @@ class TestDatabaseBuilder:
     def test_build_database_no_sync_from_s3_flag(self, builder):
         """Test build without S3 sync when flag is False."""
         with patch("sqlite_utils.Database"):
-            result = builder.build_database(sync_from_s3=False)
+            builder.build_database(sync_from_s3=False)
 
             # S3 sync should not be called
             builder.s3_sync.sync_from_s3.assert_not_called()

@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 import click
+from dotenv import load_dotenv
 
 from .core.deployer import ZeekerDeployer
 from .core.generator import ZeekerGenerator
@@ -167,6 +168,9 @@ def build(force_schema_reset, sync_from_s3):
 
     Must be run from a Zeeker project directory (contains zeeker.toml).
     """
+    # Load .env file if present for resource environment variables
+    load_dotenv()
+
     manager = ZeekerProjectManager()
 
     try:
@@ -212,6 +216,9 @@ def deploy_database(dry_run):
     Must be run from a Zeeker project directory (contains zeeker.toml).
     Use 'zeeker assets deploy' for UI customizations.
     """
+    # Load .env file if present for S3 credentials
+    load_dotenv()
+
     manager = ZeekerProjectManager()
 
     if not manager.is_project_root():
@@ -357,6 +364,9 @@ def deploy_assets(local_path, database_name, dry_run, sync, clean, yes, diff):
 
     Database folder name must match .db filename (without .db extension).
     """
+    # Load .env file if present for S3 credentials
+    load_dotenv()
+
     if clean and sync:
         click.echo("❌ Cannot use both --clean and --sync flags")
         return
@@ -420,6 +430,9 @@ def deploy_assets(local_path, database_name, dry_run, sync, clean, yes, diff):
 @assets.command("list")
 def list_assets():
     """List all database UI assets in S3."""
+    # Load .env file if present for S3 credentials
+    load_dotenv()
+
     try:
         deployer = ZeekerDeployer()
     except ValueError as e:
