@@ -45,9 +45,27 @@ async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     3. Avoid None/null values in key columns on first run
     4. Use float (not int) for numbers that might have decimals later
 
+    CRITICAL - Duplicate Handling:
+    Your function MUST NOT return records with IDs that already exist in the database.
+    sqlite-utils will throw a UNIQUE constraint error if you do!
+
     Example usage:
         if existing_table:
-            # Access metadata for incremental updates
+            # REQUIRED: Get existing IDs to avoid duplicates
+            existing_ids = {row["id"] for row in existing_table.rows}
+            print(f"Found {len(existing_ids)} existing records")
+            
+            # Fetch fresh data from your async source
+            fresh_data = await fetch_from_api()  # Your async data source
+            
+            # CRITICAL: Filter out existing records
+            new_records = [
+                record for record in fresh_data 
+                if record["id"] not in existing_ids
+            ]
+            print(f"Adding {len(new_records)} new records, skipping {len(fresh_data) - len(new_records)} duplicates")
+            
+            # Optional: Access metadata for time-based incremental updates
             db = existing_table.db
             if "_zeeker_updates" in db.table_names():
                 updates_table = db["_zeeker_updates"]
@@ -59,13 +77,11 @@ async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
                 except NotFoundError:
                     print("No metadata found - first run")
             
-            # Check for duplicates and fetch incremental data
-            existing_ids = {row["id"] for row in existing_table.rows}
-            new_data = await fetch_from_api()  # Your async data source
-            return [record for record in new_data if record["id"] not in existing_ids]
+            return new_records
         else:
             # Fresh table - CRITICAL: Set schema correctly with first batch!
-            return await fetch_initial_data()
+            print("Creating new table")
+            return await fetch_from_api()  # Get all data for first run
     """
     # TODO: Implement your async data fetching logic here
     # This could be:
@@ -75,14 +91,14 @@ async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     # - Async web scraping (playwright, selenium, etc.)
     # - Any other async data source
 
-    # Example async API call using aiohttp
+    # Example async API call using aiohttp with duplicate handling
     async with aiohttp.ClientSession() as session:
         # Replace with your actual API endpoint
         async with session.get("https://api.example.com/data") as response:
             if response.status == 200:
-                data = await response.json()
-                # Process and return data
-                return [
+                api_data = await response.json()
+                # Process API data into standard format
+                raw_data = [
                     # Example data showing proper types for schema inference:
                     {
                         "id": 1,                           # int → INTEGER (good for primary keys)
@@ -96,23 +112,20 @@ async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
                     },
                     # Add more example records with same structure...
                 ]
+                
+                # Handle duplicates properly
+                if existing_table:
+                    existing_ids = {row["id"] for row in existing_table.rows}
+                    raw_data = [record for record in raw_data if record["id"] not in existing_ids]
+                    print(f"{{ resource_name }}: Adding {len(raw_data)} new records")
+                
+                return raw_data
             else:
                 print(f"API request failed with status {response.status}")
                 return []
 
-    # Fallback example data if API call fails
-    return [
-        {
-            "id": 1,
-            "title": "Example Record",
-            "score": 85.5,
-            "view_count": 100,
-            "is_published": True,
-            "created_date": "2024-01-15",
-            "tags": ["example"],
-            "metadata": {"source": "fallback"},
-        }
-    ]
+    # Fallback should never be reached due to above return statements
+    return []
 
 
 async def transform_data(raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

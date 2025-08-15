@@ -119,9 +119,9 @@ class TestAsyncTemplateGeneration:
 
         assert fetch_data_func is not None, "fetch_data async function not found"
         assert len(fetch_data_func.args.args) == 1, "fetch_data should have exactly one parameter"
-        assert (
-            fetch_data_func.args.args[0].arg == "existing_table"
-        ), "Parameter should be 'existing_table'"
+        assert fetch_data_func.args.args[0].arg == "existing_table", (
+            "Parameter should be 'existing_table'"
+        )
 
     def test_async_fragments_template_function_signatures(self, test_project_path):
         """Test that async fragments templates have correct function signatures."""
@@ -157,9 +157,9 @@ class TestAsyncTemplateGeneration:
 
         # Verify fetch_fragments_data signature (2 params)
         assert fetch_fragments_func is not None, "fetch_fragments_data async function not found"
-        assert (
-            len(fetch_fragments_func.args.args) == 2
-        ), "fetch_fragments_data should have 2 parameters"
+        assert len(fetch_fragments_func.args.args) == 2, (
+            "fetch_fragments_data should have 2 parameters"
+        )
         assert fetch_fragments_func.args.args[0].arg == "existing_fragments_table"
         assert fetch_fragments_func.args.args[1].arg == "main_data_context"
 
@@ -194,9 +194,9 @@ class TestAsyncTemplateGeneration:
 
         # Should have same imports plus fragments-specific content
         for import_statement in required_imports:
-            assert (
-                import_statement in fragments_code
-            ), f"Missing import in fragments: {import_statement}"
+            assert import_statement in fragments_code, (
+                f"Missing import in fragments: {import_statement}"
+            )
 
     def test_async_template_examples_and_comments(self, test_project_path):
         """Test that async templates contain helpful examples and documentation."""

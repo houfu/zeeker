@@ -84,7 +84,7 @@ class ResourceTemplateGenerator:
     def _generate_standard_fallback(self, resource_name: str) -> str:
         """Generate standard resource template using string formatting."""
         return f'''"""
-{resource_name.replace('_', ' ').title()} resource for fetching and processing data.
+{resource_name.replace("_", " ").title()} resource for fetching and processing data.
 
 This module should implement a fetch_data() function that returns
 a list of dictionaries to be inserted into the '{resource_name}' table.
@@ -203,7 +203,7 @@ def transform_data(raw_data):
         fragments_table = f"{resource_name}_fragments"
 
         return f'''"""
-{resource_name.replace('_', ' ').title()} resource with fragments support for large documents.
+{resource_name.replace("_", " ").title()} resource with fragments support for large documents.
 
 This module implements TWO tables:
 1. '{resource_name}' - Main table (schema determined by your fetch_data function)
@@ -370,7 +370,7 @@ def transform_fragments_data(raw_fragments):
     def _generate_async_standard_fallback(self, resource_name: str) -> str:
         """Generate async resource template using string formatting."""
         return f'''"""
-{resource_name.replace('_', ' ').title()} resource for fetching and processing data (async version).
+{resource_name.replace("_", " ").title()} resource for fetching and processing data (async version).
 
 This module should implement an async fetch_data() function that returns
 a list of dictionaries to be inserted into the '{resource_name}' table.
@@ -397,7 +397,7 @@ async def transform_data(raw_data):
         fragments_table = f"{resource_name}_fragments"
 
         return f'''"""
-{resource_name.replace('_', ' ').title()} resource with fragments support (async version).
+{resource_name.replace("_", " ").title()} resource with fragments support (async version).
 
 This module implements TWO tables with async functionality.
 """

@@ -145,9 +145,7 @@ class DatabaseBuilder:
                 try:
                     sample_data = self.processor.async_executor.call_fetch_data(
                         fetch_data, existing_table
-                    )[
-                        :5
-                    ]  # Small sample for schema check
+                    )[:5]  # Small sample for schema check
                     if sample_data:
                         schema_result = self.schema_manager.check_schema_conflicts(
                             db, resource_name, sample_data, module

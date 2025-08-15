@@ -34,8 +34,25 @@ def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     - Metadata focused: {"id": 1, "title": "Doc 1", "source": "...", "date": "..."}
     - Complex: {"id": 1, "title": "Doc 1", "metadata": {"tags": ["tag1"]}, "status": "active"}
     
-    Accessing metadata for incremental updates:
+    CRITICAL - Duplicate Handling:
+    Your function MUST NOT return records with IDs that already exist in the database.
+    sqlite-utils will throw a UNIQUE constraint error if you do!
+    
+    Example usage:
         if existing_table:
+            # REQUIRED: Get existing IDs to avoid duplicates
+            existing_ids = {row["id"] for row in existing_table.rows}
+            print(f"Found {len(existing_ids)} existing records")
+            
+            # Fetch fresh data and filter duplicates
+            fresh_data = get_documents_from_source()
+            new_records = [
+                record for record in fresh_data 
+                if record["id"] not in existing_ids
+            ]
+            print(f"Adding {len(new_records)} new records")
+            
+            # Optional: Access metadata for incremental updates
             db = existing_table.db
             if "_zeeker_updates" in db.table_names():
                 updates_table = db["_zeeker_updates"]
@@ -46,6 +63,11 @@ def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
                     print(f"Last updated: {last_updated}, Records: {record_count}")
                 except NotFoundError:
                     print("No metadata found - first run")
+            
+            return new_records
+        else:
+            print("Creating new table")
+            return get_documents_from_source()
     """
     # TODO: Implement your data fetching logic
     # This is just an example - replace with your actual schema and data

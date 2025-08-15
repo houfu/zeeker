@@ -43,9 +43,27 @@ def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     3. Avoid None/null values in key columns on first run
     4. Use float (not int) for numbers that might have decimals later
 
+    CRITICAL - Duplicate Handling:
+    Your function MUST NOT return records with IDs that already exist in the database.
+    sqlite-utils will throw a UNIQUE constraint error if you do!
+
     Example usage:
         if existing_table:
-            # Access metadata for incremental updates
+            # REQUIRED: Get existing IDs to avoid duplicates
+            existing_ids = {row["id"] for row in existing_table.rows}
+            print(f"Found {len(existing_ids)} existing records")
+            
+            # Fetch fresh data from your source
+            fresh_data = fetch_from_api()  # Your data source
+            
+            # CRITICAL: Filter out existing records
+            new_records = [
+                record for record in fresh_data 
+                if record["id"] not in existing_ids
+            ]
+            print(f"Adding {len(new_records)} new records, skipping {len(fresh_data) - len(new_records)} duplicates")
+            
+            # Optional: Access metadata for time-based incremental updates
             db = existing_table.db
             if "_zeeker_updates" in db.table_names():
                 updates_table = db["_zeeker_updates"]
@@ -57,16 +75,11 @@ def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
                 except NotFoundError:
                     print("No metadata found - first run")
             
-            # Check for duplicates and fetch incremental data
-            existing_ids = {row["id"] for row in existing_table.rows}
-            new_data = fetch_from_api()  # Your data source
-            return [record for record in new_data if record["id"] not in existing_ids]
+            return new_records
         else:
             # Fresh table - CRITICAL: Set schema correctly with first batch!
-            return [
-                {"id": 1, "name": "Example", "created": "2024-01-01"},
-                {"id": 2, "name": "Another", "created": "2024-01-02"},
-            ]
+            print("Creating new table")
+            return fetch_from_api()  # Get all data for first run
     """
     # TODO: Implement your data fetching logic here
     # This could be:
@@ -76,7 +89,8 @@ def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     # - Web scraping (BeautifulSoup, Scrapy, etc.)
     # - Any other data source
 
-    return [
+    # Example implementation with proper duplicate handling:
+    raw_data = [
         # Example data showing proper types for schema inference:
         {
             "id": 1,                           # int → INTEGER (good for primary keys)
@@ -90,6 +104,14 @@ def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
         },
         # Add more example records with same structure...
     ]
+
+    # Handle duplicates properly
+    if existing_table:
+        existing_ids = {row["id"] for row in existing_table.rows}
+        raw_data = [record for record in raw_data if record["id"] not in existing_ids]
+        print(f"{{ resource_name }}: Adding {len(raw_data)} new records")
+
+    return raw_data
 
 
 def transform_data(raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

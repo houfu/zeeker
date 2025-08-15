@@ -230,9 +230,9 @@ fragments = true
     # Check no fallback fragments were created
     cursor.execute("SELECT * FROM context_test_fragments WHERE from_context = 0")
     fallback_fragments = cursor.fetchall()
-    assert (
-        len(fallback_fragments) == 0
-    ), "Should not have fallback fragments when context is available"
+    assert len(fallback_fragments) == 0, (
+        "Should not have fallback fragments when context is available"
+    )
 
     conn.close()
 
