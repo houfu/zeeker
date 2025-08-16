@@ -199,7 +199,7 @@ class TestCLIBuild:
         for info in mock_result.info:
             assert f"✅ {info}" in result.output
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=False
+            force_schema_reset=False, sync_from_s3=False, resources=None
         )
 
     def test_build_with_force_schema_reset(self, runner, mock_manager):
@@ -211,7 +211,7 @@ class TestCLIBuild:
 
         assert result.exit_code == 0
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=True, sync_from_s3=False
+            force_schema_reset=True, sync_from_s3=False, resources=None
         )
 
     def test_build_with_s3_sync(self, runner, mock_manager):
@@ -223,7 +223,7 @@ class TestCLIBuild:
 
         assert result.exit_code == 0
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=True
+            force_schema_reset=False, sync_from_s3=True, resources=None
         )
 
     def test_build_with_both_flags(self, runner, mock_manager):
@@ -235,7 +235,7 @@ class TestCLIBuild:
 
         assert result.exit_code == 0
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=True, sync_from_s3=True
+            force_schema_reset=True, sync_from_s3=True, resources=None
         )
 
     def test_build_schema_conflict_error(self, runner, mock_manager):
@@ -260,7 +260,7 @@ class TestCLIBuild:
 
         result = runner.invoke(cli, ["build"])
 
-        assert result.exit_code == 0  # Non-schema errors don't exit
+        assert result.exit_code == 1  # Build errors should exit with code 1
         assert "❌ Database build failed" in result.output
         assert "Database file is locked" in result.output
 
@@ -275,6 +275,62 @@ class TestCLIBuild:
         assert "Built with sqlite-utils" in result.output
         assert "Generated metadata follows customization guide format" in result.output
         assert "Ready for deployment with 'zeeker deploy'" in result.output
+
+    def test_build_with_specific_resources(self, runner, mock_manager):
+        """Test build with specific resources."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.info.extend(["Built table: users (150 records)"])
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "users", "posts"])
+
+        assert result.exit_code == 0
+        assert "Building specific resources: users, posts" in result.output
+        mock_manager.build_database.assert_called_once_with(
+            force_schema_reset=False, sync_from_s3=False, resources=["users", "posts"]
+        )
+
+    def test_build_with_single_resource(self, runner, mock_manager):
+        """Test build with single resource."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.info.extend(["Built table: users (150 records)"])
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "users"])
+
+        assert result.exit_code == 0
+        assert "Building specific resources: users" in result.output
+        mock_manager.build_database.assert_called_once_with(
+            force_schema_reset=False, sync_from_s3=False, resources=["users"]
+        )
+
+    def test_build_with_invalid_resources(self, runner, mock_manager):
+        """Test build with invalid resource names."""
+        mock_result = ValidationResult(is_valid=False)
+        mock_result.errors.extend(
+            ["Unknown resources: invalid_resource", "Available resources: users, posts"]
+        )
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "users", "invalid_resource"])
+
+        assert result.exit_code == 1
+        assert "Unknown resources: invalid_resource" in result.output
+        assert "Available resources: users, posts" in result.output
+
+    def test_build_resources_with_options(self, runner, mock_manager):
+        """Test build with resources and options combined."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.info.extend(["Built table: users (150 records)"])
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "--force-schema-reset", "users", "posts"])
+
+        assert result.exit_code == 0
+        assert "Building specific resources: users, posts" in result.output
+        mock_manager.build_database.assert_called_once_with(
+            force_schema_reset=True, sync_from_s3=False, resources=["users", "posts"]
+        )
 
 
 class TestCLIDeploy:
@@ -439,9 +495,10 @@ class TestCLIHelp:
         result = runner.invoke(cli, ["build", "--help"])
 
         assert result.exit_code == 0
-        assert "Build database from all resources" in result.output
+        assert "Build database from resources" in result.output
         assert "--force-schema-reset" in result.output
         assert "--sync-from-s3" in result.output
+        assert "zeeker build users" in result.output
 
     def test_assets_help(self, runner):
         """Test assets group help."""

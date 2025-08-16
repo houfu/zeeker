@@ -69,13 +69,17 @@ class ZeekerProjectManager:
         return result
 
     def build_database(
-        self, force_schema_reset: bool = False, sync_from_s3: bool = False
+        self,
+        force_schema_reset: bool = False,
+        sync_from_s3: bool = False,
+        resources: list[str] = None,
     ) -> ValidationResult:
-        """Build the SQLite database from all resources with optional S3 sync.
+        """Build the SQLite database from resources with optional S3 sync.
 
         Args:
             force_schema_reset: If True, ignore schema conflicts and rebuild
             sync_from_s3: If True, download existing database from S3 before building
+            resources: List of specific resource names to build. If None, builds all resources.
 
         Returns:
             ValidationResult with build results
@@ -86,6 +90,16 @@ class ZeekerProjectManager:
             return result
 
         project = self.load_project()
+
+        # Validate resource names if specified
+        if resources:
+            invalid_resources = [r for r in resources if r not in project.resources]
+            if invalid_resources:
+                result = ValidationResult(is_valid=False)
+                result.errors.append(f"Unknown resources: {', '.join(invalid_resources)}")
+                result.errors.append(f"Available resources: {', '.join(project.resources.keys())}")
+                return result
+
         builder = DatabaseBuilder(self.project_path, project)
 
-        return builder.build_database(force_schema_reset, sync_from_s3)
+        return builder.build_database(force_schema_reset, sync_from_s3, resources)

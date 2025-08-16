@@ -34,9 +34,12 @@ class DatabaseBuilder:
         self.s3_sync = S3Synchronizer()
 
     def build_database(
-        self, force_schema_reset: bool = False, sync_from_s3: bool = False
+        self,
+        force_schema_reset: bool = False,
+        sync_from_s3: bool = False,
+        resources: list[str] = None,
     ) -> ValidationResult:
-        """Build the SQLite database from all resources using sqlite-utils.
+        """Build the SQLite database from resources using sqlite-utils.
 
         Uses Simon Willison's sqlite-utils for robust table creation and data insertion:
         - Automatic schema detection from data
@@ -47,6 +50,7 @@ class DatabaseBuilder:
         Args:
             force_schema_reset: If True, ignore schema conflicts and rebuild
             sync_from_s3: If True, download existing database from S3 before building
+            resources: List of specific resource names to build. If None, builds all resources.
 
         Returns:
             ValidationResult with build results
@@ -74,8 +78,11 @@ class DatabaseBuilder:
             self.schema_manager.ensure_meta_tables(db)
             build_id = self.schema_manager.generate_build_id()
 
-            # Process each resource
-            for resource_name in self.project.resources.keys():
+            # Determine which resources to process
+            resources_to_build = resources if resources else list(self.project.resources.keys())
+
+            # Process each specified resource
+            for resource_name in resources_to_build:
                 resource_result = self._process_resource_with_schema_check(
                     db, resource_name, force_schema_reset, build_id
                 )
@@ -145,7 +152,9 @@ class DatabaseBuilder:
                 try:
                     sample_data = self.processor.async_executor.call_fetch_data(
                         fetch_data, existing_table
-                    )[:5]  # Small sample for schema check
+                    )[
+                        :5
+                    ]  # Small sample for schema check
                     if sample_data:
                         schema_result = self.schema_manager.check_schema_conflicts(
                             db, resource_name, sample_data, module

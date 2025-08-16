@@ -126,9 +126,9 @@ def badly_formatted_function( x,y,z ):
             env={**os.environ, "VIRTUAL_ENV": ""},
         )
         # Black should be able to format without errors
-        assert result.returncode == 0, (
-            f"Black should be able to format generated file: {result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"Black should be able to format generated file: {result.stderr}"
 
         # Test that ruff can run on the generated file (may find issues)
         result = subprocess.run(
@@ -149,9 +149,9 @@ def badly_formatted_function( x,y,z ):
             text=True,
             env={**os.environ, "VIRTUAL_ENV": ""},
         )
-        assert result.returncode == 0, (
-            f"Generated resource should pass ruff after fixes: {result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"Generated resource should pass ruff after fixes: {result.stderr}"
 
     def test_tool_configuration_validity(self, test_project_path):
         """Test that the tool configurations in pyproject.toml are valid."""

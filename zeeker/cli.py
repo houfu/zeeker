@@ -144,16 +144,24 @@ def add(resource_name, description, facets, sort, size, fragments, is_async):
 
 
 @cli.command()
+@click.argument("resources", nargs=-1)
 @click.option(
     "--force-schema-reset", is_flag=True, help="Ignore schema conflicts and rebuild tables"
 )
 @click.option(
     "--sync-from-s3", is_flag=True, help="Download existing database from S3 before building"
 )
-def build(force_schema_reset, sync_from_s3):
-    """Build database from all resources using sqlite-utils.
+def build(resources, force_schema_reset, sync_from_s3):
+    """Build database from resources using sqlite-utils.
 
-    Runs fetch_data() for each resource and creates/updates the SQLite database.
+    Runs fetch_data() for specified resources and creates/updates the SQLite database.
+    If no resources are specified, builds all resources in the project.
+
+    Examples:
+        zeeker build              # Build all resources
+        zeeker build users        # Build only 'users' resource
+        zeeker build users posts  # Build 'users' and 'posts' resources
+
     Uses Simon Willison's sqlite-utils for robust database operations:
 
     • Automatic table creation with proper schema detection
@@ -171,11 +179,18 @@ def build(force_schema_reset, sync_from_s3):
     # Load .env file if present for resource environment variables
     load_dotenv()
 
+    # Convert tuple of resources to list, or None if empty
+    resource_list = list(resources) if resources else None
+    if resource_list:
+        click.echo(f"Building specific resources: {', '.join(resource_list)}")
+
     manager = ZeekerProjectManager()
 
     try:
         result = manager.build_database(
-            force_schema_reset=force_schema_reset, sync_from_s3=sync_from_s3
+            force_schema_reset=force_schema_reset,
+            sync_from_s3=sync_from_s3,
+            resources=resource_list,
         )
     except ZeekerSchemaConflictError as e:
         click.echo("❌ Schema conflict detected:")
@@ -190,7 +205,7 @@ def build(force_schema_reset, sync_from_s3):
         click.echo("❌ Database build failed:")
         for error in result.errors:
             click.echo(f"   {error}")
-        return
+        raise click.ClickException("Build failed")
 
     if result.warnings:
         for warning in result.warnings:

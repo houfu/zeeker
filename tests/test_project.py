@@ -327,6 +327,52 @@ def transform_data(data):
         assert any(item["name"] == "Alice" for item in data)
         assert any(item["name"] == "Bob" for item in data)
 
+    @patch("zeeker.core.database.builder.sqlite_utils.Database")
+    def test_build_database_with_specific_resources(self, mock_db_class, manager):
+        """Test build database with specific resources only."""
+        # Set up a project with multiple resources
+        manager.init_project("test_project")
+        manager.add_resource("users", "User data")
+        manager.add_resource("posts", "Post data")
+
+        # Create resource files
+        users_content = """
+def fetch_data(existing_table):
+    return [{"id": 1, "name": "Alice"}]
+"""
+        posts_content = """
+def fetch_data(existing_table):
+    return [{"id": 1, "title": "First Post"}]
+"""
+        (manager.resources_path / "users.py").write_text(users_content)
+        (manager.resources_path / "posts.py").write_text(posts_content)
+
+        # Configure mock Database
+        mock_db = MagicMock()
+        mock_table = MagicMock()
+        mock_db.__getitem__.return_value = mock_table
+        mock_db_class.return_value = mock_db
+
+        # Build only users resource
+        result = manager.build_database(resources=["users"])
+
+        assert result.is_valid
+        # Should process only users resource - posts.py should not be imported
+        assert mock_table.insert_all.call_count >= 1
+
+    def test_build_database_with_invalid_resources(self, manager):
+        """Test build database with invalid resource names."""
+        # Set up a project with a resource
+        manager.init_project("test_project")
+        manager.add_resource("users", "User data")
+
+        # Try to build with invalid resource name
+        result = manager.build_database(resources=["invalid_resource"])
+
+        assert not result.is_valid
+        assert "Unknown resources: invalid_resource" in result.errors[0]
+        assert "Available resources: users" in result.errors[1]
+
 
 class TestMetaTables:
     """Test meta table functionality for schema and update tracking."""

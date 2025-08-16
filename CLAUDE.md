@@ -3,6 +3,7 @@
 ## Commands
 - `uv run pytest [-m unit|integration|cli]` `uv run black .` 
 - `uv run zeeker init|add|build|deploy` `--fragments --async --sync-from-s3 --force-schema-reset`
+- `uv run zeeker build [resource1] [resource2]` (selective building)
 - `uv run zeeker assets generate|validate|deploy`
 
 ## Architecture
@@ -61,6 +62,10 @@ Env (auto-loads `.env`): `S3_BUCKET,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,JINA
 
 ## Testing
 Markers: `unit,integration,cli,slow` (`pytest -m marker`)
+
+## Selective Building
+`zeeker build users posts` (builds specific resources)
+`zeeker build` (builds all resources)
 
 ## Code Recipes
 ```python
