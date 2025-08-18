@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 import boto3
+from botocore.config import Config
 
 from .types import DeploymentChanges, ValidationResult
 
@@ -28,11 +29,16 @@ class ZeekerDeployer:
                 "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are required"
             )
 
+        # Configure checksum settings for compatibility with non-AWS S3 endpoints
+        s3_config = Config(
+            response_checksum_validation="when_required",
+            request_checksum_calculation="when_required",
+        )
+
         client_kwargs = {
             "aws_access_key_id": access_key,
             "aws_secret_access_key": secret_key,
-            "response_checksum_validation": "when_required",
-            "request_checksum_calculation": "when_required",
+            "config": s3_config,
         }
         if self.endpoint_url:
             client_kwargs["endpoint_url"] = self.endpoint_url

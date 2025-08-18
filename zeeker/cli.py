@@ -232,7 +232,7 @@ def deploy_database(dry_run):
     Use 'zeeker assets deploy' for UI customizations.
     """
     # Load .env file if present for S3 credentials
-    load_dotenv()
+    load_dotenv(dotenv_path=Path.cwd() / ".env")
 
     manager = ZeekerProjectManager()
 
@@ -380,7 +380,7 @@ def deploy_assets(local_path, database_name, dry_run, sync, clean, yes, diff):
     Database folder name must match .db filename (without .db extension).
     """
     # Load .env file if present for S3 credentials
-    load_dotenv()
+    load_dotenv(dotenv_path=Path.cwd() / ".env")
 
     if clean and sync:
         click.echo("❌ Cannot use both --clean and --sync flags")
@@ -446,7 +446,7 @@ def deploy_assets(local_path, database_name, dry_run, sync, clean, yes, diff):
 def list_assets():
     """List all database UI assets in S3."""
     # Load .env file if present for S3 credentials
-    load_dotenv()
+    load_dotenv(dotenv_path=Path.cwd() / ".env")
 
     try:
         deployer = ZeekerDeployer()

@@ -56,6 +56,7 @@ class ProjectScaffolder:
         self._create_gitignore()
         readme_path = self._create_readme(project_name)
         claude_path = self._create_claude_md(project_name)
+        github_workflow_path = self._create_github_workflow()
 
         result.info.append(f"Initialized Zeeker project '{project_name}'")
 
@@ -66,6 +67,7 @@ class ProjectScaffolder:
         self._add_creation_info(result, self.project_path / ".gitignore")
         self._add_creation_info(result, readme_path)
         self._add_creation_info(result, claude_path)
+        self._add_creation_info(result, github_workflow_path)
 
         return result
 
@@ -186,6 +188,21 @@ A Zeeker project for managing the {project_name} database.
    ```bash
    uv run zeeker deploy
    ```
+
+## Automated Deployment
+
+This project includes a GitHub Action that automatically builds and deploys to S3:
+
+- **Triggers:** Pushes to main/master branch, or manual dispatch
+- **Required Secrets:** Configure in GitHub repository settings:
+  - `S3_BUCKET` - Target S3 bucket name
+  - `AWS_ACCESS_KEY_ID` - AWS access key
+  - `AWS_SECRET_ACCESS_KEY` - AWS secret key
+  - `JINA_API_TOKEN` - (optional) For Jina Reader resources
+  - `OPENAI_API_KEY` - (optional) For OpenAI resources
+- **Workflow:** `.github/workflows/deploy.yml`
+
+To deploy manually: Go to Actions tab → "Deploy Zeeker Project to S3" → Run workflow
 
 ## Project Structure
 
@@ -378,6 +395,79 @@ The main Zeeker development guide is in the repository root CLAUDE.md file.
         claude_path = self.project_path / "CLAUDE.md"
         claude_path.write_text(claude_content)
         return claude_path
+
+    def _create_github_workflow(self) -> Path:
+        """Create GitHub Actions workflow for automated deployment.
+
+        Returns:
+            Path to the created workflow file
+        """
+        # Create .github/workflows directory
+        github_dir = self.project_path / ".github"
+        workflows_dir = github_dir / "workflows"
+        workflows_dir.mkdir(parents=True, exist_ok=True)
+
+        workflow_content = """name: Deploy Zeeker Project to S3
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
+    - name: Install dependencies
+      run: |
+        uv sync
+
+    - name: Build zeeker project
+      env:
+        JINA_API_TOKEN: ${{ secrets.JINA_API_TOKEN }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        uv run zeeker build
+
+    - name: Deploy to S3
+      env:
+        S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
+      run: |
+        uv run zeeker deploy
+"""
+
+        workflow_path = workflows_dir / "deploy.yml"
+        workflow_path.write_text(workflow_content)
+        return workflow_path
 
     def update_project_claude_md(self, project: ZeekerProject) -> None:
         """Update the project's CLAUDE.md with current resource information.
