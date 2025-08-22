@@ -10,7 +10,7 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 ## 🚀 Features
 
 - **Complete Database Projects**: Create, build, and deploy entire databases with data resources
-- **Document Fragments**: Built-in support for splitting large documents into searchable chunks
+- **Document Fragments**: Built-in support for splitting large documents into searchable chunks with automatic full-text search
 - **Automated Meta Tables**: Schema versioning and update tracking with zero configuration
 - **Schema Conflict Detection**: Safe migration system prevents data corruption from schema changes
 - **Safe UI Customizations**: Template validation prevents breaking core Datasette functionality  
@@ -21,6 +21,14 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 - **Dependency Management**: Built-in support for project-specific dependencies with uv integration
 - **Validation & Testing**: Comprehensive validation before deployment
 - **Best Practices**: Generates code following Datasette and web development standards
+
+## ✨ What's New in v0.3.0
+
+- **🔍 Auto-FTS for Fragments**: Fragments tables now have automatic full-text search on text content - no configuration needed
+- **⚡ Async Support**: Add `--async` flag for concurrent data fetching from APIs and external sources  
+- **🎯 Selective Building**: Build specific resources only with `zeeker build resource1 resource2`
+- **📁 Auto .env Loading**: Environment variables automatically loaded from `.env` files
+- **🗂️ Enhanced Fragments**: Improved context passing eliminates duplicate API calls in fragments workflows
 
 ## 🛠 Two Workflows
 
@@ -85,7 +93,7 @@ zeeker build --sync-from-s3  # Gets Machine B's updates
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/houfu/zeeker.git
 cd zeeker
 
 # Install dependencies with uv
@@ -98,6 +106,7 @@ uv pip install -e .
 ### Using pip
 
 ```bash
+# Note: Package publication to PyPI is in progress
 pip install zeeker
 ```
 
@@ -138,16 +147,20 @@ uv run zeeker add legal_docs --fragments \
   --description "Legal documents with searchable fragments"
 ```
 
-**Fragment Support**: The `--fragments` flag creates resources optimized for large documents (legal documents, contracts, research papers). This automatically creates two tables: one for document metadata and another for searchable text fragments.
+**Fragment Support**: The `--fragments` flag creates resources optimized for large documents (legal documents, contracts, research papers). This automatically creates two tables: one for document metadata and another for searchable text fragments with **built-in full-text search** on text content.
 
 #### 3. Implement Data Fetching
 
 Edit `resources/articles.py`:
 ```python
-def fetch_data():
+from sqlite_utils.db import Table
+from typing import Optional, List, Dict, Any
+
+def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     """Fetch legal news articles."""
     # Your data fetching logic here
     # Could be API calls, file reading, web scraping, etc.
+    # Use existing_table to check for existing records and avoid duplicates
     return [
         {
             "id": 1,
@@ -218,7 +231,7 @@ The validator checks for:
 ```bash
 # Set up environment variables
 export S3_BUCKET="your-bucket-name"
-export S3_ENDPOINT_URL="https://sin1.contabostorage.com"  # Optional
+export S3_ENDPOINT_URL="https://s3.amazonaws.com"  # Optional: use your S3-compatible provider
 export AWS_ACCESS_KEY_ID="your-access-key"
 export AWS_SECRET_ACCESS_KEY="your-secret-key"
 
@@ -296,10 +309,15 @@ Each resource is a Python module that implements `fetch_data()`:
 """
 Articles resource for legal news data.
 """
+from sqlite_utils.db import Table
+from typing import Optional, List, Dict, Any
 
-def fetch_data():
+def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     """
     Fetch data for the articles table.
+    
+    Args:
+        existing_table: sqlite-utils Table object if table exists, None if new table
     
     Returns:
         List[Dict[str, Any]]: List of records to insert into database
@@ -504,7 +522,8 @@ Provide a complete Datasette metadata structure:
 |---------|-------------|
 | `zeeker init PROJECT_NAME` | Initialize new database project |
 | `zeeker add RESOURCE_NAME` | Add data resource to project |
-| `zeeker build` | Build SQLite database from resources with automated meta tables |
+| `zeeker build` | Build SQLite database from all resources with automated meta tables |
+| `zeeker build resource1 resource2` | Build database from specific resources only (selective building) |
 | `zeeker build --sync-from-s3` | Build database with S3 sync (download existing DB for incremental updates) |
 | `zeeker build --force-schema-reset` | Build database ignoring schema conflicts (for development) |
 | `zeeker deploy` | Deploy database to S3 |
@@ -529,10 +548,14 @@ zeeker add RESOURCE_NAME \
   --description TEXT \
   --facets FIELD \
   --sort FIELD \
-  --size NUMBER
+  --size NUMBER \
+  --fragments \
+  --async \
+  --fts-fields FIELD \
+  --fragments-fts-fields FIELD
 
 # Build with schema management options
-zeeker build [--force-schema-reset]
+zeeker build [resource1] [resource2] [--sync-from-s3] [--force-schema-reset]
 
 # Deploy with dry run
 zeeker deploy [--dry-run]
@@ -563,7 +586,7 @@ zeeker assets deploy LOCAL_PATH DATABASE_NAME \
 
 ```bash
 # Clone and setup
-git clone <repository-url>
+git clone https://github.com/houfu/zeeker.git
 cd zeeker
 uv sync
 
