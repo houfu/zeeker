@@ -12,6 +12,7 @@ import sqlite_utils
 
 from ..schema import SchemaManager
 from ..types import ValidationResult, ZeekerProject, ZeekerSchemaConflictError
+from .fts_processor import FTSProcessor
 from .processor import ResourceProcessor
 from .s3_sync import S3Synchronizer
 
@@ -32,6 +33,7 @@ class DatabaseBuilder:
         self.schema_manager = SchemaManager()
         self.processor = ResourceProcessor(self.resources_path, self.schema_manager)
         self.s3_sync = S3Synchronizer()
+        self.fts_processor = FTSProcessor(project)
 
     def build_database(
         self,
@@ -64,7 +66,6 @@ class DatabaseBuilder:
             if not sync_result.is_valid:
                 result.errors.extend(sync_result.errors)
                 # Don't fail build if S3 sync fails - just warn
-                result.warnings = getattr(result, "warnings", [])
                 result.warnings.append("S3 sync failed but continuing with local build")
             else:
                 result.info.extend(sync_result.info)
@@ -104,6 +105,17 @@ class DatabaseBuilder:
                             result.is_valid = False
                         else:
                             result.info.extend(fragments_result.info)
+
+            # Set up FTS after all resources are processed
+            if result.is_valid:
+                fts_result = self.fts_processor.setup_fts_for_database(db)
+                if not fts_result.is_valid:
+                    result.errors.extend(fts_result.errors)
+                    result.is_valid = False
+                else:
+                    result.info.extend(fts_result.info)
+                    if fts_result.warnings:
+                        result.warnings.extend(fts_result.warnings)
 
         except Exception as e:
             result.is_valid = False
@@ -151,7 +163,7 @@ class DatabaseBuilder:
                 # Check for schema conflicts
                 try:
                     sample_data = self.processor.async_executor.call_fetch_data(
-                        fetch_data, existing_table
+                        fetch_data, existing_table, resource_name
                     )[
                         :5
                     ]  # Small sample for schema check
@@ -225,7 +237,7 @@ class DatabaseBuilder:
             fetch_data = getattr(module, "fetch_data")
             existing_table = db[resource_name] if db[resource_name].exists() else None
             main_data_context = self.processor.async_executor.call_fetch_data(
-                fetch_data, existing_table
+                fetch_data, existing_table, resource_name
             )
         except Exception:
             # If we can't get context, fragments will work without it

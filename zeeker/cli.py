@@ -95,22 +95,45 @@ def init(project_name, path):
     is_flag=True,
     help="Generate async templates for concurrent data fetching",
 )
-def add(resource_name, description, facets, sort, size, fragments, is_async):
+@click.option(
+    "--fts-fields",
+    multiple=True,
+    help="Fields to enable full-text search on (can be used multiple times)",
+)
+@click.option(
+    "--fragments-fts-fields",
+    multiple=True,
+    help="Fields to enable FTS on fragments table (auto-detects text content if not specified)",
+)
+def add(
+    resource_name,
+    description,
+    facets,
+    sort,
+    size,
+    fragments,
+    is_async,
+    fts_fields,
+    fragments_fts_fields,
+):
     """Add a new resource to the project.
 
     Creates a Python file in resources/ with a template for data fetching.
 
     Use --fragments to create a complementary table for storing document fragments,
     perfect for handling large legal documents that need to be split into searchable chunks.
+    Fragments tables are automatically FTS-enabled on text content fields.
 
     Use --async to generate async/await templates for concurrent data fetching from APIs,
     databases, or other async sources for better performance.
 
     Examples:
         zeeker add users --description "User account data" --facets role --facets department --size 50
-        zeeker add legal_docs --fragments --description "Legal documents with text fragments"
+        zeeker add legal_docs --fragments --description "Legal documents with auto-searchable fragments"
         zeeker add api_data --async --description "Data from external APIs with concurrent fetching"
         zeeker add large_docs --fragments --async --description "Async document processing with fragments"
+        zeeker add documents --fts-fields title --fts-fields content --description "Searchable documents"
+        zeeker add posts --fragments --fts-fields title --description "Blog posts with searchable fragments"
     """
     manager = ZeekerProjectManager()
 
@@ -124,6 +147,10 @@ def add(resource_name, description, facets, sort, size, fragments, is_async):
         kwargs["size"] = size
     if fragments:
         kwargs["fragments"] = True
+    if fts_fields:
+        kwargs["fts_fields"] = list(fts_fields)
+    if fragments_fts_fields:
+        kwargs["fragments_fts_fields"] = list(fragments_fts_fields)
     if is_async:
         kwargs["is_async"] = True
 
@@ -177,7 +204,7 @@ def build(resources, force_schema_reset, sync_from_s3):
     Must be run from a Zeeker project directory (contains zeeker.toml).
     """
     # Load .env file if present for resource environment variables
-    load_dotenv()
+    load_dotenv(dotenv_path=Path.cwd() / ".env")
 
     # Convert tuple of resources to list, or None if empty
     resource_list = list(resources) if resources else None

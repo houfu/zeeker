@@ -96,6 +96,8 @@ class ResourceManager:
             "units",
             "description_html",
             "fragments",
+            "fts_fields",
+            "fragments_fts_fields",
         ]
 
         for field in datasette_fields:
