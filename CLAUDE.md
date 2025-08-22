@@ -1,90 +1,136 @@
-# CLAUDE.md
+# CLAUDE.md - Test_Fts_Project Project Development Guide
 
-## Commands
-- `uv run pytest [-m unit|integration|cli]` `uv run black .` 
-- `uv run zeeker init|add|build|deploy` `--fragments --async --sync-from-s3 --force-schema-reset`
-- `uv run zeeker build [resource1] [resource2]` (selective building)
-- `uv run zeeker assets generate|validate|deploy`
+This file provides Claude Code with project-specific context and guidance for developing this project.
 
-## Architecture
-CLI tool: database projects (init→add→build→deploy) + UI assets (generate→validate→deploy)
-S3 three-pass: Database files → base assets → database-specific customizations
-Fragments: main table (metadata) + fragments table (searchable chunks)
-Safety: Template validation, CSS scoping `[data-database="name"]`
+## Project Overview
 
-## Structure
+**Project Name:** test_fts_project
+**Database:** test_fts_project.db
+**Purpose:** Database project for test_fts_project data management
+
+## Development Environment
+
+This project uses **uv** for dependency management with an isolated virtual environment:
+
+- `pyproject.toml` - Project dependencies and metadata
+- `.venv/` - Isolated virtual environment (auto-created)
+- All commands should be run with `uv run` prefix
+
+### Dependency Management
+- **Add dependencies:** `uv add package_name` (e.g., `uv add requests pandas`)
+- **Install dependencies:** `uv sync` (automatically creates .venv if needed)
+- **Common packages:** requests, beautifulsoup4, pandas, lxml, pdfplumber, openpyxl
+
+### Environment Variables
+Zeeker automatically loads `.env` files when running build, deploy, and asset commands:
+
+- **Create `.env` file:** Store sensitive credentials and configuration
+- **Auto-loaded:** Environment variables are available in your resources during `zeeker build`
+- **S3 deployment:** Required for `zeeker deploy` and `zeeker assets deploy`
+
+**Example `.env` file:**
 ```
-project/{pyproject.toml,zeeker.toml,resources/resource_name.py,project_name.db,metadata.json}
+# S3 deployment credentials
+S3_BUCKET=my-datasette-bucket
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+S3_ENDPOINT_URL=https://s3.amazonaws.com
+
+# API keys for data resources
+JINA_API_TOKEN=your_jina_token
+OPENAI_API_KEY=your_openai_key
 ```
 
-## Functions
-`fetch_data(existing_table)` → List[Dict] (existing_table=Table|None, filter duplicates)
-`async fetch_data(existing_table)` (concurrent I/O)
-`fetch_fragments_data(existing_fragments_table, main_data_context=None)` (main_data_context avoids duplicate API calls)
-`transform_data()` (optional)
-
-## CRITICAL: Duplicate Handling
-MUST filter existing IDs to avoid UNIQUE constraint errors:
+**Usage in resources:**
 ```python
+import os
+
 def fetch_data(existing_table):
-    data = get_fresh_data()
-    if existing_table:
-        existing_ids = {row["id"] for row in existing_table.rows}
-        data = [item for item in data if item["id"] not in existing_ids]
-    return data
+    api_key = os.getenv("MY_API_KEY")  # Loaded from .env automatically
+    # ... rest of your code
 ```
-Time-based: `existing_table.db["_zeeker_updates"].get(table_name)["last_updated"]`
-Fixes: Delete .db file or `--force-schema-reset`
 
-## Async
-`--async` for concurrent I/O (100 sequential calls = ~100s, concurrent = ~5-10s)
+## Development Commands
 
-## Schema
-Meta tables: `_zeeker_schemas` (versions), `_zeeker_updates` (timestamps, counts)
-Type inference locks on first batch: int→INTEGER, float→REAL, str→TEXT, bool→INTEGER, list/dict→JSON
-Schema conflicts: Add `migrate_schema()`, use `--force-schema-reset`, or delete .db
-CRITICAL: Use `float` for potential decimals, consistent types, no type mixing
+### Quick Commands
+- `uv run zeeker add RESOURCE_NAME` - Add new resource to this project
+- `uv run zeeker add RESOURCE_NAME --fragments` - Add resource with document fragments support
+- `uv run zeeker build` - Build database from all resources in this project
+- `uv run zeeker deploy` - Deploy this project's database to S3
 
-## Fragments
-`--fragments`: Two tables (main: metadata, fragments: chunks). Context passing via `main_data_context` avoids duplicate API calls.
-```python
-def fetch_fragments_data(existing_fragments_table, main_data_context=None):
-    if main_data_context:
-        return [{"parent_id": doc["id"], "text": chunk} 
-                for doc in main_data_context for chunk in split_document(doc["content"])]
-```
-Search: `WHERE fragments_table.text MATCH 'terms'`
+### Code Formatting
+- `uv run black .` - Format code with black
+- `uv run ruff check .` - Lint code with ruff
+- `uv run ruff check --fix .` - Auto-fix ruff issues
 
-## S3 & Environment
-Three-pass: Database files → base assets → database customizations
-Template safety: ❌ Banned `database.html,table.html,index.html,query.html` ✅ Safe `database-{DBNAME}.html,custom-*.html`
-Env (auto-loads `.env`): `S3_BUCKET,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,JINA_API_TOKEN,OPENAI_API_KEY`
+### Testing This Project
+- `uv run pytest` - Run tests (if added to project)
+- Check generated `test_fts_project.db` after build
+- Verify metadata.json structure
 
-## Testing
-Markers: `unit,integration,cli,slow` (`pytest -m marker`)
+### Working with Dependencies
+When implementing resources that need external libraries:
+1. **First add the dependency:** `uv add library_name`
+2. **Then use in your resource:** `import library_name` in `resources/resource_name.py`
+3. **Build works automatically:** `uv run zeeker build` uses the isolated environment
 
-## Selective Building
-`zeeker build users posts` (builds specific resources)
-`zeeker build` (builds all resources)
+## Resources in This Project
 
-## Code Recipes
-```python
-# Jina Reader (web extraction)
-@retry(stop=stop_after_attempt(3))
-async def get_jina_reader_content(link: str) -> str:
-    headers = {"Authorization": f"Bearer {os.environ.get('JINA_API_TOKEN')}"}
-    async with httpx.AsyncClient(timeout=90) as client:
-        return (await client.get(f"https://r.jina.ai/{link}", headers=headers)).text
+### `searchable_docs` Resource
+- **Description:** Searchable documents
+- **File:** `resources/searchable_docs.py`
+- **Type:** Fragment-enabled (creates two tables: `searchable_docs` and `searchable_docs_fragments`)
+- **Schema:** Check `resources/searchable_docs.py` both fetch_data() and fetch_fragments_data() functions
 
-# Hash IDs (deterministic from multiple fields)
-def get_hash_id(elements: list[str]) -> str:
-    return hashlib.md5("|".join(str(e) for e in elements).encode()).hexdigest()
+### `documents` Resource
+- **Description:** Documents with auto-searchable fragments
+- **File:** `resources/documents.py`
+- **Type:** Fragment-enabled (creates two tables: `documents` and `documents_fragments`)
+- **Schema:** Check `resources/documents.py` both fetch_data() and fetch_fragments_data() functions
 
-# OpenAI summarization
-async def get_summary(text: str) -> str:
-    client = AsyncOpenAI(max_retries=3, timeout=60)
-    response = await client.responses.create(model="gpt-4o-mini", 
-        input=[{"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]},
-               {"role": "user", "content": [{"type": "input_text", "text": f"Summarize:\n{text}"}]}])
-    return response.output_text
-```
+
+## Schema Notes for This Project
+
+### Important Schema Decisions
+- Document any project-specific schema choices here
+- Note field types that are critical for this project's data
+- Record any special data handling requirements
+
+### Common Schema Issues to Watch
+- **Dates:** Use ISO format strings like "2024-01-15"
+- **Numbers:** Use float for prices/scores that might have decimals
+- **IDs:** Use int for primary keys, str for external system IDs
+- **JSON data:** Use dict/list types for complex data structures
+
+### Fragment Resources
+If using fragment-enabled resources (created with `--fragments`):
+- **Two Tables:** Each fragment resource creates a main table and a `_fragments` table
+- **Schema Freedom:** You design both table schemas through your `fetch_data()` and `fetch_fragments_data()` functions
+- **Linking:** Include some way to link fragments back to main records (your choice of field names)
+- **Use Cases:** Large documents, legal texts, research papers, or any content that benefits from searchable chunks
+
+## Project-Specific Notes
+
+### Data Sources
+- Document where this project's data comes from
+- Note any API endpoints, file formats, or data constraints
+- Record update frequencies and data refresh patterns
+
+### Business Logic
+- Document any special business rules for this project
+- Note relationships between resources
+- Record any data validation requirements
+
+### Deployment Notes
+- Any special S3 configuration for this project
+- Environment variables specific to this project
+- Deployment schedules or constraints
+
+## Team Notes
+
+*Use this section for team-specific development notes, decisions, or reminders*
+
+---
+
+This file is automatically created by Zeeker and can be customized for your project's needs.
+The main Zeeker development guide is in the repository root CLAUDE.md file.

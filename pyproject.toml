@@ -1,33 +1,27 @@
 [project]
-name = "zeeker"
-version = "0.2.1"
-description = "Add your description here"
-readme = "README.md"
+name = "test_fts_project"
+version = "0.1.0"
+description = "Zeeker database project for test_fts_project"
+dependencies = ["zeeker"]
 requires-python = ">=3.12"
-dependencies = [ "boto3>=1.38.32", "click>=8.2.1", "jinja2>=3.1.6", "python-dotenv>=1.0.0", "pyyaml>=6.0.2", "sqlite-utils>=3.38",]
-license = "MIT"
 
 [dependency-groups]
-dev = [
- "black>=25.1.0",
- "pytest>=8.4.0",
- "toml>=0.10.2",
- "ruff>=0.8.0",
- "pytest-cov>=6.2.1",
-]
+dev = ["black>=25.1.0", "ruff>=0.8.0"]
 
-[build-system]
-requires = [ "hatchling",]
-build-backend = "hatchling.build"
-
-[project.scripts]
-zeeker = "zeeker.cli:cli"
+# Add project-specific dependencies here as needed:
+# dependencies = [
+#     "zeeker",
+#     "requests",        # For HTTP API calls
+#     "beautifulsoup4",  # For web scraping and HTML parsing
+#     "pandas",          # For data processing and analysis
+#     "lxml",            # For XML parsing
+#     "pdfplumber",      # For PDF text extraction
+#     "openpyxl",        # For Excel file reading
+# ]
 
 [tool.black]
 line-length = 100
-target-version = [ "py312",]
-include = "\\.pyi?$"
-extend-exclude = "/(\n  # directories\n  \\.eggs\n  | \\.git\n  | \\.hg\n  | \\.mypy_cache\n  | \\.tox\n  | \\.venv\n  | build\n  | dist\n)/\n"
+target-version = ["py312"]
 
 [tool.ruff]
 line-length = 100

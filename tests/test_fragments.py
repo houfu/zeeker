@@ -212,14 +212,6 @@ fragments = true
 
     # Build database - this should pass context
     build_result = manager.build_database()
-    
-    # DEBUG: Print result information before assertions
-    print(f"\n=== FRAGMENTS CONTEXT BUILD RESULT DEBUG ===")
-    print(f"Build result valid: {build_result.is_valid}")
-    print(f"Build result errors: {build_result.errors}")
-    print(f"Build result info: {build_result.info}")
-    print(f"Build result warnings: {getattr(build_result, 'warnings', [])}")
-    
     assert build_result.is_valid
 
     # Verify database was created with fragments
@@ -229,12 +221,6 @@ fragments = true
     # Check that fragments used context data (not fallback)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-
-    # DEBUG: Show available tables
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
-    print(f"=== FRAGMENTS DATABASE TABLES DEBUG ===")
-    print(f"Available tables: {[t[0] for t in tables]}")
 
     # Check fragments were created from context
     cursor.execute("SELECT * FROM context_test_fragments WHERE from_context = 1")

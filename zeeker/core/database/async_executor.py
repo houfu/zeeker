@@ -15,24 +15,63 @@ from sqlite_utils.db import Table
 class AsyncExecutor:
     """Handles execution of both sync and async resource functions."""
 
+    def __init__(self):
+        """Initialize AsyncExecutor with fetch_data cache."""
+        self._fetch_cache: Dict[str, List[Dict[str, Any]]] = {}
+
     def call_fetch_data(
-        self, fetch_data_func: Callable, existing_table: Optional[Table]
+        self, fetch_data_func: Callable, existing_table: Optional[Table], resource_name: str = None
     ) -> List[Dict[str, Any]]:
         """Call fetch_data function, handling both sync and async variants.
 
         Args:
             fetch_data_func: The fetch_data function from the resource module
             existing_table: sqlite-utils Table object or None
+            resource_name: Name of the resource for caching (optional for backward compatibility)
 
         Returns:
             List[Dict[str, Any]]: The data returned by fetch_data
         """
+        # Check cache if resource_name is provided
+        if resource_name:
+            cache_key = self._generate_cache_key(resource_name, existing_table)
+            if cache_key in self._fetch_cache:
+                return self._fetch_cache[cache_key]
+
+        # Execute the function
         if inspect.iscoroutinefunction(fetch_data_func):
             # Async function - run in event loop
-            return self._run_async_function(fetch_data_func, existing_table)
+            result = self._run_async_function(fetch_data_func, existing_table)
         else:
             # Sync function - call directly
-            return fetch_data_func(existing_table)
+            result = fetch_data_func(existing_table)
+
+        # Cache the result if resource_name is provided
+        if resource_name:
+            cache_key = self._generate_cache_key(resource_name, existing_table)
+            self._fetch_cache[cache_key] = result
+
+        return result
+
+    def _generate_cache_key(self, resource_name: str, existing_table: Optional[Table]) -> str:
+        """Generate cache key for fetch_data results.
+        
+        Args:
+            resource_name: Name of the resource
+            existing_table: sqlite-utils Table object or None
+            
+        Returns:
+            Cache key string combining resource name and table state
+        """
+        if existing_table is None:
+            return f"{resource_name}_no_table"
+        
+        try:
+            table_count = existing_table.count
+            return f"{resource_name}_table_{table_count}"
+        except Exception:
+            # If we can't get count, use basic key
+            return f"{resource_name}_table_exists"
 
     def call_fetch_fragments_data(
         self,

@@ -98,22 +98,13 @@ class DatabaseBuilder:
                     resource_config = self.project.resources.get(resource_name, {})
                     is_fragments_enabled = resource_config.get("fragments", False)
 
-                    # DEBUG: Add logging to understand what's happening
-                    result.info.append(f"DEBUG: Resource '{resource_name}' config: {resource_config}")
-                    result.info.append(f"DEBUG: Fragments enabled: {is_fragments_enabled}")
-
                     if is_fragments_enabled:
-                        result.info.append(f"DEBUG: Processing fragments for '{resource_name}'")
                         fragments_result = self._process_fragments_for_resource(db, resource_name)
-                        result.info.append(f"DEBUG: Fragments result valid: {fragments_result.is_valid}")
-                        result.info.append(f"DEBUG: Fragments errors: {fragments_result.errors}")
                         if not fragments_result.is_valid:
                             result.errors.extend(fragments_result.errors)
                             result.is_valid = False
                         else:
                             result.info.extend(fragments_result.info)
-                    else:
-                        result.info.append(f"DEBUG: Skipping fragments for '{resource_name}'")
 
             # Set up FTS after all resources are processed
             if result.is_valid:
@@ -172,7 +163,7 @@ class DatabaseBuilder:
                 # Check for schema conflicts
                 try:
                     sample_data = self.processor.async_executor.call_fetch_data(
-                        fetch_data, existing_table, resource_name
+                        fetch_data, existing_table, resource_name=resource_name
                     )[
                         :5
                     ]  # Small sample for schema check
@@ -225,20 +216,14 @@ class DatabaseBuilder:
         result = ValidationResult(is_valid=True)
 
         # Load resource module
-        result.info.append(f"DEBUG: Loading module for fragments resource '{resource_name}'")
         module_result = self.processor._load_resource_module(resource_name)
         if not module_result.is_valid:
-            result.info.append(f"DEBUG: Module load failed: {module_result.errors}")
             return module_result
 
         module = module_result.data
-        result.info.append(f"DEBUG: Module loaded successfully")
 
         # Check if fragments function exists
-        has_fetch_fragments = hasattr(module, "fetch_fragments_data")
-        result.info.append(f"DEBUG: Module has fetch_fragments_data: {has_fetch_fragments}")
-        
-        if not has_fetch_fragments:
+        if not hasattr(module, "fetch_fragments_data"):
             result.is_valid = False
             result.errors.append(
                 f"Resource '{resource_name}' is configured with fragments=true "
@@ -252,23 +237,16 @@ class DatabaseBuilder:
             fetch_data = getattr(module, "fetch_data")
             existing_table = db[resource_name] if db[resource_name].exists() else None
             main_data_context = self.processor.async_executor.call_fetch_data(
-                fetch_data, existing_table, resource_name
+                fetch_data, existing_table, resource_name=resource_name
             )
-        except Exception as e:
+        except Exception:
             # If we can't get context, fragments will work without it
-            # Add debug info to understand what's failing
-            result.info.append(f"DEBUG: Failed to get main data context for fragments: {e}")
             main_data_context = None
 
         # Process fragments
-        result.info.append(f"DEBUG: About to process fragments data with context: {main_data_context is not None}")
         fragments_result = self.processor.process_fragments_data(
             db, resource_name, module, main_data_context
         )
-        result.info.append(f"DEBUG: Fragments processing completed. Valid: {fragments_result.is_valid}")
-        result.info.append(f"DEBUG: Fragments processing errors: {fragments_result.errors}")
-        result.info.append(f"DEBUG: Fragments processing info: {fragments_result.info}")
-        
         if not fragments_result.is_valid:
             result.errors.extend(fragments_result.errors)
             result.is_valid = False

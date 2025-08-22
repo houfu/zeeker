@@ -1,14 +1,17 @@
-# Python-generated files
+# Generated database
+*.db
+
+# Python
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+*.pyc
+*.pyo
+.venv/
+.env
 
-# Virtual environments
-.venv
+# Data files (uncomment if you want to ignore data directory)
+# data/
+# raw/
 
-# Coverage reports
-htmlcov/
-.coverage
+# OS
+.DS_Store
+Thumbs.db
