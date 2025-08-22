@@ -71,7 +71,9 @@ class ResourceProcessor:
             existing_table = db[resource_name] if db[resource_name].exists() else None
 
             # Fetch the data
-            raw_data = self.async_executor.call_fetch_data(fetch_data, existing_table, resource_name=resource_name)
+            raw_data = self.async_executor.call_fetch_data(
+                fetch_data, existing_table, resource_name=resource_name
+            )
 
             if not isinstance(raw_data, list):
                 result.is_valid = False

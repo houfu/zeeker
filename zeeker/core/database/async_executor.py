@@ -55,17 +55,17 @@ class AsyncExecutor:
 
     def _generate_cache_key(self, resource_name: str, existing_table: Optional[Table]) -> str:
         """Generate cache key for fetch_data results.
-        
+
         Args:
             resource_name: Name of the resource
             existing_table: sqlite-utils Table object or None
-            
+
         Returns:
             Cache key string combining resource name and table state
         """
         if existing_table is None:
             return f"{resource_name}_no_table"
-        
+
         try:
             table_count = existing_table.count
             return f"{resource_name}_table_{table_count}"
