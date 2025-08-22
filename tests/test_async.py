@@ -268,6 +268,13 @@ async def fetch_fragments_data(existing_fragments_table: Optional[Table], main_d
         builder = DatabaseBuilder(tmp_path, project)
         result = builder.build_database()
 
+        # DEBUG: Print result information before assertions
+        print(f"\n=== ASYNC FRAGMENTS BUILD RESULT DEBUG ===")
+        print(f"Build result valid: {result.is_valid}")
+        print(f"Build result errors: {result.errors}")
+        print(f"Build result info: {result.info}")
+        print(f"Build result warnings: {getattr(result, 'warnings', [])}")
+
         assert result.is_valid
         assert len(result.errors) == 0
 
@@ -279,6 +286,10 @@ async def fetch_fragments_data(existing_fragments_table: Optional[Table], main_d
         import sqlite_utils
 
         db = sqlite_utils.Database(db_path)
+        table_names = db.table_names()
+        print(f"=== DATABASE TABLES DEBUG ===")
+        print(f"Available tables: {table_names}")
+        
         assert "async_docs" in db.table_names()
         assert "async_docs_fragments" in db.table_names()
 
