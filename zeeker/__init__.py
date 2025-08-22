@@ -17,7 +17,7 @@ from .core import (
     ZeekerValidator,
 )
 
-__version__ = "0.2.1"
+__version__ = "0.4.0"
 __all__ = [
     "ValidationResult",
     "DatabaseCustomization",
