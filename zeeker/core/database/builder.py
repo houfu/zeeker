@@ -108,7 +108,7 @@ class DatabaseBuilder:
 
             # Set up FTS after all resources are processed
             if result.is_valid:
-                fts_result = self.fts_processor.setup_fts_for_database(db)
+                fts_result = self.fts_processor.setup_fts_for_database(db, force_schema_reset)
                 if not fts_result.is_valid:
                     result.errors.extend(fts_result.errors)
                     result.is_valid = False
