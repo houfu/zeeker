@@ -73,6 +73,7 @@ class ZeekerProjectManager:
         force_schema_reset: bool = False,
         sync_from_s3: bool = False,
         resources: list[str] = None,
+        setup_fts: bool = False,
     ) -> ValidationResult:
         """Build the SQLite database from resources with optional S3 sync.
 
@@ -80,6 +81,7 @@ class ZeekerProjectManager:
             force_schema_reset: If True, ignore schema conflicts and rebuild
             sync_from_s3: If True, download existing database from S3 before building
             resources: List of specific resource names to build. If None, builds all resources.
+            setup_fts: If True, set up full-text search indexes on configured fields
 
         Returns:
             ValidationResult with build results
@@ -102,4 +104,4 @@ class ZeekerProjectManager:
 
         builder = DatabaseBuilder(self.project_path, project)
 
-        return builder.build_database(force_schema_reset, sync_from_s3, resources)
+        return builder.build_database(force_schema_reset, sync_from_s3, resources, setup_fts)

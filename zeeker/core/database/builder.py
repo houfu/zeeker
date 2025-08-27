@@ -40,6 +40,7 @@ class DatabaseBuilder:
         force_schema_reset: bool = False,
         sync_from_s3: bool = False,
         resources: list[str] = None,
+        setup_fts: bool = False,
     ) -> ValidationResult:
         """Build the SQLite database from resources using sqlite-utils.
 
@@ -53,6 +54,7 @@ class DatabaseBuilder:
             force_schema_reset: If True, ignore schema conflicts and rebuild
             sync_from_s3: If True, download existing database from S3 before building
             resources: List of specific resource names to build. If None, builds all resources.
+            setup_fts: If True, set up full-text search indexes on configured fields
 
         Returns:
             ValidationResult with build results
@@ -106,8 +108,8 @@ class DatabaseBuilder:
                         else:
                             result.info.extend(fragments_result.info)
 
-            # Set up FTS after all resources are processed
-            if result.is_valid:
+            # Set up FTS after all resources are processed (only if requested)
+            if result.is_valid and setup_fts:
                 fts_result = self.fts_processor.setup_fts_for_database(db, force_schema_reset)
                 if not fts_result.is_valid:
                     result.errors.extend(fts_result.errors)
@@ -116,6 +118,8 @@ class DatabaseBuilder:
                     result.info.extend(fts_result.info)
                     if fts_result.warnings:
                         result.warnings.extend(fts_result.warnings)
+            elif result.is_valid and not setup_fts:
+                result.info.append("Skipped FTS setup (use --setup-fts flag to enable)")
 
         except Exception as e:
             result.is_valid = False

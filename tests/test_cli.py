@@ -199,7 +199,7 @@ class TestCLIBuild:
         for info in mock_result.info:
             assert f"✅ {info}" in result.output
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=False, resources=None
+            force_schema_reset=False, sync_from_s3=False, resources=None, setup_fts=False
         )
 
     def test_build_with_force_schema_reset(self, runner, mock_manager):
@@ -211,7 +211,7 @@ class TestCLIBuild:
 
         assert result.exit_code == 0
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=True, sync_from_s3=False, resources=None
+            force_schema_reset=True, sync_from_s3=False, resources=None, setup_fts=False
         )
 
     def test_build_with_s3_sync(self, runner, mock_manager):
@@ -223,7 +223,7 @@ class TestCLIBuild:
 
         assert result.exit_code == 0
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=True, resources=None
+            force_schema_reset=False, sync_from_s3=True, resources=None, setup_fts=False
         )
 
     def test_build_with_both_flags(self, runner, mock_manager):
@@ -235,7 +235,19 @@ class TestCLIBuild:
 
         assert result.exit_code == 0
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=True, sync_from_s3=True, resources=None
+            force_schema_reset=True, sync_from_s3=True, resources=None, setup_fts=False
+        )
+
+    def test_build_with_setup_fts(self, runner, mock_manager):
+        """Test build with setup-fts flag."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "--setup-fts"])
+
+        assert result.exit_code == 0
+        mock_manager.build_database.assert_called_once_with(
+            force_schema_reset=False, sync_from_s3=False, resources=None, setup_fts=True
         )
 
     def test_build_schema_conflict_error(self, runner, mock_manager):
@@ -287,7 +299,10 @@ class TestCLIBuild:
         assert result.exit_code == 0
         assert "Building specific resources: users, posts" in result.output
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=False, resources=["users", "posts"]
+            force_schema_reset=False,
+            sync_from_s3=False,
+            resources=["users", "posts"],
+            setup_fts=False,
         )
 
     def test_build_with_single_resource(self, runner, mock_manager):
@@ -301,7 +316,7 @@ class TestCLIBuild:
         assert result.exit_code == 0
         assert "Building specific resources: users" in result.output
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=False, resources=["users"]
+            force_schema_reset=False, sync_from_s3=False, resources=["users"], setup_fts=False
         )
 
     def test_build_with_invalid_resources(self, runner, mock_manager):
@@ -329,7 +344,10 @@ class TestCLIBuild:
         assert result.exit_code == 0
         assert "Building specific resources: users, posts" in result.output
         mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=True, sync_from_s3=False, resources=["users", "posts"]
+            force_schema_reset=True,
+            sync_from_s3=False,
+            resources=["users", "posts"],
+            setup_fts=False,
         )
 
 

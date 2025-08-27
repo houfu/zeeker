@@ -23,7 +23,9 @@ class FTSProcessor:
         """
         self.project = project
 
-    def setup_fts_for_database(self, db: sqlite_utils.Database, force_schema_reset: bool = False) -> ValidationResult:
+    def setup_fts_for_database(
+        self, db: sqlite_utils.Database, force_schema_reset: bool = False
+    ) -> ValidationResult:
         """Set up FTS for all configured resources in the database.
 
         Args:
@@ -38,7 +40,9 @@ class FTSProcessor:
         for resource_name, resource_config in self.project.resources.items():
             fts_fields = resource_config.get("fts_fields", [])
             if fts_fields:
-                fts_result = self._setup_fts_for_table(db, resource_name, fts_fields, force_schema_reset)
+                fts_result = self._setup_fts_for_table(
+                    db, resource_name, fts_fields, force_schema_reset
+                )
                 if not fts_result.is_valid:
                     result.errors.extend(fts_result.errors)
                     result.is_valid = False
@@ -130,7 +134,11 @@ class FTSProcessor:
         return text_fields
 
     def _setup_fts_for_table(
-        self, db: sqlite_utils.Database, table_name: str, fts_fields: List[str], force_schema_reset: bool = False
+        self,
+        db: sqlite_utils.Database,
+        table_name: str,
+        fts_fields: List[str],
+        force_schema_reset: bool = False,
     ) -> ValidationResult:
         """Set up FTS for a specific table.
 
@@ -154,25 +162,31 @@ class FTSProcessor:
         # Clean up existing FTS infrastructure if force_schema_reset is enabled
         if force_schema_reset:
             fts_table_name = f"{table_name}_fts"
-            
+
             # Check if any FTS tables exist for this table
             fts_tables = [name for name in db.table_names() if name.startswith(fts_table_name)]
-            
+
             if fts_tables:
                 try:
                     # Disable FTS first to clean up triggers and related objects
                     if fts_table_name in db.table_names():
                         table.disable_fts()
-                        result.info.append(f"Disabled existing FTS for table '{table_name}' due to schema reset")
+                        result.info.append(
+                            f"Disabled existing FTS for table '{table_name}' due to schema reset"
+                        )
                 except Exception as e:
-                    result.warnings.append(f"Failed to disable existing FTS for table '{table_name}': {e}")
-                
+                    result.warnings.append(
+                        f"Failed to disable existing FTS for table '{table_name}': {e}"
+                    )
+
                 # Drop any remaining FTS tables
                 for fts_table in fts_tables:
                     try:
                         if fts_table in db.table_names():
                             db[fts_table].drop()
-                            result.info.append(f"Dropped FTS table '{fts_table}' due to schema reset")
+                            result.info.append(
+                                f"Dropped FTS table '{fts_table}' due to schema reset"
+                            )
                     except Exception as e:
                         result.warnings.append(f"Failed to drop FTS table '{fts_table}': {e}")
 

@@ -178,16 +178,25 @@ def add(
 @click.option(
     "--sync-from-s3", is_flag=True, help="Download existing database from S3 before building"
 )
-def build(resources, force_schema_reset, sync_from_s3):
+@click.option(
+    "--setup-fts", is_flag=True, help="Set up full-text search (FTS) indexes on configured fields"
+)
+def build(resources, force_schema_reset, sync_from_s3, setup_fts):
     """Build database from resources using sqlite-utils.
 
     Runs fetch_data() for specified resources and creates/updates the SQLite database.
     If no resources are specified, builds all resources in the project.
 
     Examples:
-        zeeker build              # Build all resources
-        zeeker build users        # Build only 'users' resource
-        zeeker build users posts  # Build 'users' and 'posts' resources
+        zeeker build                    # Build all resources (no FTS setup)
+        zeeker build --setup-fts        # Build all resources and set up FTS indexes
+        zeeker build users              # Build only 'users' resource
+        zeeker build users posts        # Build 'users' and 'posts' resources
+
+    FTS (Full-Text Search) Setup:
+    • Use --setup-fts flag on first build to create FTS indexes
+    • Omit --setup-fts on subsequent builds to avoid FTS conflicts
+    • Perfect for CI/CD environments where you want reliable, repeatable builds
 
     Uses Simon Willison's sqlite-utils for robust database operations:
 
@@ -218,6 +227,7 @@ def build(resources, force_schema_reset, sync_from_s3):
             force_schema_reset=force_schema_reset,
             sync_from_s3=sync_from_s3,
             resources=resource_list,
+            setup_fts=setup_fts,
         )
     except ZeekerSchemaConflictError as e:
         click.echo("❌ Schema conflict detected:")
