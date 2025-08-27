@@ -44,11 +44,21 @@ class ProjectScaffolder:
             result.errors.append("Directory already contains zeeker.toml")
             return result
 
-        # Create basic project structure
-        project = ZeekerProject(name=project_name, database=f"{project_name}.db")
+        # Create basic project structure with rich metadata defaults
+        formatted_name = project_name.replace("_", " ").replace("-", " ").title()
+        project = ZeekerProject(
+            name=project_name,
+            database=f"{project_name}.db",
+            title=f"{formatted_name} Database",
+            description=f"Comprehensive data for the {formatted_name} system",
+            license="MIT",
+            license_url="https://opensource.org/licenses/MIT",
+            source=f"{formatted_name} System",
+            # source_url left empty for user to add their git repo
+        )
 
-        # Save zeeker.toml
-        project.save_toml(self.toml_path)
+        # Save zeeker.toml with enhanced examples
+        self._save_enhanced_toml(project)
 
         # Create all project files
         self._create_resources_package()
@@ -70,6 +80,49 @@ class ProjectScaffolder:
         self._add_creation_info(result, github_workflow_path)
 
         return result
+
+    def _save_enhanced_toml(self, project: ZeekerProject) -> None:
+        """Save zeeker.toml with enhanced examples and documentation."""
+        toml_content = f"""[project]
+name = "{project.name}"
+database = "{project.database}"
+title = "{project.title}"
+description = "{project.description}"
+license = "{project.license}"
+license_url = "{project.license_url}"
+source = "{project.source}"
+# source_url = "https://github.com/username/repository"  # Add your repo URL
+
+# Example resource configurations with Datasette metadata
+# Uncomment and modify these examples, or use: uv run zeeker add <resource_name>
+
+# [resource.users]
+# description = "User accounts and profiles"
+# sort = "created_at"                                    # Default sort column
+# size = 25                                              # Default page size  
+# facets = ["department", "role"]                        # Faceted browsing
+# columns = {{id = "Unique identifier", name = "Display name", email = "Contact email"}}
+# sortable_columns = ["name", "created_at", "email"]     # Allowed sort columns
+# hidden = false                                         # Show/hide table
+
+# [resource.posts]  
+# description = "Blog posts and articles"
+# sort_desc = "published_at"                            # Default descending sort
+# size = 10
+# columns = {{title = "Post title", content = "Post content", published_at = "Publication date"}}
+# label_column = "title"                                # Primary display column
+# units = {{published_at = "YYYY-MM-DD"}}               # Column units/format
+
+# [resource.documents]
+# description = "Legal documents and contracts" 
+# description_html = "<p>Collection of <strong>legal documents</strong></p>"  # HTML description
+# facets = ["document_type", "jurisdiction"]
+# size = 50
+# columns = {{id = "Document ID", title = "Document title", content = "Document text"}}
+"""
+
+        with open(self.toml_path, "w", encoding="utf-8") as f:
+            f.write(toml_content)
 
     def _create_resources_package(self) -> None:
         """Create the resources package directory and __init__.py file."""

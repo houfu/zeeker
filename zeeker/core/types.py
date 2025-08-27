@@ -105,6 +105,14 @@ class ZeekerProject:
     resources: dict[str, dict[str, Any]] = field(default_factory=dict)
     root_path: Path = field(default_factory=Path)
 
+    # Rich metadata fields (optional)
+    title: str | None = None
+    description: str | None = None
+    license: str | None = None
+    license_url: str | None = None
+    source: str | None = None
+    source_url: str | None = None
+
     @classmethod
     def from_toml(cls, toml_path: Path) -> "ZeekerProject":
         """Load project from zeeker.toml file."""
@@ -115,6 +123,7 @@ class ZeekerProject:
         project_data = data.get("project", {})
 
         # Extract resource sections (resource.*)
+        # These now include both resource config AND table metadata
         resources = data.get("resource", {})
 
         return cls(
@@ -122,6 +131,13 @@ class ZeekerProject:
             database=project_data.get("database", ""),
             resources=resources,
             root_path=toml_path.parent,
+            # Rich metadata fields (optional)
+            title=project_data.get("title"),
+            description=project_data.get("description"),
+            license=project_data.get("license"),
+            license_url=project_data.get("license_url"),
+            source=project_data.get("source"),
+            source_url=project_data.get("source_url"),
         )
 
     def save_toml(self, toml_path: Path) -> None:
@@ -129,62 +145,128 @@ class ZeekerProject:
         toml_content = f"""[project]
 name = "{self.name}"
 database = "{self.database}"
-
 """
+
+        # Add rich metadata fields if present
+        if self.title:
+            toml_content += f'title = "{self.title}"\n'
+        if self.description:
+            toml_content += f'description = "{self.description}"\n'
+        if self.license:
+            toml_content += f'license = "{self.license}"\n'
+        if self.license_url:
+            toml_content += f'license_url = "{self.license_url}"\n'
+        if self.source:
+            toml_content += f'source = "{self.source}"\n'
+        if self.source_url:
+            toml_content += f'source_url = "{self.source_url}"\n'
+
+        toml_content += "\n"
         for resource_name, resource_config in self.resources.items():
             toml_content += f"[resource.{resource_name}]\n"
             for key, value in resource_config.items():
-                if isinstance(value, str):
-                    toml_content += f'{key} = "{value}"\n'
-                elif isinstance(value, list):
-                    # Format arrays nicely
-                    formatted_list = "[" + ", ".join(f'"{item}"' for item in value) + "]"
-                    toml_content += f"{key} = {formatted_list}\n"
-                elif isinstance(value, bool):
-                    toml_content += f"{key} = {str(value).lower()}\n"
-                elif isinstance(value, (int, float)):
-                    toml_content += f"{key} = {value}\n"
+                toml_content += self._format_toml_value(key, value)
             toml_content += "\n"
 
         with open(toml_path, "w", encoding="utf-8") as f:
             f.write(toml_content)
 
+    def _format_toml_value(self, key: str, value: Any) -> str:
+        """Format a single TOML key-value pair with proper escaping and structure.
+
+        Args:
+            key: The key name
+            value: The value to format
+
+        Returns:
+            Formatted TOML line with newline
+        """
+        if isinstance(value, str):
+            # Escape quotes in strings
+            escaped_value = value.replace('"', '\\"')
+            return f'{key} = "{escaped_value}"\n'
+        elif isinstance(value, list):
+            # Format arrays nicely - handle both strings and other types
+            formatted_items = []
+            for item in value:
+                if isinstance(item, str):
+                    escaped_item = item.replace('"', '\\"')
+                    formatted_items.append(f'"{escaped_item}"')
+                else:
+                    formatted_items.append(str(item))
+            formatted_list = "[" + ", ".join(formatted_items) + "]"
+            return f"{key} = {formatted_list}\n"
+        elif isinstance(value, dict):
+            # Format inline tables for nested structures like columns metadata
+            formatted_pairs = []
+            for k, v in value.items():
+                if isinstance(v, str):
+                    escaped_v = v.replace('"', '\\"')
+                    formatted_pairs.append(f'{k} = "{escaped_v}"')
+                else:
+                    formatted_pairs.append(f"{k} = {v}")
+            formatted_dict = "{" + ", ".join(formatted_pairs) + "}"
+            return f"{key} = {formatted_dict}\n"
+        elif isinstance(value, bool):
+            return f"{key} = {str(value).lower()}\n"
+        elif isinstance(value, (int, float)):
+            return f"{key} = {value}\n"
+        else:
+            # Fallback for other types - convert to string
+            return f'{key} = "{str(value)}"\n'
+
     def to_datasette_metadata(self) -> dict[str, Any]:
         """Convert project configuration to complete Datasette metadata.json format.
 
-        Follows the guide: must provide complete Datasette metadata structure,
-        not fragments. Includes proper CSS/JS URL patterns.
+        Follows Datasette metadata specification with proper separation between
+        instance-level and database-level metadata.
         """
         # Database name for S3 path (matches .db filename without extension)
         db_name = Path(self.database).stem
 
+        # Generate fallback values
+        auto_db_title = f"{self.name.replace('_', ' ').replace('-', ' ').title()} Database"
+        auto_db_description = f"Database for {self.name} project"
+        auto_source = f"{self.name} project"
+
+        # Instance-level metadata (site-wide)
+        instance_title = f"{self.name.replace('_', ' ').replace('-', ' ').title()} Data Portal"
+        instance_description = f"Data portal for the {self.name} project"
+
         metadata = {
-            "title": f"{self.name.replace('_', ' ').replace('-', ' ').title()} Database",
-            "description": f"Database for {self.name} project",
-            "license": "MIT",
-            "license_url": "https://opensource.org/licenses/MIT",
-            "source": f"{self.name} project",
-            "extra_css_urls": [f"/static/databases/{db_name}/custom.css"],
-            "extra_js_urls": [f"/static/databases/{db_name}/custom.js"],
+            # Instance-level metadata applies site-wide
+            "title": instance_title,
+            "description": instance_description,
+            "license": self.license or "MIT",
+            "license_url": self.license_url or "https://opensource.org/licenses/MIT",
+            "source": self.source or auto_source,
             "databases": {
                 db_name: {
-                    "description": f"Database for {self.name} project",
-                    "title": f"{self.name.replace('_', ' ').replace('-', ' ').title()}",
+                    # Database-specific metadata
+                    "title": self.title or auto_db_title,
+                    "description": self.description or auto_db_description,
+                    "extra_css_urls": [f"/static/databases/{db_name}/custom.css"],
+                    "extra_js_urls": [f"/static/databases/{db_name}/custom.js"],
                     "tables": {},
                 }
             },
         }
 
+        # Add source_url if provided (instance-level)
+        if self.source_url:
+            metadata["source_url"] = self.source_url
+
         # Add table metadata from resource configurations
         for resource_name, resource_config in self.resources.items():
             table_metadata = {}
 
-            # Copy Datasette-specific fields
+            # Copy all Datasette-specific metadata fields directly from resource config
             datasette_fields = [
                 "description",
                 "description_html",
                 "facets",
                 "sort",
+                "sort_desc",
                 "size",
                 "sortable_columns",
                 "hidden",
