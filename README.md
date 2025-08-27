@@ -10,6 +10,7 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 ## 🚀 Features
 
 - **Complete Database Projects**: Create, build, and deploy entire databases with data resources
+- **Intelligent Metadata Generation**: Auto-generate column descriptions, project metadata, and resource descriptions from schema analysis
 - **Document Fragments**: Built-in support for splitting large documents into searchable chunks with automatic full-text search
 - **Automated Meta Tables**: Schema versioning and update tracking with zero configuration
 - **Schema Conflict Detection**: Safe migration system prevents data corruption from schema changes
@@ -22,13 +23,13 @@ A Python library and CLI tool for creating, managing, and deploying databases an
 - **Validation & Testing**: Comprehensive validation before deployment
 - **Best Practices**: Generates code following Datasette and web development standards
 
-## ✨ What's New in v0.3.0
+## ✨ What's New in v0.5.0
 
-- **🔍 Auto-FTS for Fragments**: Fragments tables now have automatic full-text search on text content - no configuration needed
-- **⚡ Async Support**: Add `--async` flag for concurrent data fetching from APIs and external sources  
-- **🎯 Selective Building**: Build specific resources only with `zeeker build resource1 resource2`
-- **📁 Auto .env Loading**: Environment variables automatically loaded from `.env` files
-- **🗂️ Enhanced Fragments**: Improved context passing eliminates duplicate API calls in fragments workflows
+- **🧠 Intelligent Metadata Generation**: Auto-generate column descriptions, project metadata, and resource descriptions from schema analysis
+- **📋 Metadata Management**: New `zeeker metadata generate|show` commands with dry-run, force, and selective generation
+- **🎛️ Conditional FTS Setup**: `--setup-fts` flag for optional full-text search configuration  
+- **🔧 Modular CLI**: Refactored command structure with separated modules for better maintainability
+- **📊 Datasette Integration**: Complete metadata.json support with facets, sorting, and display options
 
 ## 🛠 Two Workflows
 
@@ -40,6 +41,7 @@ Create and manage complete databases with data resources:
 - Add data resources with `zeeker add`
 - Build SQLite databases with `zeeker build`
 - Deploy databases with `zeeker deploy`
+- Generate metadata with `zeeker metadata generate`
 
 ### 🎨 **UI Customizations** (Secondary Workflow)  
 Customize the appearance of individual databases:

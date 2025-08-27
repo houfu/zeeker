@@ -4,17 +4,20 @@
 - `uv run pytest [-m unit|integration|cli]` `uv run black .` 
 - `uv run zeeker init|add|build|deploy` `--fragments --async --sync-from-s3 --force-schema-reset`
 - `uv run zeeker build [resource1] [resource2]` (selective building)
-- `uv run zeeker assets generate|validate|deploy`
+- `uv run zeeker assets generate|validate|deploy|list`
+- `uv run zeeker metadata generate|show` `--all --dry-run --force --project --resource`
 
 ## Architecture
-CLI tool: database projects (init→add→build→deploy) + UI assets (generate→validate→deploy)
+CLI tool: database projects (init→add→build→deploy) + UI assets (generate→validate→deploy) + metadata generation
 S3 three-pass: Database files → base assets → database-specific customizations
 Fragments: main table (metadata) + fragments table (searchable chunks)
 Safety: Template validation, CSS scoping `[data-database="name"]`
+CLI structure: Modular commands in `zeeker/commands/` (assets.py, metadata.py, helpers.py)
 
 ## Structure
 ```
 project/{pyproject.toml,zeeker.toml,resources/resource_name.py,project_name.db,metadata.json}
+zeeker/{cli.py,commands/{assets.py,metadata.py,helpers.py}}
 ```
 
 ## Functions

@@ -467,19 +467,11 @@ class TestMetadataGeneratorCLIIntegration:
         # Just verify the command structure exists
         assert hasattr(cli, "commands")
 
-    @patch("zeeker.cli.MetadataGenerator")
-    @patch("zeeker.cli.Path.exists")
-    def test_metadata_generate_dry_run(
-        self, mock_exists, mock_generator_class, mock_project_manager
-    ):
+    def test_metadata_generate_dry_run(self, mock_project_manager):
         """Test metadata generate with dry-run flag."""
-        # Setup mocks
-        mock_exists.return_value = True
-        mock_generator = mock_generator_class.return_value
-        mock_generator.generate_metadata_for_table.return_value = {
-            "columns": {"id": "Unique identifier", "name": "Display name"}
-        }
-
-        # This would test the actual CLI command
+        # This would test the actual CLI command in integration tests
         # For now, just verify the structure is set up correctly
-        assert mock_generator_class is not None
+        from zeeker.commands.metadata import metadata
+
+        assert metadata is not None
+        assert hasattr(metadata, "commands")
