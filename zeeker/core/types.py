@@ -123,8 +123,12 @@ class ZeekerProject:
         project_data = data.get("project", {})
 
         # Extract resource sections (resource.*)
-        # These now include both resource config AND table metadata
+        # Handle both inline columns format and separate column sections
         resources = data.get("resource", {})
+
+        # TOML parser automatically handles nested sections like [resource.users.columns]
+        # They appear as nested dictionaries in the parsed data
+        # No additional processing needed - the structure is preserved
 
         return cls(
             name=project_data.get("name", ""),
@@ -164,9 +168,20 @@ database = "{self.database}"
         toml_content += "\n"
         for resource_name, resource_config in self.resources.items():
             toml_content += f"[resource.{resource_name}]\n"
+
+            # Write resource config excluding columns metadata
             for key, value in resource_config.items():
-                toml_content += self._format_toml_value(key, value)
+                if key != "columns":  # Skip columns - they get their own section
+                    toml_content += self._format_toml_value(key, value)
             toml_content += "\n"
+
+            # Write columns metadata in separate section if it exists
+            if "columns" in resource_config and resource_config["columns"]:
+                toml_content += f"[resource.{resource_name}.columns]\n"
+                for column_name, column_description in resource_config["columns"].items():
+                    escaped_description = column_description.replace('"', '\\"')
+                    toml_content += f'{column_name} = "{escaped_description}"\n'
+                toml_content += "\n"
 
         with open(toml_path, "w", encoding="utf-8") as f:
             f.write(toml_content)

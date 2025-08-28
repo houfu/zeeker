@@ -158,7 +158,7 @@ def generate(resource_name, all, dry_run, force, project, resource_desc):
         # Save updated project if changes were made
         if project_updated and not dry_run:
             project.save_toml(manager.toml_path)
-            click.echo(f"\n✅ Updated zeeker.toml with generated metadata")
+            click.echo("\n✅ Updated zeeker.toml with generated metadata")
 
     except Exception as e:
         click.echo(f"❌ Error generating metadata: {e}")

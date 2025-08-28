@@ -99,26 +99,44 @@ source = "{project.source}"
 # [resource.users]
 # description = "User accounts and profiles"
 # sort = "created_at"                                    # Default sort column
-# size = 25                                              # Default page size  
+# size = 25                                              # Default page size
 # facets = ["department", "role"]                        # Faceted browsing
-# columns = {{id = "Unique identifier", name = "Display name", email = "Contact email"}}
 # sortable_columns = ["name", "created_at", "email"]     # Allowed sort columns
 # hidden = false                                         # Show/hide table
+#
+# [resource.users.columns]                               # Column metadata in separate section
+# id = "Unique identifier"
+# name = "Display name"
+# email = "Contact email"
+# created_at = "Account creation timestamp"
+# department = "User department"
+# role = "User role"
 
-# [resource.posts]  
+# [resource.posts]
 # description = "Blog posts and articles"
 # sort_desc = "published_at"                            # Default descending sort
 # size = 10
-# columns = {{title = "Post title", content = "Post content", published_at = "Publication date"}}
 # label_column = "title"                                # Primary display column
 # units = {{published_at = "YYYY-MM-DD"}}               # Column units/format
+#
+# [resource.posts.columns]                              # Column metadata in separate section
+# title = "Post title"
+# content = "Post content"
+# published_at = "Publication date"
+# author_id = "Author reference ID"
 
 # [resource.documents]
-# description = "Legal documents and contracts" 
+# description = "Legal documents and contracts"
 # description_html = "<p>Collection of <strong>legal documents</strong></p>"  # HTML description
 # facets = ["document_type", "jurisdiction"]
 # size = 50
-# columns = {{id = "Document ID", title = "Document title", content = "Document text"}}
+#
+# [resource.documents.columns]                          # Column metadata in separate section
+# id = "Document ID"
+# title = "Document title"
+# content = "Document text"
+# document_type = "Type of document"
+# jurisdiction = "Legal jurisdiction"
 """
 
         with open(self.toml_path, "w", encoding="utf-8") as f:

@@ -12,7 +12,7 @@ from typing import Any, Dict
 
 import sqlite_utils
 
-from .types import ValidationResult, ZeekerProject, extract_table_schema
+from .types import ZeekerProject, extract_table_schema
 
 
 class MetadataGenerator:
@@ -59,7 +59,6 @@ class MetadataGenerator:
             "timestamp": "Timestamp value",
             # Status and flags
             "status": "Status indicator",
-            "state": "State value",
             "active": "Active status flag",
             "enabled": "Enabled status flag",
             "visible": "Visibility flag",
