@@ -526,6 +526,15 @@ jobs:
       run: |
         uv run zeeker build
 
+    - name: Backup existing database
+      env:
+        S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
+      run: |
+        uv run zeeker backup
+
     - name: Deploy to S3
       env:
         S3_BUCKET: ${{ secrets.S3_BUCKET }}

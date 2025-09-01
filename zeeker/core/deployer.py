@@ -72,6 +72,33 @@ class ZeekerDeployer:
 
         return result
 
+    def backup_database(
+        self, db_path: Path, database_name: str, backup_date: str, dry_run: bool = False
+    ) -> ValidationResult:
+        """Backup database file to S3 archives with date-based organization."""
+        result = ValidationResult(is_valid=True)
+
+        if not db_path.exists():
+            result.is_valid = False
+            result.errors.append(f"Database file not found: {db_path}")
+            return result
+
+        s3_key = f"archives/{backup_date}/{database_name}.db"
+
+        if dry_run:
+            result.info.append(f"Would backup: {db_path} -> s3://{self.bucket_name}/{s3_key}")
+        else:
+            try:
+                self.s3_client.upload_file(str(db_path), self.bucket_name, s3_key)
+                result.info.append(
+                    f"Backed up database: {db_path} -> s3://{self.bucket_name}/{s3_key}"
+                )
+            except Exception as e:
+                result.is_valid = False
+                result.errors.append(f"Failed to backup database: {e}")
+
+        return result
+
     def get_existing_files(self, database_name: str) -> dict[str, str]:
         """Get existing files on S3 with their ETags for comparison."""
         files = {}

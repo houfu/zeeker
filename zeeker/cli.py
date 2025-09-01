@@ -11,6 +11,7 @@ import click
 from dotenv import load_dotenv
 
 from .commands.assets import assets
+from .commands.backup import backup
 from .commands.metadata import metadata
 from .core.deployer import ZeekerDeployer
 from .core.project import ZeekerProjectManager
@@ -340,6 +341,7 @@ def generate_legacy(database_name, output_path, title, description, primary_colo
 
 # Register command groups
 cli.add_command(assets)
+cli.add_command(backup)
 cli.add_command(metadata)
 
 
