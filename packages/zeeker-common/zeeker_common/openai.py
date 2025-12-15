@@ -49,8 +49,8 @@ async def get_summary(text: str, system_prompt: Optional[str] = None) -> str:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Summarize:\n{text}"}
-        ]
+            {"role": "user", "content": f"Summarize:\n{text}"},
+        ],
     )
 
     return response.choices[0].message.content

@@ -2,6 +2,7 @@
 members = [
     "packages/zeeker",
     "packages/zeeker-common",
+    "packages/zeeker-datasette",
     "examples/legal-news",
     "examples/datasets"
 ]

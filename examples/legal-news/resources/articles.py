@@ -7,6 +7,7 @@ This is an example implementation showing:
 - Async data fetching
 - Schema design best practices
 """
+
 from sqlite_utils.db import Table
 from typing import Optional, List, Dict, Any
 
@@ -60,15 +61,17 @@ async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
             # For this example, we'll use mock data
             content = f"Mock article content for {url}"
 
-            articles.append({
-                "id": article_id,
-                "url": url,
-                "title": f"Example Legal News Article",
-                "content": content,
-                "category": "legislation",
-                "jurisdiction": "US",
-                "published_date": "2024-01-15",
-            })
+            articles.append(
+                {
+                    "id": article_id,
+                    "url": url,
+                    "title": f"Example Legal News Article",
+                    "content": content,
+                    "category": "legislation",
+                    "jurisdiction": "US",
+                    "published_date": "2024-01-15",
+                }
+            )
         except Exception as e:
             print(f"Error fetching {url}: {e}")
             continue

@@ -13,6 +13,7 @@ This repository is organized as a **uv workspace** containing:
 
 - **`packages/zeeker/`** - Core Zeeker package (published to PyPI)
 - **`packages/zeeker-common/`** - Common utilities for data projects (published to PyPI)
+- **`packages/zeeker-datasette/`** - Datasette deployment package with custom templates and plugins
 - **`examples/`** - Example data projects demonstrating best practices
 
 ## For Users
@@ -50,6 +51,7 @@ zeeker deploy
 For full documentation, see:
 - [Zeeker Package README](packages/zeeker/README.md) - Core package documentation
 - [Zeeker-Common Package README](packages/zeeker-common/README.md) - Utilities documentation
+- [Zeeker-Datasette Package README](packages/zeeker-datasette/Readme.md) - Deployment package documentation
 - [Migration Guide](MIGRATION-0.6.md) - Upgrading from v0.5.x
 - [Examples](examples/) - Reference implementations
 
@@ -77,6 +79,7 @@ uv run pytest
 # Run specific package tests
 uv run pytest packages/zeeker/tests
 uv run pytest packages/zeeker-common/tests
+uv run pytest packages/zeeker-datasette/tests
 
 # Run formatting and linting
 uv run black .
@@ -97,9 +100,19 @@ zeeker/
 │   │   ├── pyproject.toml   # Package config
 │   │   └── README.md        # Package docs
 │   │
-│   └── zeeker-common/       # Utilities package
-│       ├── zeeker_common/   # Source code
+│   ├── zeeker-common/       # Utilities package
+│   │   ├── zeeker_common/   # Source code
+│   │   ├── tests/           # Tests
+│   │   ├── pyproject.toml   # Package config
+│   │   └── README.md        # Package docs
+│   │
+│   └── zeeker-datasette/    # Datasette deployment
+│       ├── plugins/         # Custom Datasette plugins
+│       ├── templates/       # Jinja templates
+│       ├── static/          # CSS, JS, images
+│       ├── scripts/         # Deployment scripts
 │       ├── tests/           # Tests
+│       ├── Dockerfile       # Container image
 │       ├── pyproject.toml   # Package config
 │       └── README.md        # Package docs
 │

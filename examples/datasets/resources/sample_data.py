@@ -6,6 +6,7 @@ This is a minimal example showing:
 - Simple duplicate handling
 - Static data loading
 """
+
 from sqlite_utils.db import Table
 from typing import Optional, List, Dict, Any
 
