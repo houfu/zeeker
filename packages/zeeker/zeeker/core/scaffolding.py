@@ -149,7 +149,7 @@ source = "{project.source}"
         init_file.write_text('"""Resources package for data fetching."""\n')
 
     def _create_pyproject_toml(self, project_name: str) -> Path:
-        """Create pyproject.toml file with zeeker dependency.
+        """Create pyproject.toml file with zeeker dependency from PyPI.
 
         Args:
             project_name: Name of the project
@@ -161,21 +161,31 @@ source = "{project.source}"
 name = "{project_name}"
 version = "0.1.0"
 description = "Zeeker database project for {project_name}"
-dependencies = ["zeeker"]
 requires-python = ">=3.12"
+
+dependencies = [
+    "zeeker>=0.6.0",
+]
+
+# Optional: Add zeeker-common for shared utilities (Jina Reader, OpenAI, etc.)
+# dependencies = [
+#     "zeeker>=0.6.0",
+#     "zeeker-common>=0.1.0",
+# ]
 
 [dependency-groups]
 dev = ["black>=25.1.0", "ruff>=0.8.0"]
 
 # Add project-specific dependencies here as needed:
 # dependencies = [
-#     "zeeker",
-#     "requests",        # For HTTP API calls
-#     "beautifulsoup4",  # For web scraping and HTML parsing
-#     "pandas",          # For data processing and analysis
-#     "lxml",            # For XML parsing
-#     "pdfplumber",      # For PDF text extraction
-#     "openpyxl",        # For Excel file reading
+#     "zeeker>=0.6.0",
+#     "zeeker-common>=0.1.0",  # For get_hash_id, get_jina_reader_content, etc.
+#     "requests>=2.31.0",      # For HTTP API calls
+#     "beautifulsoup4>=4.12.0", # For web scraping and HTML parsing
+#     "pandas>=2.0.0",          # For data processing and analysis
+#     "lxml>=4.9.0",            # For XML parsing
+#     "pdfplumber>=0.10.0",     # For PDF text extraction
+#     "openpyxl>=3.1.0",        # For Excel file reading
 # ]
 
 [tool.black]

@@ -13,6 +13,10 @@ The database is built using sqlite-utils, which provides:
 from sqlite_utils.db import Table, NotFoundError
 from typing import Optional, List, Dict, Any
 
+# Optional: Import common utilities from zeeker-common package
+# Install with: uv add zeeker-common
+# from zeeker_common import get_hash_id, get_jina_reader_content, async_retry
+
 def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     """
     Fetch data for the {{ resource_name }} table.

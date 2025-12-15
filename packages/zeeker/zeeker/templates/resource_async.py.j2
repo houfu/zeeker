@@ -15,6 +15,10 @@ import aiohttp
 from sqlite_utils.db import Table, NotFoundError
 from typing import Optional, List, Dict, Any, Awaitable
 
+# Optional: Import common utilities from zeeker-common package
+# Install with: uv add zeeker-common
+# from zeeker_common import get_hash_id, get_jina_reader_content, async_retry
+
 async def fetch_data(existing_table: Optional[Table]) -> List[Dict[str, Any]]:
     """
     Async fetch data for the {{ resource_name }} table.

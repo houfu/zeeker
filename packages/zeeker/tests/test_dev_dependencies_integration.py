@@ -10,6 +10,14 @@ import pytest
 from zeeker.core.project import ZeekerProjectManager
 
 
+# Skip these tests in workspace mode (before publishing to PyPI)
+# These tests require zeeker to be available on PyPI
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("ZEEKER_PUBLISHED", ""),
+    reason="Requires zeeker to be published to PyPI (set ZEEKER_PUBLISHED=1 to run)",
+)
+
+
 class TestDevDependenciesIntegration:
     """Test that generated projects can actually use dev dependencies."""
 

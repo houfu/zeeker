@@ -1,0 +1,18 @@
+[project]
+name = "datasets"
+database = "datasets.db"
+title = "Sample Datasets"
+description = "Simple example datasets for learning Zeeker"
+license = "MIT"
+license_url = "https://opensource.org/licenses/MIT"
+source = "Zeeker Examples"
+
+[resource.sample_data]
+description = "Sample data demonstrating basic resource structure"
+size = 10
+
+[resource.sample_data.columns]
+id = "Unique identifier"
+name = "Item name"
+value = "Item value"
+created_date = "Creation date"

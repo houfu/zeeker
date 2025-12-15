@@ -64,7 +64,7 @@ class TestZeekerProjectManager:
         pyproject_content = (manager.project_path / "pyproject.toml").read_text()
         assert 'name = "test_project"' in pyproject_content
         assert 'version = "0.1.0"' in pyproject_content
-        assert 'dependencies = ["zeeker"]' in pyproject_content
+        assert '"zeeker>=0.6.0"' in pyproject_content
         assert 'requires-python = ">=3.12"' in pyproject_content
 
     def test_init_project_already_exists(self, manager):
@@ -91,7 +91,7 @@ class TestZeekerProjectManager:
         assert 'name = "my_test_project"' in content
         assert 'version = "0.1.0"' in content
         assert 'description = "Zeeker database project for my_test_project"' in content
-        assert 'dependencies = ["zeeker"]' in content
+        assert '"zeeker>=0.6.0"' in content
         assert 'requires-python = ">=3.12"' in content
 
         # Check dev dependencies
@@ -109,8 +109,8 @@ class TestZeekerProjectManager:
 
         # Check commented examples exist
         assert "# Add project-specific dependencies here" in content
-        assert '"requests"' in content
-        assert '"pandas"' in content
+        assert '"requests>=2.31.0"' in content
+        assert '"pandas>=2.0.0"' in content
         assert "# For HTTP API calls" in content
 
     def test_load_project_success(self, manager):
