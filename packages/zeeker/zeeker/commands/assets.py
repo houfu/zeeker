@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 from ..core.deployer import ZeekerDeployer
 from ..core.generator import ZeekerGenerator
+from ..core.project import ZeekerProjectManager
 from ..core.validator import ZeekerValidator
 
 
@@ -34,13 +35,35 @@ def generate(database_name, output_path, title, description, primary_color, acce
     output_dir = Path(output_path)
     generator = ZeekerGenerator(database_name, output_dir)
 
-    # Generate complete metadata following guide format
-    metadata = generator.generate_metadata_template(
-        title=title or f"{database_name.title()} Database",
-        description=description or f"Custom database for {database_name}",
-        extra_css=["custom.css"],
-        extra_js=["custom.js"],
-    )
+    # Try to load project config for table-level metadata from zeeker.toml
+    metadata = None
+    manager = ZeekerProjectManager()
+    if manager.is_project_root():
+        try:
+            project = manager.load_project()
+            metadata = project.to_datasette_metadata()
+            # Override title/description if explicitly provided
+            if title:
+                metadata["title"] = title
+                metadata["databases"][next(iter(metadata["databases"]))]["title"] = title
+            if description:
+                metadata["description"] = description
+                metadata["databases"][next(iter(metadata["databases"]))]["description"] = (
+                    description
+                )
+            click.echo("📦 Loaded table configuration from zeeker.toml")
+        except Exception as e:
+            click.echo(f"⚠️  Could not load zeeker.toml: {e}")
+            metadata = None
+
+    if metadata is None:
+        # Fallback: generate basic metadata without table configs
+        metadata = generator.generate_metadata_template(
+            title=title or f"{database_name.title()} Database",
+            description=description or f"Custom database for {database_name}",
+            extra_css=["custom.css"],
+            extra_js=["custom.js"],
+        )
 
     css_content = generator.generate_css_template(primary_color, accent_color)
     js_content = generator.generate_js_template()

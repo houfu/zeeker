@@ -153,21 +153,21 @@ function enhanceTables() {{
         title = custom_title or f"{self.database_name.title()} Database"
 
         # Follow guide pattern: database-DBNAME.html (safe naming)
-        return f"""{{%% extends "default:database.html" %%}}
+        return f"""{{% extends "default:database.html" %}}
 
-{{%% block extra_head %%}}
+{{% block extra_head %}}
 {{{{ super() }}}}
 <meta name="description" content="Custom database: {self.database_name}">
-{{%% endblock %%}}
+{{% endblock %}}
 
-{{%% block content %%}}
+{{% block content %}}
 <div class="custom-database-header">
     <h1>📊 {title}</h1>
     <p>Welcome to the {self.database_name} database</p>
 </div>
 
 {{{{ super() }}}}
-{{%% endblock %%}}
+{{% endblock %}}
 """
 
     def save_assets(self, metadata=None, css_content=None, js_content=None, templates=None):

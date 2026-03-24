@@ -81,6 +81,11 @@ class TestZeekerGenerator:
         assert "extends" in template_content
         assert "default:database.html" in template_content
         assert "test_database" in template_content
+        # Verify correct Jinja2 syntax (not double-escaped %%)
+        assert '{% extends "default:database.html" %}' in template_content
+        assert "{% block extra_head %}" in template_content
+        assert "{% endblock %}" in template_content
+        assert "{%%" not in template_content
 
     def test_generate_database_template_default_title(self, generator):
         """Test database template with default title."""

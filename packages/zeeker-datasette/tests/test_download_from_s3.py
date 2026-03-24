@@ -197,6 +197,72 @@ class TestZeekerS3Downloader:
         # Existing fields not in overlay should be preserved
         assert result["plugins"] == {"base_plugin": {}}
 
+    def test_deep_merge_metadata_wildcard_tables_propagated(self, downloader):
+        """Test that wildcard '*' table settings are propagated to named databases."""
+        base = {
+            "databases": {
+                "*": {
+                    "tables": {
+                        "_zeeker_schemas": {"hidden": True},
+                        "_zeeker_updates": {"hidden": True},
+                    }
+                }
+            }
+        }
+
+        overlay = {
+            "databases": {
+                "sglawwatch": {
+                    "title": "SG LawWatch",
+                    "tables": {
+                        "articles": {"sort_desc": "published_date"},
+                    },
+                }
+            }
+        }
+
+        result = downloader._deep_merge_metadata(base, overlay)
+
+        # Wildcard entry should be preserved
+        assert result["databases"]["*"]["tables"]["_zeeker_schemas"]["hidden"] is True
+
+        # Named database should exist with its own config
+        assert result["databases"]["sglawwatch"]["title"] == "SG LawWatch"
+        assert result["databases"]["sglawwatch"]["tables"]["articles"] == {
+            "sort_desc": "published_date"
+        }
+
+        # Wildcard hidden tables should be propagated to the named database
+        assert result["databases"]["sglawwatch"]["tables"]["_zeeker_schemas"]["hidden"] is True
+        assert result["databases"]["sglawwatch"]["tables"]["_zeeker_updates"]["hidden"] is True
+
+    def test_deep_merge_metadata_wildcard_no_override(self, downloader):
+        """Test that explicit per-database table config is not overridden by wildcard."""
+        base = {
+            "databases": {
+                "*": {
+                    "tables": {
+                        "_zeeker_schemas": {"hidden": True},
+                    }
+                }
+            }
+        }
+
+        overlay = {
+            "databases": {
+                "mydb": {
+                    "tables": {
+                        "_zeeker_schemas": {"hidden": False},  # Explicitly unhidden
+                    },
+                }
+            }
+        }
+
+        result = downloader._deep_merge_metadata(base, overlay)
+
+        # Explicit per-database config should win over wildcard
+        assert result["databases"]["mydb"]["tables"]["_zeeker_schemas"]["hidden"] is False
+
     @patch("scripts.download_from_s3.boto3.client")
     def test_download_s3_directory(self, mock_boto3, downloader, temp_directories):
         """Test downloading an entire S3 directory"""

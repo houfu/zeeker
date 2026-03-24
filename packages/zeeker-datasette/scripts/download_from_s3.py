@@ -327,6 +327,19 @@ class ZeekerS3Downloader:
                 for db_name, db_config in value.items():
                     if db_name != "*":  # Never override global defaults
                         result[key][db_name] = db_config
+
+                # Propagate wildcard "*" table settings into each named database
+                # so hidden tables etc. are not lost when per-database metadata exists
+                wildcard_tables = result[key].get("*", {}).get("tables", {})
+                if wildcard_tables:
+                    for db_name, db_config in result[key].items():
+                        if db_name == "*":
+                            continue
+                        if "tables" not in db_config:
+                            db_config["tables"] = {}
+                        for table_name, table_config in wildcard_tables.items():
+                            if table_name not in db_config["tables"]:
+                                db_config["tables"][table_name] = table_config
             elif key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 # Deep merge nested dictionaries
                 result[key] = self._deep_merge_metadata(result[key], value)
