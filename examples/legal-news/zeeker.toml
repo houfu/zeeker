@@ -1,0 +1,23 @@
+[project]
+name = "legal_news"
+database = "legal_news.db"
+title = "Legal News Database"
+description = "Comprehensive legal news and court case database"
+license = "MIT"
+license_url = "https://opensource.org/licenses/MIT"
+source = "Legal News Project"
+
+[resource.articles]
+description = "Legal news articles from various sources"
+facets = ["category", "jurisdiction"]
+sort_desc = "published_date"
+size = 25
+
+[resource.articles.columns]
+id = "Unique article identifier"
+url = "Article URL"
+title = "Article title"
+content = "Article content"
+category = "Article category"
+jurisdiction = "Legal jurisdiction"
+published_date = "Publication date"

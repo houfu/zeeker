@@ -8,6 +8,7 @@
 - `uv run zeeker metadata generate|show` `--all --dry-run --force --project --resource`
 
 ## Architecture
+**Workspace structure**: Core CLI (zeeker) + shared utilities (zeeker-common) + deployment (zeeker-datasette)
 CLI tool: database projects (init→add→build→deploy) + UI assets (generate→validate→deploy) + metadata generation
 S3 three-pass: Database files → base assets → database-specific customizations
 Fragments: main table (metadata) + fragments table (searchable chunks)
@@ -16,6 +17,13 @@ CLI structure: Modular commands in `zeeker/commands/` (assets.py, metadata.py, h
 
 ## Structure
 ```
+workspace/
+├── packages/
+│   ├── zeeker/              # Core CLI package
+│   ├── zeeker-common/       # Shared utilities (hash, jina, openai, retry)
+│   └── zeeker-datasette/    # Datasette deployment (templates, plugins, Docker)
+└── examples/                # Example data projects
+
 project/{pyproject.toml,zeeker.toml,resources/resource_name.py,project_name.db,metadata.json}
 zeeker/{cli.py,commands/{assets.py,metadata.py,helpers.py}}
 ```
@@ -64,30 +72,43 @@ Template safety: ❌ Banned `database.html,table.html,index.html,query.html` ✅
 Env (auto-loads `.env`): `S3_BUCKET,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,JINA_API_TOKEN,OPENAI_API_KEY`
 
 ## Testing
-Markers: `unit,integration,cli,slow` (`pytest -m marker`)
+Markers: `unit,integration,cli,slow,anyio` (`pytest -m marker`)
+Coverage: 65% threshold, excludes templates and test files
+Test organization: packages/zeeker/tests, packages/zeeker-common/tests, packages/zeeker-datasette/tests
 
 ## Selective Building
 `zeeker build users posts` (builds specific resources)
 `zeeker build` (builds all resources)
 
 ## Code Recipes
+**Note**: These utilities are now available in `zeeker-common` package:
 ```python
-# Jina Reader (web extraction)
+from zeeker_common import get_hash_id, get_jina_reader_content, async_retry
+from zeeker_common.openai import get_summary  # requires zeeker-common[openai]
+
+# Jina Reader (web extraction) - now in zeeker_common.jina
 @retry(stop=stop_after_attempt(3))
 async def get_jina_reader_content(link: str) -> str:
     headers = {"Authorization": f"Bearer {os.environ.get('JINA_API_TOKEN')}"}
     async with httpx.AsyncClient(timeout=90) as client:
         return (await client.get(f"https://r.jina.ai/{link}", headers=headers)).text
 
-# Hash IDs (deterministic from multiple fields)
+# Hash IDs (deterministic from multiple fields) - now in zeeker_common.hashing
 def get_hash_id(elements: list[str]) -> str:
     return hashlib.md5("|".join(str(e) for e in elements).encode()).hexdigest()
 
-# OpenAI summarization
-async def get_summary(text: str) -> str:
+# OpenAI summarization - now in zeeker_common.openai
+async def get_summary(text: str, system_prompt: str = None) -> str:
     client = AsyncOpenAI(max_retries=3, timeout=60)
-    response = await client.responses.create(model="gpt-4o-mini", 
-        input=[{"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]},
-               {"role": "user", "content": [{"type": "input_text", "text": f"Summarize:\n{text}"}]}])
-    return response.output_text
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_prompt or "Summarize the following text concisely."},
+            {"role": "user", "content": f"Summarize:\n{text}"}
+        ]
+    )
+    return response.choices[0].message.content
+
+# Retry decorators - now in zeeker_common.retry
+from zeeker_common.retry import async_retry, sync_retry
 ```

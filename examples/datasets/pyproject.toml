@@ -1,0 +1,27 @@
+[project]
+name = "zeeker-datasets"
+version = "0.1.0"
+description = "Simple dataset examples built with Zeeker"
+requires-python = ">=3.12"
+
+dependencies = [
+    "zeeker>=0.6.0",
+]
+
+[dependency-groups]
+dev = ["black>=25.1.0", "ruff>=0.8.0"]
+
+[tool.uv.sources]
+zeeker = { workspace = true }
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

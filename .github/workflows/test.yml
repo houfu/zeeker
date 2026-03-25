@@ -1,4 +1,4 @@
-name: Test
+name: Test Workspace
 
 on: [push, pull_request]
 
@@ -23,11 +23,11 @@ jobs:
       uses: astral-sh/setup-uv@v3
       with:
         enable-cache: true
-        cache-dependency-glob: "pyproject.toml"
+        cache-dependency-glob: "**/pyproject.toml"
 
-    - name: Install dependencies
+    - name: Install workspace dependencies
       run: |
-        uv sync --group dev
+        uv sync
 
     - name: Run tests
       run: |
