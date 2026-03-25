@@ -48,9 +48,9 @@ def generate(database_name, output_path, title, description, primary_color, acce
                 metadata["databases"][next(iter(metadata["databases"]))]["title"] = title
             if description:
                 metadata["description"] = description
-                metadata["databases"][next(iter(metadata["databases"]))]["description"] = (
-                    description
-                )
+                metadata["databases"][next(iter(metadata["databases"]))][
+                    "description"
+                ] = description
             click.echo("📦 Loaded table configuration from zeeker.toml")
         except Exception as e:
             click.echo(f"⚠️  Could not load zeeker.toml: {e}")
