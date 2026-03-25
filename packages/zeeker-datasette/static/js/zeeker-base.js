@@ -1,6 +1,7 @@
 /**
- * Zeeker Enhanced JavaScript - Consolidated Version
- * Streamlined functionality with reusable components
+ * Zeeker Base JavaScript
+ * Core functionality: body classes, copy-to-clipboard, keyboard shortcuts,
+ * scroll-to-top, search enhancements, SQL helpers.
  */
 
 class ZeekerEnhancer {
@@ -17,20 +18,18 @@ class ZeekerEnhancer {
     }
 
     setupFeatures() {
-        console.log('Zeeker Enhanced: Initializing...');
-
         this.addBodyClasses();
-        this.enhanceHeroBanner();
         this.addSearchEnhancements();
         this.addCopyButtons();
         this.addKeyboardShortcuts();
         this.setupScrollToTop();
         this.setupQueryHelpers();
         this.setupExampleQueries();
-
-        console.log('Zeeker Enhanced: Complete');
     }
 
+    /**
+     * Add page-type classes to body for CSS targeting.
+     */
     addBodyClasses() {
         document.body.classList.add('zeeker-enhanced');
 
@@ -46,144 +45,13 @@ class ZeekerEnhancer {
         }
     }
 
-    enhanceHeroBanner() {
-        const heroImage = document.querySelector('.hero-background-image');
-        if (!heroImage) return;
-
-        console.log('Zeeker: Enhancing hero banner...');
-
-        const handleImageLoad = () => {
-            heroImage.classList.remove('loading');
-            heroImage.classList.add('loaded');
-            this.triggerContentAnimations();
-        };
-
-        const handleImageError = () => {
-            heroImage.classList.remove('loading');
-            heroImage.classList.add('error');
-            this.triggerContentAnimations();
-        };
-
-        if (heroImage.complete && heroImage.naturalWidth > 0) {
-            handleImageLoad();
-        } else {
-            heroImage.addEventListener('load', handleImageLoad);
-            heroImage.addEventListener('error', handleImageError);
-
-            setTimeout(() => {
-                if (!heroImage.classList.contains('loaded') && !heroImage.classList.contains('error')) {
-                    this.triggerContentAnimations();
-                }
-            }, 3000);
-        }
-
-        this.setupHeroSearch();
-        this.setupParallax(heroImage);
-    }
-
-    triggerContentAnimations() {
-        const contentWrapper = document.querySelector('.hero-content-wrapper');
-        if (contentWrapper) {
-            contentWrapper.classList.add('animate-in');
-        }
-    }
-
-    setupHeroSearch() {
-        const heroSearchInput = document.querySelector('.hero-search-input');
-        const heroSearchForm = document.querySelector('.hero-search-form');
-
-        if (!heroSearchInput || !heroSearchForm) return;
-
-        // Enhanced form submission
-        heroSearchForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const query = heroSearchInput.value.trim();
-
-            if (query) {
-                // Add visual feedback
-                const wrapper = heroSearchInput.closest('.hero-search-wrapper');
-                if (wrapper) {
-                    wrapper.style.transform = 'scale(0.98)';
-                    wrapper.style.opacity = '0.7';
-                }
-
-                // Navigate to search page
-                setTimeout(() => {
-                    const searchUrl = new URL('/-/search', window.location.origin);
-                    searchUrl.searchParams.set('q', query);
-                    window.location.href = searchUrl.toString();
-                }, 200);
-            }
-        });
-
-        // Enhanced keyboard support
-        heroSearchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                heroSearchForm.dispatchEvent(new Event('submit'));
-            }
-            if (e.key === 'Escape') {
-                heroSearchInput.blur();
-                heroSearchInput.value = '';
-            }
-        });
-
-        // Focus effects
-        heroSearchInput.addEventListener('focus', () => {
-            const wrapper = heroSearchInput.closest('.hero-search-wrapper');
-            if (wrapper) {
-                wrapper.style.transform = 'translateY(-2px) scale(1.02)';
-                wrapper.style.boxShadow = '0 0 35px rgba(0, 212, 255, 0.4)';
-            }
-        });
-
-        heroSearchInput.addEventListener('blur', () => {
-            const wrapper = heroSearchInput.closest('.hero-search-wrapper');
-            if (wrapper) {
-                wrapper.style.transform = 'translateY(0) scale(1)';
-                wrapper.style.boxShadow = '';
-            }
-        });
-    }
-
-    setupParallax(heroImage) {
-        // Only on larger screens and if motion is allowed
-        if (window.innerWidth <= 768 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            return;
-        }
-
-        let ticking = false;
-
-        const updateParallax = () => {
-            const scrollY = window.pageYOffset;
-            const scrollProgress = Math.min(scrollY / window.innerHeight, 1);
-
-            const parallaxY = scrollY * -0.4;
-            const scale = 1.05 + (scrollProgress * 0.02);
-            const opacity = Math.max(0.1, 0.35 - (scrollProgress * 0.25));
-
-            heroImage.style.transform = `translate3d(0, ${parallaxY}px, 0) scale(${scale})`;
-            heroImage.style.opacity = opacity;
-
-            ticking = false;
-        };
-
-        const handleScroll = () => {
-            if (!ticking) {
-                requestAnimationFrame(updateParallax);
-                ticking = true;
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-    }
-
+    /**
+     * Enhance search inputs with keyboard shortcuts.
+     */
     addSearchEnhancements() {
         const searchInputs = document.querySelectorAll('input[type="search"], input[name="q"]');
 
         searchInputs.forEach(input => {
-            if (input.classList.contains('hero-search-input')) return;
-
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     input.blur();
@@ -195,18 +63,19 @@ class ZeekerEnhancer {
         });
     }
 
+    /**
+     * Add copy-to-clipboard buttons to code blocks.
+     */
     addCopyButtons() {
-        // Enhanced copy button functionality for code blocks
         const codeElements = document.querySelectorAll('pre code, .highlight, .example-box pre');
 
         codeElements.forEach(element => {
-            // Skip if already processed
             if (element.closest('.copy-button-added')) return;
 
             const codeBlock = element.tagName === 'PRE' ? element : element.closest('pre');
             if (!codeBlock) return;
 
-            // Check if parent already has copy button
+            // Skip if parent already has a copy button
             if (codeBlock.parentElement.querySelector('.copy-btn')) return;
 
             const wrapper = codeBlock.parentElement;
@@ -215,7 +84,7 @@ class ZeekerEnhancer {
 
             const copyButton = document.createElement('button');
             copyButton.className = 'copy-btn';
-            copyButton.innerHTML = '📋';
+            copyButton.textContent = 'Copy';
             copyButton.setAttribute('aria-label', 'Copy code');
             copyButton.title = 'Copy to clipboard';
 
@@ -227,7 +96,7 @@ class ZeekerEnhancer {
             wrapper.appendChild(copyButton);
         });
 
-        // Handle existing copy buttons (from templates)
+        // Handle existing copy buttons placed in templates
         document.querySelectorAll('.copy-btn').forEach(button => {
             if (!button.hasAttribute('data-enhanced')) {
                 button.setAttribute('data-enhanced', 'true');
@@ -243,16 +112,19 @@ class ZeekerEnhancer {
         });
     }
 
+    /**
+     * Copy text to clipboard with visual feedback on the button.
+     */
     copyToClipboard(text, button) {
         navigator.clipboard.writeText(text).then(() => {
-            const originalText = button.innerHTML;
+            const originalText = button.textContent;
             const originalClass = button.className;
 
-            button.innerHTML = '✅';
+            button.textContent = 'Copied';
             button.classList.add('copied');
 
             setTimeout(() => {
-                button.innerHTML = originalText;
+                button.textContent = originalText;
                 button.className = originalClass;
             }, 2000);
         }).catch(() => {
@@ -264,14 +136,21 @@ class ZeekerEnhancer {
             document.execCommand('copy');
             document.body.removeChild(textarea);
 
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅';
+            const originalText = button.textContent;
+            button.textContent = 'Copied';
             setTimeout(() => {
-                button.innerHTML = originalText;
+                button.textContent = originalText;
             }, 2000);
         });
     }
 
+    /**
+     * Global keyboard shortcuts:
+     *   /       - Focus search input
+     *   Ctrl+H  - Go home
+     *   Ctrl+B  - Go back
+     *   Escape  - Blur active element
+     */
     addKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
             // Skip if typing in form fields
@@ -280,8 +159,7 @@ class ZeekerEnhancer {
             switch (e.key) {
                 case '/':
                     e.preventDefault();
-                    const heroSearchInput = document.querySelector('.hero-search-input');
-                    const searchInput = heroSearchInput || document.querySelector('input[name="q"]');
+                    const searchInput = document.querySelector('input[name="q"]');
                     if (searchInput) {
                         searchInput.focus();
                     }
@@ -302,22 +180,22 @@ class ZeekerEnhancer {
                     break;
 
                 case 'Escape':
-                    // Clear focus from active element
                     document.activeElement?.blur();
                     break;
             }
         });
     }
 
+    /**
+     * Scroll-to-top button, available on all pages.
+     */
     setupScrollToTop() {
-        if (window.location.pathname !== '/') return;
-
         let scrollToTopBtn = document.querySelector('.scroll-to-top');
 
         if (!scrollToTopBtn) {
             scrollToTopBtn = document.createElement('button');
             scrollToTopBtn.className = 'scroll-to-top';
-            scrollToTopBtn.innerHTML = '↑';
+            scrollToTopBtn.innerHTML = '&uarr;';
             scrollToTopBtn.setAttribute('aria-label', 'Scroll to top');
             scrollToTopBtn.style.cssText = `
                 position: fixed;
@@ -358,11 +236,13 @@ class ZeekerEnhancer {
         });
     }
 
+    /**
+     * SQL query interface enhancements: auto-save, keyboard shortcuts, result interactions.
+     */
     setupQueryHelpers() {
-        // SQL Query interface enhancements
         const sqlTextarea = document.querySelector('.sql-textarea');
         if (sqlTextarea) {
-            // Auto-save functionality
+            // Auto-save query to localStorage
             let autoSaveTimeout;
             sqlTextarea.addEventListener('input', () => {
                 clearTimeout(autoSaveTimeout);
@@ -381,7 +261,7 @@ class ZeekerEnhancer {
                 }
             }
 
-            // SQL-specific shortcuts
+            // Ctrl+Enter to submit, Tab to indent
             sqlTextarea.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'Enter') {
                     e.preventDefault();
@@ -400,15 +280,16 @@ class ZeekerEnhancer {
             });
         }
 
-        // Query result enhancements
         this.enhanceQueryResults();
     }
 
+    /**
+     * Enhance query result tables: copy results, selectable cells.
+     */
     enhanceQueryResults() {
-        // Copy results functionality
         const copyResultsButton = document.querySelector('[onclick="copyResults()"]');
         if (copyResultsButton) {
-            copyResultsButton.onclick = null; // Remove inline handler
+            copyResultsButton.onclick = null;
             copyResultsButton.addEventListener('click', () => {
                 const table = document.querySelector('.query-results-table');
                 if (table) {
@@ -423,20 +304,16 @@ class ZeekerEnhancer {
             });
         }
 
-        // Enhanced table interactions
         const resultTable = document.querySelector('.query-results-table');
         if (resultTable) {
-            // Make cells selectable
             resultTable.addEventListener('click', (e) => {
                 if (e.target.tagName === 'TD') {
-                    // Clear previous selections
                     resultTable.querySelectorAll('.selected-cell').forEach(cell => {
                         cell.classList.remove('selected-cell');
                     });
 
                     e.target.classList.add('selected-cell');
 
-                    // Copy cell content on double-click
                     e.target.addEventListener('dblclick', () => {
                         this.copyToClipboard(e.target.textContent.trim(), e.target);
                     }, { once: true });
@@ -445,11 +322,12 @@ class ZeekerEnhancer {
         }
     }
 
+    /**
+     * Wire up example query buttons to load SQL into the editor.
+     */
     setupExampleQueries() {
-        // Enhanced example query functionality
         const exampleButtons = document.querySelectorAll('[onclick*="useExample"]');
         exampleButtons.forEach(button => {
-            // Remove inline onclick
             button.onclick = null;
 
             button.addEventListener('click', (e) => {
@@ -462,24 +340,21 @@ class ZeekerEnhancer {
                         textarea.value = query;
                         textarea.focus();
 
-                        // Visual feedback
                         button.style.background = 'var(--color-success)';
-                        button.textContent = '✅ Added to Editor';
+                        button.textContent = 'Added to Editor';
                         setTimeout(() => {
                             button.style.background = '';
-                            button.textContent = button.getAttribute('data-original-text') || '🔗 Try This Query';
+                            button.textContent = button.getAttribute('data-original-text') || 'Try This Query';
                         }, 2000);
                     }
                 }
             });
 
-            // Store original text
             if (!button.getAttribute('data-original-text')) {
                 button.setAttribute('data-original-text', button.textContent);
             }
         });
 
-        // Query formatting helper
         const formatButton = document.querySelector('[onclick="formatQuery()"]');
         if (formatButton) {
             formatButton.onclick = null;
@@ -492,21 +367,24 @@ class ZeekerEnhancer {
         }
     }
 
+    /**
+     * Basic SQL formatter: normalizes whitespace and adds line breaks at keywords.
+     */
     formatSQL(sql) {
         if (!sql.trim()) return sql;
 
-        // Basic SQL formatting
         let formatted = sql
-            .replace(/\s+/g, ' ') // Normalize whitespace
+            .replace(/\s+/g, ' ')
             .replace(/\b(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING|JOIN|LEFT JOIN|RIGHT JOIN|INNER JOIN|OUTER JOIN|ON|AND|OR|UNION|LIMIT|OFFSET)\b/gi, '\n$1')
-            .replace(/,(?!\s*\n)/g, ',\n  ') // Commas on new lines with indent
-            .replace(/\n\s*\n/g, '\n') // Remove empty lines
+            .replace(/,(?!\s*\n)/g, ',\n  ')
+            .replace(/\n\s*\n/g, '\n')
             .trim();
 
         return formatted;
     }
 
-    // Utility methods
+    // -- Utility methods --
+
     debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -541,8 +419,8 @@ window.copyCode = function(button) {
 
         navigator.clipboard.writeText(text).then(() => {
             const originalText = button.textContent;
-            button.textContent = '✅ Copied!';
-            button.style.background = '#10B981';
+            button.textContent = 'Copied!';
+            button.style.background = 'var(--color-success)';
 
             setTimeout(() => {
                 button.textContent = originalText;
@@ -560,16 +438,6 @@ window.useExample = function(button) {
         textarea.focus();
     }
 };
-
-// Viewport height fix for mobile
-function updateViewportHeight() {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
-}
-
-window.addEventListener('resize', updateViewportHeight);
-window.addEventListener('orientationchange', updateViewportHeight);
-updateViewportHeight();
 
 // Initialize
 new ZeekerEnhancer();
