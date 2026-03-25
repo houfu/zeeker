@@ -5,12 +5,11 @@ Asset management commands for UI customizations.
 from pathlib import Path
 
 import click
-from dotenv import load_dotenv
 
-from ..core.deployer import ZeekerDeployer
 from ..core.generator import ZeekerGenerator
 from ..core.project import ZeekerProjectManager
 from ..core.validator import ZeekerValidator
+from .helpers import create_deployer, echo_errors, echo_warnings
 
 
 @click.group()
@@ -96,13 +95,10 @@ def validate(assets_path, database_name):
 
     if result.errors:
         click.echo("❌ Validation failed:")
-        for error in result.errors:
-            click.echo(f"  ERROR: {error}")
+        echo_errors(result)
 
     if result.warnings:
-        click.echo("⚠️ Warnings:")
-        for warning in result.warnings:
-            click.echo(f"  WARNING: {warning}")
+        echo_warnings(result)
 
     if result.info:
         for info in result.info:
@@ -136,17 +132,12 @@ def deploy_assets(local_path, database_name, dry_run, sync, clean, yes, diff):
 
     Database folder name must match .db filename (without .db extension).
     """
-    # Load .env file if present for S3 credentials
-    load_dotenv(dotenv_path=Path.cwd() / ".env")
-
     if clean and sync:
         click.echo("❌ Cannot use both --clean and --sync flags")
         return
 
-    try:
-        deployer = ZeekerDeployer()
-    except ValueError as e:
-        click.echo(f"❌ Configuration error: {e}")
+    deployer = create_deployer()
+    if not deployer:
         return
 
     local_path_obj = Path(local_path)
@@ -195,20 +186,14 @@ def deploy_assets(local_path, database_name, dry_run, sync, clean, yes, diff):
                 click.echo(f"   Updated: {len(changes.updates)} files")
         else:
             click.echo("\n❌ Assets deployment failed:")
-            for error in result.errors:
-                click.echo(f"   {error}")
+            echo_errors(result)
 
 
 @assets.command("list")
 def list_assets():
     """List all database UI assets in S3."""
-    # Load .env file if present for S3 credentials
-    load_dotenv(dotenv_path=Path.cwd() / ".env")
-
-    try:
-        deployer = ZeekerDeployer()
-    except ValueError as e:
-        click.echo(f"❌ Configuration error: {e}")
+    deployer = create_deployer()
+    if not deployer:
         return
 
     databases = deployer.list_assets()

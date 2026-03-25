@@ -33,22 +33,20 @@ class AsyncExecutor:
             List[Dict[str, Any]]: The data returned by fetch_data
         """
         # Check cache if resource_name is provided
-        if resource_name:
-            cache_key = self._generate_cache_key(resource_name, existing_table)
-            if cache_key in self._fetch_cache:
-                return self._fetch_cache[cache_key]
+        cache_key = (
+            self._generate_cache_key(resource_name, existing_table) if resource_name else None
+        )
+        if cache_key and cache_key in self._fetch_cache:
+            return self._fetch_cache[cache_key]
 
         # Execute the function
         if inspect.iscoroutinefunction(fetch_data_func):
-            # Async function - run in event loop
             result = self._run_async_function(fetch_data_func, existing_table)
         else:
-            # Sync function - call directly
             result = fetch_data_func(existing_table)
 
         # Cache the result if resource_name is provided
-        if resource_name:
-            cache_key = self._generate_cache_key(resource_name, existing_table)
+        if cache_key:
             self._fetch_cache[cache_key] = result
 
         return result

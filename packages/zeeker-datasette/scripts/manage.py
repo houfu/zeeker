@@ -123,7 +123,7 @@ def download_from_s3_to_dir(target_dir, logger):
 
 
 @click.group()
-@click.version_option(version="`1.0.0", prog_name="zeeker-manage")
+@click.version_option(version="1.0.0", prog_name="zeeker-manage")
 def cli():
     """Zeeker Datasette Management Commands"""
     pass

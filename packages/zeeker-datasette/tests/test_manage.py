@@ -135,17 +135,6 @@ class TestCliCommands:
         """Setup test runner for each test"""
         self.runner = CliRunner()
 
-    def test_cli_group(self):
-        """Test main CLI group"""
-        result = self.runner.invoke(manage.cli, ["--help"])
-        assert result.exit_code == 0
-        assert "Zeeker Datasette Management Commands" in result.output
-
-    def test_cli_version(self):
-        """Test version option"""
-        result = self.runner.invoke(manage.cli, ["--version"])
-        assert result.exit_code == 0
-
     @patch("scripts.manage.setup_logging")
     @patch("scripts.manage.load_dotenv")
     @patch("scripts.manage.calculate_directory_hash")

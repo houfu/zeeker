@@ -16,4 +16,4 @@ def get_hash_id(elements: list[str]) -> str:
         >>> get_hash_id(["user123", "post456"])
         'a1b2c3d4e5f6...'
     """
-    return hashlib.md5("|".join(str(e) for e in elements).encode()).hexdigest()
+    return hashlib.md5("\x00".join(str(e) for e in elements).encode()).hexdigest()
