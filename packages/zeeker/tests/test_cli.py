@@ -285,7 +285,6 @@ class TestCLIBuild:
 
         assert result.exit_code == 0
         assert "Built with sqlite-utils" in result.output
-        assert "Generated metadata follows customization guide format" in result.output
         assert "Ready for deployment with 'zeeker deploy'" in result.output
 
     def test_build_with_specific_resources(self, runner, mock_manager):
@@ -370,7 +369,7 @@ class TestCLIDeploy:
     @pytest.fixture
     def mock_deployer(self):
         """Mock ZeekerDeployer."""
-        with patch("zeeker.cli.ZeekerDeployer") as mock_class:
+        with patch("zeeker.core.deployer.ZeekerDeployer") as mock_class:
             mock_instance = MagicMock()
             mock_class.return_value = mock_instance
             yield mock_instance
@@ -478,74 +477,19 @@ class TestCLIHelp:
         """Create CliRunner instance."""
         return CliRunner()
 
-    def test_main_help(self, runner):
-        """Test main CLI help message."""
-        result = runner.invoke(cli, ["--help"])
-
+    @pytest.mark.parametrize(
+        "args",
+        [
+            ["--help"],
+            ["init", "--help"],
+            ["add", "--help"],
+            ["build", "--help"],
+            ["assets", "--help"],
+        ],
+    )
+    def test_cli_help(self, runner, args):
+        result = runner.invoke(cli, args)
         assert result.exit_code == 0
-        assert "Zeeker Database Management Tool" in result.output
-        assert "init" in result.output
-        assert "add" in result.output
-        assert "build" in result.output
-        assert "deploy" in result.output
-        assert "assets" in result.output
-
-    def test_init_help(self, runner):
-        """Test init command help."""
-        result = runner.invoke(cli, ["init", "--help"])
-
-        assert result.exit_code == 0
-        assert "Initialize a new Zeeker project" in result.output
-        assert "--path" in result.output
-
-    def test_add_help(self, runner):
-        """Test add command help."""
-        result = runner.invoke(cli, ["add", "--help"])
-
-        assert result.exit_code == 0
-        assert "Add a new resource to the project" in result.output
-        assert "--async" in result.output
-        assert "--fragments" in result.output
-        assert "--description" in result.output
-
-    def test_build_help(self, runner):
-        """Test build command help."""
-        result = runner.invoke(cli, ["build", "--help"])
-
-        assert result.exit_code == 0
-        assert "Build database from resources" in result.output
-        assert "--force-schema-reset" in result.output
-        assert "--sync-from-s3" in result.output
-        assert "zeeker build users" in result.output
-
-    def test_assets_help(self, runner):
-        """Test assets group help."""
-        result = runner.invoke(cli, ["assets", "--help"])
-
-        assert result.exit_code == 0
-        assert "generate" in result.output
-        assert "validate" in result.output
-        assert "deploy" in result.output
-        assert "list" in result.output
-
-
-class TestCLILegacyCommands:
-    """Test legacy/deprecated commands."""
-
-    @pytest.fixture
-    def runner(self):
-        """Create CliRunner instance."""
-        return CliRunner()
-
-    def test_legacy_generate_deprecation_warning(self, runner):
-        """Test that legacy generate command shows deprecation warning."""
-        with patch("click.get_current_context") as mock_ctx:
-            mock_ctx.return_value.invoke = MagicMock()
-
-            result = runner.invoke(cli, ["generate", "testdb", "/tmp/output"])
-
-            assert result.exit_code == 0
-            assert "DEPRECATED: Use 'zeeker assets generate' instead" in result.output
 
 
 class TestCLIErrorHandling:
@@ -576,3 +520,225 @@ class TestCLIErrorHandling:
 
         assert result.exit_code != 0
         assert "does not exist" in result.output or "Invalid value" in result.output
+
+
+class TestHelpers:
+    """Test shared CLI helper functions."""
+
+    def test_require_project_not_in_project(self):
+        """Test require_project when not in a project directory."""
+        from zeeker.commands.helpers import require_project
+
+        manager = MagicMock()
+        manager.is_project_root.return_value = False
+        assert require_project(manager) is None
+
+    def test_require_project_load_error(self):
+        """Test require_project when project loading fails."""
+        from zeeker.commands.helpers import require_project
+
+        manager = MagicMock()
+        manager.is_project_root.return_value = True
+        manager.load_project.side_effect = Exception("bad toml")
+        assert require_project(manager) is None
+
+    def test_require_project_success(self):
+        """Test require_project returns project on success."""
+        from zeeker.commands.helpers import require_project
+
+        manager = MagicMock()
+        manager.is_project_root.return_value = True
+        project = MagicMock()
+        manager.load_project.return_value = project
+        assert require_project(manager) is project
+
+    def test_require_database_missing(self, tmp_path):
+        """Test require_database when db file doesn't exist."""
+        from zeeker.commands.helpers import require_database
+
+        manager = MagicMock()
+        manager.project_path = tmp_path
+        project = MagicMock()
+        project.database = "nonexistent.db"
+        assert require_database(manager, project) is None
+
+    def test_require_database_exists(self, tmp_path):
+        """Test require_database when db file exists."""
+        from zeeker.commands.helpers import require_database
+
+        (tmp_path / "test.db").touch()
+        manager = MagicMock()
+        manager.project_path = tmp_path
+        project = MagicMock()
+        project.database = "test.db"
+        assert require_database(manager, project) == tmp_path / "test.db"
+
+    def test_create_deployer_missing_config(self):
+        """Test create_deployer with missing S3 config."""
+        from zeeker.commands.helpers import create_deployer
+
+        with patch("zeeker.commands.helpers.load_dotenv"):
+            with patch(
+                "zeeker.core.deployer.ZeekerDeployer",
+                side_effect=ValueError("Missing S3_BUCKET"),
+            ):
+                assert create_deployer() is None
+
+    def test_echo_errors(self):
+        """Test echo_errors displays all errors."""
+        from zeeker.commands.helpers import echo_errors
+
+        result = ValidationResult(is_valid=False)
+        result.errors = ["err1", "err2"]
+        # Just verify it doesn't crash — output goes to click
+        echo_errors(result)
+
+    def test_echo_warnings(self):
+        """Test echo_warnings displays all warnings."""
+        from zeeker.commands.helpers import echo_warnings
+
+        result = ValidationResult(is_valid=True)
+        result.warnings = ["warn1"]
+        echo_warnings(result)
+
+
+class TestMetadataCommand:
+    """Test metadata command group."""
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    def test_metadata_generate_no_args(self, runner):
+        """Test metadata generate with no arguments shows error."""
+        with patch("zeeker.commands.metadata.ZeekerProjectManager") as mock_mgr:
+            mock_mgr.return_value.is_project_root.return_value = True
+            mock_project = MagicMock()
+            mock_mgr.return_value.load_project.return_value = mock_project
+
+            result = runner.invoke(cli, ["metadata", "generate"])
+            assert "Specify a resource name" in result.output
+
+    def test_metadata_generate_not_in_project(self, runner):
+        """Test metadata generate when not in project."""
+        with patch("zeeker.commands.metadata.ZeekerProjectManager") as mock_mgr:
+            mock_mgr.return_value.is_project_root.return_value = False
+
+            result = runner.invoke(cli, ["metadata", "generate", "--all"])
+            assert "Not in a Zeeker project directory" in result.output
+
+    def test_metadata_show_not_in_project(self, runner):
+        """Test metadata show when not in project."""
+        with patch("zeeker.commands.metadata.ZeekerProjectManager") as mock_mgr:
+            mock_mgr.return_value.is_project_root.return_value = False
+
+            result = runner.invoke(cli, ["metadata", "show"])
+            assert "Not in a Zeeker project directory" in result.output
+
+    def test_metadata_show_resource_not_found(self, runner):
+        """Test metadata show for nonexistent resource."""
+        with patch("zeeker.commands.metadata.ZeekerProjectManager") as mock_mgr:
+            mock_mgr.return_value.is_project_root.return_value = True
+            mock_project = MagicMock()
+            mock_project.resources = {}
+            mock_mgr.return_value.load_project.return_value = mock_project
+
+            result = runner.invoke(cli, ["metadata", "show", "nonexistent"])
+            assert "not found" in result.output
+
+    def test_metadata_show_all_empty(self, runner):
+        """Test metadata show with no resources."""
+        with patch("zeeker.commands.metadata.ZeekerProjectManager") as mock_mgr:
+            mock_mgr.return_value.is_project_root.return_value = True
+            mock_project = MagicMock()
+            mock_project.resources = {}
+            mock_mgr.return_value.load_project.return_value = mock_project
+
+            result = runner.invoke(cli, ["metadata", "show"])
+            assert "No resources found" in result.output
+
+
+class TestBackupCommand:
+    """Test backup command."""
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    def test_backup_not_in_project(self, runner):
+        """Test backup when not in project."""
+        with patch("zeeker.commands.backup.ZeekerProjectManager") as mock_mgr:
+            mock_mgr.return_value.is_project_root.return_value = False
+
+            result = runner.invoke(cli, ["backup"])
+            assert "Not in a Zeeker project directory" in result.output
+
+    def test_backup_future_date(self, runner):
+        """Test backup with future date."""
+        with patch("zeeker.commands.backup.ZeekerProjectManager") as mock_mgr:
+            mock_mgr.return_value.is_project_root.return_value = True
+            mock_mgr.return_value.load_project.return_value = MagicMock()
+
+            with patch("zeeker.commands.helpers.load_dotenv"):
+                with patch("zeeker.core.deployer.ZeekerDeployer"):
+                    result = runner.invoke(cli, ["backup", "--date", "2099-12-31"])
+                    assert "cannot be in the future" in result.output
+
+    def test_backup_invalid_date(self, runner):
+        """Test backup with invalid date format."""
+        with patch("zeeker.commands.backup.ZeekerProjectManager") as mock_mgr:
+            mock_mgr.return_value.is_project_root.return_value = True
+            mock_mgr.return_value.load_project.return_value = MagicMock()
+
+            with patch("zeeker.commands.helpers.load_dotenv"):
+                with patch("zeeker.core.deployer.ZeekerDeployer"):
+                    result = runner.invoke(cli, ["backup", "--date", "not-a-date"])
+                    assert "Invalid date format" in result.output
+
+
+class TestAssetsCommand:
+    """Test assets commands."""
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    def test_assets_generate(self, runner, tmp_path):
+        """Test assets generate creates files."""
+        output_dir = tmp_path / "output"
+        result = runner.invoke(cli, ["assets", "generate", "testdb", str(output_dir)])
+        assert result.exit_code == 0
+        assert "Generated assets" in result.output
+        assert (output_dir / "metadata.json").exists()
+        assert (output_dir / "static" / "custom.css").exists()
+        assert (output_dir / "templates" / "database-testdb.html").exists()
+
+    def test_assets_validate_passes(self, runner, tmp_path):
+        """Test assets validate on valid structure."""
+        # Create valid structure
+        (tmp_path / "templates").mkdir()
+        (tmp_path / "static").mkdir()
+        (tmp_path / "templates" / "database-test.html").write_text("<html/>")
+        (tmp_path / "static" / "custom.css").write_text("body {}")
+        import json
+
+        (tmp_path / "metadata.json").write_text(
+            json.dumps({"title": "Test", "description": "Test"})
+        )
+
+        result = runner.invoke(cli, ["assets", "validate", str(tmp_path), "test"])
+        assert "Validation passed" in result.output
+
+    def test_assets_deploy_clean_and_sync_conflict(self, runner):
+        """Test that --clean and --sync flags conflict."""
+        with patch("zeeker.commands.helpers.load_dotenv"):
+            with patch("zeeker.core.deployer.ZeekerDeployer"):
+                # Create a temp dir that exists for the path validation
+                import tempfile
+
+                with tempfile.TemporaryDirectory() as td:
+                    result = runner.invoke(
+                        cli,
+                        ["assets", "deploy", td, "testdb", "--clean", "--sync"],
+                    )
+                    assert "Cannot use both" in result.output

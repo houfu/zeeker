@@ -45,10 +45,10 @@ class ZeekerDeployer:
 
         self.s3_client = boto3.client("s3", **client_kwargs)
 
-    def upload_database(
-        self, db_path: Path, database_name: str, dry_run: bool = False
+    def _upload_db_to_s3(
+        self, db_path: Path, s3_key: str, action_verb: str, action_past: str, dry_run: bool = False
     ) -> ValidationResult:
-        """Upload database file to S3."""
+        """Upload a database file to S3 at the given key."""
         result = ValidationResult(is_valid=True)
 
         if not db_path.exists():
@@ -56,48 +56,37 @@ class ZeekerDeployer:
             result.errors.append(f"Database file not found: {db_path}")
             return result
 
-        s3_key = f"latest/{database_name}.db"
-
         if dry_run:
-            result.info.append(f"Would upload: {db_path} -> s3://{self.bucket_name}/{s3_key}")
+            result.info.append(
+                f"Would {action_verb}: {db_path} -> s3://{self.bucket_name}/{s3_key}"
+            )
         else:
             try:
                 self.s3_client.upload_file(str(db_path), self.bucket_name, s3_key)
                 result.info.append(
-                    f"Uploaded database: {db_path} -> s3://{self.bucket_name}/{s3_key}"
+                    f"{action_past} database: {db_path} -> s3://{self.bucket_name}/{s3_key}"
                 )
             except Exception as e:
                 result.is_valid = False
-                result.errors.append(f"Failed to upload database: {e}")
+                result.errors.append(f"Failed to {action_verb} database: {e}")
 
         return result
+
+    def upload_database(
+        self, db_path: Path, database_name: str, dry_run: bool = False
+    ) -> ValidationResult:
+        """Upload database file to S3."""
+        return self._upload_db_to_s3(
+            db_path, f"latest/{database_name}.db", "upload", "Uploaded", dry_run
+        )
 
     def backup_database(
         self, db_path: Path, database_name: str, backup_date: str, dry_run: bool = False
     ) -> ValidationResult:
         """Backup database file to S3 archives with date-based organization."""
-        result = ValidationResult(is_valid=True)
-
-        if not db_path.exists():
-            result.is_valid = False
-            result.errors.append(f"Database file not found: {db_path}")
-            return result
-
-        s3_key = f"archives/{backup_date}/{database_name}.db"
-
-        if dry_run:
-            result.info.append(f"Would backup: {db_path} -> s3://{self.bucket_name}/{s3_key}")
-        else:
-            try:
-                self.s3_client.upload_file(str(db_path), self.bucket_name, s3_key)
-                result.info.append(
-                    f"Backed up database: {db_path} -> s3://{self.bucket_name}/{s3_key}"
-                )
-            except Exception as e:
-                result.is_valid = False
-                result.errors.append(f"Failed to backup database: {e}")
-
-        return result
+        return self._upload_db_to_s3(
+            db_path, f"archives/{backup_date}/{database_name}.db", "backup", "Backed up", dry_run
+        )
 
     def get_existing_files(self, database_name: str) -> dict[str, str]:
         """Get existing files on S3 with their ETags for comparison."""

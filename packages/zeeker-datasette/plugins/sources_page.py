@@ -34,16 +34,16 @@ async def sources_page(request, datasette):
                     # Get row count
                     result = await db.execute(f"SELECT COUNT(*) as count FROM [{table_name}]")
                     table_info["count"] = result.rows[0][0]
-                except:
+                except Exception:
                     table_info["count"] = None
                 tables.append(table_info)
-        except:
+        except Exception:
             tables = []
 
         # Get database size (if available)
         try:
             size = db.size
-        except:
+        except Exception:
             size = None
 
         database_info = {

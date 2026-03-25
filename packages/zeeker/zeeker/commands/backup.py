@@ -6,10 +6,9 @@ from datetime import date
 from pathlib import Path
 
 import click
-from dotenv import load_dotenv
 
-from ..core.deployer import ZeekerDeployer
 from ..core.project import ZeekerProjectManager
+from .helpers import create_deployer, echo_errors, require_database, require_project
 
 
 @click.command()
@@ -22,7 +21,7 @@ from ..core.project import ZeekerProjectManager
 def backup(date_str, dry_run):
     """Backup database to S3 archives with date-based organization.
 
-    Creates timestamped backups in S3 following the structure:
+    Creates timestamped backups in S3:
     s3://bucket/archives/YYYY-MM-DD/{database_name}.db
 
     Examples:
@@ -30,25 +29,13 @@ def backup(date_str, dry_run):
         zeeker backup --date 2025-08-15  # Backup with specific date
         zeeker backup --dry-run          # Show what would be backed up
     """
-    # Load .env file if present for S3 credentials
-    load_dotenv(dotenv_path=Path.cwd() / ".env")
-
     manager = ZeekerProjectManager()
-
-    if not manager.is_project_root():
-        click.echo("❌ Not in a Zeeker project directory (no zeeker.toml found)")
+    project = require_project(manager)
+    if not project:
         return
 
-    try:
-        project = manager.load_project()
-        deployer = ZeekerDeployer()
-    except ValueError as e:
-        click.echo(f"❌ Configuration error: {e}")
-        click.echo("Please set the required environment variables:")
-        click.echo("  - S3_BUCKET")
-        click.echo("  - AWS_ACCESS_KEY_ID")
-        click.echo("  - AWS_SECRET_ACCESS_KEY")
-        click.echo("  - S3_ENDPOINT_URL (optional)")
+    deployer = create_deployer()
+    if not deployer:
         return
 
     # Validate and parse date
@@ -64,22 +51,15 @@ def backup(date_str, dry_run):
     else:
         backup_date = date.today()
 
-    # Check if database exists
-    db_path = manager.project_path / project.database
-    if not db_path.exists():
-        click.echo(f"❌ Database not found: {project.database}")
-        click.echo("Run 'zeeker build' first to build the database")
+    db_path = require_database(manager, project)
+    if not db_path:
         return
 
-    # Extract database name without .db extension for S3 path
     database_name = Path(project.database).stem
-
-    # Perform backup
     result = deployer.backup_database(db_path, database_name, backup_date.isoformat(), dry_run)
 
     if result.errors:
-        for error in result.errors:
-            click.echo(f"❌ {error}")
+        echo_errors(result)
         return
 
     for info in result.info:

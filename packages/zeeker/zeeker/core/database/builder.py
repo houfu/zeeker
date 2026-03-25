@@ -182,8 +182,8 @@ class DatabaseBuilder:
                     # If we can't get sample data, proceed with build
                     pass
 
-            # Process the resource
-            resource_result = self.processor.process_resource(db, resource_name)
+            # Process the resource (pass pre-loaded module to avoid redundant load)
+            resource_result = self.processor.process_resource(db, resource_name, module)
             if not resource_result.is_valid:
                 result.errors.extend(resource_result.errors)
                 result.is_valid = False

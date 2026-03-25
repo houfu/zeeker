@@ -1,5 +1,7 @@
 """Tests for hashing utilities."""
 
+import hashlib
+
 import pytest
 from zeeker_common.hashing import get_hash_id
 
@@ -32,19 +34,25 @@ class TestGetHashId:
         hash2 = get_hash_id(["c", "b", "a"])
         assert hash1 != hash2
 
-    def test_single_element(self):
-        """Test hash generation with single element."""
-        result = get_hash_id(["single"])
+    @pytest.mark.parametrize(
+        "elements",
+        [
+            pytest.param([], id="empty_list"),
+            pytest.param(["single"], id="single_element"),
+            pytest.param(["a b", "c d"], id="whitespace_preserved"),
+        ],
+    )
+    def test_valid_hash_output(self, elements):
+        """Test that various inputs produce valid 32-char hex hashes."""
+        result = get_hash_id(elements)
         assert isinstance(result, str)
         assert len(result) == 32
 
-    def test_empty_list(self):
-        """Test hash generation with empty list."""
-        result = get_hash_id([])
-        assert isinstance(result, str)
-        assert len(result) == 32
-        # Empty string should produce consistent hash
-        assert result == get_hash_id([])
+    def test_whitespace_changes_hash(self):
+        """Test that whitespace in content affects the hash."""
+        hash1 = get_hash_id(["a b", "c d"])
+        hash2 = get_hash_id(["ab", "cd"])
+        assert hash1 != hash2
 
     def test_special_characters(self):
         """Test hash generation with special characters."""
@@ -69,36 +77,24 @@ class TestGetHashId:
 
     def test_mixed_types_converted_to_strings(self):
         """Test that non-string elements are converted to strings."""
-        # The function signature expects list[str], but implementation
-        # uses str() to convert, so this tests that behavior
         result = get_hash_id(["test", "123"])
         assert isinstance(result, str)
         assert len(result) == 32
 
-    def test_whitespace_handling(self):
-        """Test that whitespace is preserved in hashing."""
-        hash1 = get_hash_id(["a b", "c d"])
-        hash2 = get_hash_id(["ab", "cd"])
-        assert hash1 != hash2
+    def test_separator_in_content_no_collision(self):
+        """Test that pipe character in content does NOT cause collision.
 
-    def test_separator_in_content(self):
-        """Test that pipe character in content creates collision.
-
-        Note: This is a known limitation - using pipe in data can cause
-        hash collisions since pipe is used as the separator.
+        Previously using '|' as separator caused collisions when content
+        contained pipes. Now uses null byte separator to prevent this.
         """
-        # Since the implementation uses "|" as separator,
-        # these will actually produce the same hash (collision)
         hash1 = get_hash_id(["a|b", "c"])
         hash2 = get_hash_id(["a", "b|c"])
-        # Both result in "a|b|c" when joined, so they're the same
-        assert hash1 == hash2  # This is a limitation of the implementation
+        assert hash1 != hash2
 
     def test_known_hash_value(self):
         """Test against a known hash value for regression testing."""
-        # This ensures the hash implementation doesn't change unexpectedly
         elements = ["test", "data"]
-        expected_hash = "5dcda16b3a1a182e7d9304b4ce5bc399"
+        expected_hash = hashlib.md5("test\x00data".encode()).hexdigest()
         assert get_hash_id(elements) == expected_hash
 
     def test_large_number_of_elements(self):

@@ -6,7 +6,12 @@ import click
 
 from ..core.metadata import MetadataGenerator
 from ..core.project import ZeekerProjectManager
-from .helpers import show_generated_metadata, show_resource_metadata
+from .helpers import (
+    require_database,
+    require_project,
+    show_generated_metadata,
+    show_resource_metadata,
+)
 
 
 @click.group()
@@ -27,32 +32,19 @@ def metadata():
 def generate(resource_name, all, dry_run, force, project, resource_desc):
     """Generate metadata from database schema and project structure.
 
-    Generates intelligent column descriptions, project metadata, and resource descriptions
-    based on schema analysis and intelligent heuristics. Updates zeeker.toml accordingly.
-
     Examples:
         zeeker metadata generate users                    # Column metadata for users table
         zeeker metadata generate --project               # Project-level metadata only
-        zeeker metadata generate --resource users        # Resource description for users
-        zeeker metadata generate users --project         # Both columns and project metadata
-        zeeker metadata generate --all --project         # Everything including project metadata
+        zeeker metadata generate --all --project         # Everything
         zeeker metadata generate users --dry-run         # Preview without changes
     """
     manager = ZeekerProjectManager()
-
-    if not manager.is_project_root():
-        click.echo("❌ Not in a Zeeker project directory (no zeeker.toml found)")
-        return
-
-    try:
-        project = manager.load_project()
-    except Exception as e:
-        click.echo(f"❌ Error loading project: {e}")
+    project_obj = require_project(manager)
+    if not project_obj:
         return
 
     generator = MetadataGenerator(manager.project_path)
 
-    # Validate arguments
     if resource_desc is not None and not resource_desc.strip():
         click.echo("❌ --resource requires a resource name")
         return
@@ -62,20 +54,19 @@ def generate(resource_name, all, dry_run, force, project, resource_desc):
         return
 
     # Check if database exists for operations that need it
-    db_path = manager.project_path / project.database
     needs_db = resource_name or all or resource_desc
-
-    if needs_db and not db_path.exists():
-        click.echo(f"❌ Database not found: {db_path}")
-        click.echo("   Run 'zeeker build' first to create the database")
-        return
+    db_path = None
+    if needs_db:
+        db_path = require_database(manager, project_obj)
+        if not db_path:
+            return
 
     try:
         project_updated = False
 
         # Handle project-level metadata generation
         if project:
-            missing_project_fields = generator.detect_missing_project_metadata(project)
+            missing_project_fields = generator.detect_missing_project_metadata(project_obj)
             if missing_project_fields:
                 click.echo(
                     f"🔍 Missing project metadata detected: {', '.join(missing_project_fields)}"
@@ -83,13 +74,13 @@ def generate(resource_name, all, dry_run, force, project, resource_desc):
 
                 if dry_run:
                     click.echo("   Would generate:")
-                    temp_project = generator.generate_project_metadata(project)
+                    temp_project = generator.generate_project_metadata(project_obj)
                     for field in missing_project_fields:
                         value = getattr(temp_project, field)
                         if value:
                             click.echo(f"   • {field}: {value}")
                 else:
-                    project = generator.generate_project_metadata(project)
+                    project_obj = generator.generate_project_metadata(project_obj)
                     click.echo("✨ Generated project metadata")
                     project_updated = True
             else:
@@ -98,7 +89,7 @@ def generate(resource_name, all, dry_run, force, project, resource_desc):
         # Handle resource description generation
         if resource_desc:
             missing_resource_descs = generator.detect_missing_resource_descriptions(
-                project, resource_desc
+                project_obj, resource_desc
             )
             if missing_resource_descs:
                 click.echo(f"🔍 Generating description for resource '{resource_desc}'...")
@@ -108,18 +99,16 @@ def generate(resource_name, all, dry_run, force, project, resource_desc):
                 if dry_run:
                     click.echo(f"   Would generate description: {generated_desc}")
                 else:
-                    # Ensure resource exists in project
-                    if resource_desc not in project.resources:
-                        project.resources[resource_desc] = {}
-                    project.resources[resource_desc]["description"] = generated_desc
+                    if resource_desc not in project_obj.resources:
+                        project_obj.resources[resource_desc] = {}
+                    project_obj.resources[resource_desc]["description"] = generated_desc
                     click.echo(f"✨ Generated description for '{resource_desc}': {generated_desc}")
                     project_updated = True
             else:
                 click.echo(f"ℹ️  Resource '{resource_desc}' already has description")
 
-        # Handle column metadata generation (existing functionality)
+        # Handle column metadata generation
         if all:
-            # Generate for all tables
             click.echo("🔍 Analyzing all tables in database...")
             all_metadata = generator.generate_for_all_tables(db_path)
 
@@ -131,15 +120,13 @@ def generate(resource_name, all, dry_run, force, project, resource_desc):
                 show_generated_metadata(table_name, table_metadata, dry_run)
 
                 if not dry_run:
-                    # Update project configuration
-                    project = generator.update_project_metadata(
-                        project, table_name, table_metadata, preserve_existing=not force
+                    project_obj = generator.update_project_metadata(
+                        project_obj, table_name, table_metadata, preserve_existing=not force
                     )
                     project_updated = True
 
         elif resource_name:
-            # Generate for specific resource
-            if resource_name not in project.resources:
+            if resource_name not in project_obj.resources:
                 click.echo(f"❌ Resource '{resource_name}' not found in zeeker.toml")
                 return
 
@@ -149,15 +136,13 @@ def generate(resource_name, all, dry_run, force, project, resource_desc):
             show_generated_metadata(resource_name, table_metadata, dry_run)
 
             if not dry_run:
-                # Update project configuration
-                project = generator.update_project_metadata(
-                    project, resource_name, table_metadata, preserve_existing=not force
+                project_obj = generator.update_project_metadata(
+                    project_obj, resource_name, table_metadata, preserve_existing=not force
                 )
                 project_updated = True
 
-        # Save updated project if changes were made
         if project_updated and not dry_run:
-            project.save_toml(manager.toml_path)
+            project_obj.save_toml(manager.toml_path)
             click.echo("\n✅ Updated zeeker.toml with generated metadata")
 
     except Exception as e:
@@ -175,26 +160,16 @@ def show(resource_name):
         zeeker metadata show
     """
     manager = ZeekerProjectManager()
-
-    if not manager.is_project_root():
-        click.echo("❌ Not in a Zeeker project directory (no zeeker.toml found)")
-        return
-
-    try:
-        project = manager.load_project()
-    except Exception as e:
-        click.echo(f"❌ Error loading project: {e}")
+    project = require_project(manager)
+    if not project:
         return
 
     if resource_name:
-        # Show specific resource
         if resource_name not in project.resources:
             click.echo(f"❌ Resource '{resource_name}' not found")
             return
-
         show_resource_metadata(resource_name, project.resources[resource_name])
     else:
-        # Show all resources
         if not project.resources:
             click.echo("No resources found in project")
             return

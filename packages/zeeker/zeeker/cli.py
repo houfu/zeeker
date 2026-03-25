@@ -8,12 +8,18 @@ import subprocess
 from pathlib import Path
 
 import click
-from dotenv import load_dotenv
 
 from .commands.assets import assets
 from .commands.backup import backup
+from .commands.helpers import (
+    create_deployer,
+    echo_errors,
+    echo_warnings,
+    load_env,
+    require_database,
+    require_project,
+)
 from .commands.metadata import metadata
-from .core.deployer import ZeekerDeployer
 from .core.project import ZeekerProjectManager
 from .core.types import ZeekerSchemaConflictError
 
@@ -45,8 +51,7 @@ def init(project_name, path):
     result = manager.init_project(project_name)
 
     if result.errors:
-        for error in result.errors:
-            click.echo(f"❌ {error}")
+        echo_errors(result)
         return
 
     for info in result.info:
@@ -121,24 +126,13 @@ def add(
 
     Creates a Python file in resources/ with a template for data fetching.
 
-    Use --fragments to create a complementary table for storing document fragments,
-    perfect for handling large legal documents that need to be split into searchable chunks.
-    Fragments tables are automatically FTS-enabled on text content fields.
-
-    Use --async to generate async/await templates for concurrent data fetching from APIs,
-    databases, or other async sources for better performance.
-
     Examples:
-        zeeker add users --description "User account data" --facets role --facets department --size 50
-        zeeker add legal_docs --fragments --description "Legal documents with auto-searchable fragments"
-        zeeker add api_data --async --description "Data from external APIs with concurrent fetching"
-        zeeker add large_docs --fragments --async --description "Async document processing with fragments"
-        zeeker add documents --fts-fields title --fts-fields content --description "Searchable documents"
-        zeeker add posts --fragments --fts-fields title --description "Blog posts with searchable fragments"
+        zeeker add users --description "User account data" --facets role --size 50
+        zeeker add legal_docs --fragments --description "Legal documents"
+        zeeker add api_data --async --description "Data from external APIs"
     """
     manager = ZeekerProjectManager()
 
-    # Build kwargs for Datasette metadata
     kwargs = {}
     if facets:
         kwargs["facets"] = list(facets)
@@ -158,8 +152,7 @@ def add(
     result = manager.add_resource(resource_name, description, **kwargs)
 
     if result.errors:
-        for error in result.errors:
-            click.echo(f"❌ {error}")
+        echo_errors(result)
         return
 
     for info in result.info:
@@ -189,34 +182,12 @@ def build(resources, force_schema_reset, sync_from_s3, setup_fts):
     If no resources are specified, builds all resources in the project.
 
     Examples:
-        zeeker build                    # Build all resources (no FTS setup)
+        zeeker build                    # Build all resources
         zeeker build --setup-fts        # Build all resources and set up FTS indexes
-        zeeker build users              # Build only 'users' resource
-        zeeker build users posts        # Build 'users' and 'posts' resources
-
-    FTS (Full-Text Search) Setup:
-    • Use --setup-fts flag on first build to create FTS indexes
-    • Omit --setup-fts on subsequent builds to avoid FTS conflicts
-    • Perfect for CI/CD environments where you want reliable, repeatable builds
-
-    Uses Simon Willison's sqlite-utils for robust database operations:
-
-    • Automatic table creation with proper schema detection
-    • Type inference from data (INTEGER, TEXT, REAL, JSON)
-    • Safe data insertion without SQL injection risks
-    • JSON support for complex data structures
-    • Better error handling than raw SQL
-    • Automatic schema conflict detection with migration support
-
-    Generates complete Datasette metadata.json following customization guide format.
-    Creates meta tables for schema versioning and update tracking.
-
-    Must be run from a Zeeker project directory (contains zeeker.toml).
+        zeeker build users posts        # Build specific resources
     """
-    # Load .env file if present for resource environment variables
-    load_dotenv(dotenv_path=Path.cwd() / ".env")
+    load_env()
 
-    # Convert tuple of resources to list, or None if empty
     resource_list = list(resources) if resources else None
     if resource_list:
         click.echo(f"Building specific resources: {', '.join(resource_list)}")
@@ -241,19 +212,16 @@ def build(resources, force_schema_reset, sync_from_s3, setup_fts):
 
     if result.errors:
         click.echo("❌ Database build failed:")
-        for error in result.errors:
-            click.echo(f"   {error}")
+        echo_errors(result)
         raise click.ClickException("Build failed")
 
     if result.warnings:
-        for warning in result.warnings:
-            click.echo(f"⚠️ {warning}")
+        echo_warnings(result)
 
     for info in result.info:
         click.echo(f"✅ {info}")
 
     click.echo("\n🔧 Built with sqlite-utils for robust schema detection")
-    click.echo("📖 Generated metadata follows customization guide format")
     click.echo("🚀 Ready for deployment with 'zeeker deploy'")
 
 
@@ -262,48 +230,27 @@ def build(resources, force_schema_reset, sync_from_s3, setup_fts):
 def deploy_database(dry_run):
     """Deploy the project database to S3.
 
-    Uploads the generated .db file to S3 following customization guide structure:
-    - Database: s3://bucket/latest/{database_name}.db
-    - Assets: s3://bucket/assets/databases/{database_name}/
-
-    Must be run from a Zeeker project directory (contains zeeker.toml).
-    Use 'zeeker assets deploy' for UI customizations.
+    Uploads the generated .db file to S3:
+    s3://bucket/latest/{database_name}.db
     """
-    # Load .env file if present for S3 credentials
-    load_dotenv(dotenv_path=Path.cwd() / ".env")
-
     manager = ZeekerProjectManager()
-
-    if not manager.is_project_root():
-        click.echo("❌ Not in a Zeeker project directory (no zeeker.toml found)")
+    project = require_project(manager)
+    if not project:
         return
 
-    try:
-        project = manager.load_project()
-        deployer = ZeekerDeployer()
-    except ValueError as e:
-        click.echo(f"❌ Configuration error: {e}")
-        click.echo("Please set the required environment variables:")
-        click.echo("  - S3_BUCKET")
-        click.echo("  - AWS_ACCESS_KEY_ID")
-        click.echo("  - AWS_SECRET_ACCESS_KEY")
-        click.echo("  - S3_ENDPOINT_URL (optional)")
+    deployer = create_deployer()
+    if not deployer:
         return
 
-    db_path = manager.project_path / project.database
-    if not db_path.exists():
-        click.echo(f"❌ Database not found: {project.database}")
-        click.echo("Run 'zeeker build' first to build the database")
+    db_path = require_database(manager, project)
+    if not db_path:
         return
 
-    # Extract database name without .db extension for S3 path (per guide)
     database_name = Path(project.database).stem
-
     result = deployer.upload_database(db_path, database_name, dry_run)
 
     if result.errors:
-        for error in result.errors:
-            click.echo(f"❌ {error}")
+        echo_errors(result)
         return
 
     for info in result.info:
@@ -313,30 +260,6 @@ def deploy_database(dry_run):
         click.echo("\n🚀 Database deployed successfully!")
         click.echo(f"📍 Location: s3://{deployer.bucket_name}/latest/{database_name}.db")
         click.echo("💡 For UI customizations, use: zeeker assets deploy")
-
-
-# Legacy commands for backward compatibility (with deprecation warnings)
-@cli.command("generate", hidden=True)
-@click.argument("database_name")
-@click.argument("output_path", type=click.Path())
-@click.option("--title", help="Database title")
-@click.option("--description", help="Database description")
-@click.option("--primary-color", default="#3498db", help="Primary color")
-@click.option("--accent-color", default="#e74c3c", help="Accent color")
-def generate_legacy(database_name, output_path, title, description, primary_color, accent_color):
-    """[DEPRECATED] Use 'zeeker assets generate' instead."""
-    click.echo("⚠️  DEPRECATED: Use 'zeeker assets generate' instead")
-
-    ctx = click.get_current_context()
-    ctx.invoke(
-        assets.commands["generate"],
-        database_name=database_name,
-        output_path=output_path,
-        title=title,
-        description=description,
-        primary_color=primary_color,
-        accent_color=accent_color,
-    )
 
 
 # Register command groups

@@ -32,31 +32,27 @@ class ResourceProcessor:
         self.schema_manager = schema_manager
         self.async_executor = AsyncExecutor()
 
-    def process_resource(self, db: sqlite_utils.Database, resource_name: str) -> ValidationResult:
+    def process_resource(
+        self, db: sqlite_utils.Database, resource_name: str, module: Any = None
+    ) -> ValidationResult:
         """Process a single resource using sqlite-utils for robust data insertion.
-
-        Benefits of sqlite-utils over raw SQL:
-        - Automatic table creation with correct schema
-        - Type inference from data (no manual column type guessing)
-        - JSON support for complex data structures
-        - Proper error handling and validation
-        - No SQL injection risks
 
         Args:
             db: sqlite-utils Database instance
             resource_name: Name of the resource to process
+            module: Pre-loaded resource module (optional, loaded if not provided)
 
         Returns:
             ValidationResult with processing results
         """
         result = ValidationResult(is_valid=True)
 
-        # Load and validate resource module
-        module_result = self._load_resource_module(resource_name)
-        if not module_result.is_valid:
-            return module_result
-
-        module = module_result.data
+        # Load module if not provided
+        if module is None:
+            module_result = self._load_resource_module(resource_name)
+            if not module_result.is_valid:
+                return module_result
+            module = module_result.data
 
         try:
             # Get the fetch_data function
