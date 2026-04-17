@@ -455,6 +455,58 @@ class TestCLIBuild:
         assert payload["status"] == "success"
         assert payload["resources"][0]["name"] == "users"
 
+    def test_build_parallel_flag_forwarded(self, runner, mock_manager):
+        """--parallel N reaches the manager as max_parallel."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(total_duration_s=0.1)
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "--parallel", "4"])
+        assert result.exit_code == 0
+        self._assert_build_kwargs(mock_manager, max_parallel=4)
+
+    def test_build_post_hook_success_exits_zero(self, runner, mock_manager, tmp_path):
+        """--post-hook runs after a successful build; zero exit keeps code 0."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=1)],
+            total_duration_s=0.1,
+        )
+        mock_manager.build_database.return_value = mock_result
+        mock_project = MagicMock()
+        mock_project.database = "my.db"
+        mock_manager.load_project.return_value = mock_project
+        mock_manager.project_path = tmp_path
+
+        result = runner.invoke(cli, ["build", "--post-hook", "exit 0"])
+        assert result.exit_code == 0
+
+    def test_build_post_hook_nonzero_exits_one(self, runner, mock_manager, tmp_path):
+        """--post-hook non-zero exit propagates to exit code 1."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=1)],
+            total_duration_s=0.1,
+        )
+        mock_manager.build_database.return_value = mock_result
+        mock_project = MagicMock()
+        mock_project.database = "my.db"
+        mock_manager.load_project.return_value = mock_project
+        mock_manager.project_path = tmp_path
+
+        result = runner.invoke(cli, ["build", "--post-hook", "exit 5"])
+        assert result.exit_code == 1
+
+    def test_build_force_sync_flag_forwarded(self, runner, mock_manager):
+        """--force-sync reaches the manager."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(total_duration_s=0.0)
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "--sync-from-s3", "--force-sync"])
+        assert result.exit_code == 0
+        self._assert_build_kwargs(mock_manager, force_sync=True, sync_from_s3=True)
+
 
 class TestCLIDeploy:
     """Test 'zeeker deploy' command."""

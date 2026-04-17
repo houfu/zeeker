@@ -82,12 +82,14 @@ class ResourceProcessor:
                 return result
 
             # Apply transformation if available
-            transformed_data = self._apply_transformation(
+            transformed_data, transform_tb = self._apply_transformation(
                 module, raw_data, resource_name, "transform_data"
             )
             if transformed_data is None:
                 result.is_valid = False
                 result.errors.append(f"Data transformation failed for '{resource_name}'")
+                if transform_tb:
+                    result.tracebacks.append(transform_tb)
                 return result
 
             # Validate transformed data structure
@@ -174,12 +176,14 @@ class ResourceProcessor:
                 return result
 
             # Apply transformation if available
-            transformed_fragments = self._apply_transformation(
+            transformed_fragments, transform_tb = self._apply_transformation(
                 module, raw_fragments, resource_name, "transform_fragments_data"
             )
             if transformed_fragments is None:
                 result.is_valid = False
                 result.errors.append(f"Fragment transformation failed for '{resource_name}'")
+                if transform_tb:
+                    result.tracebacks.append(transform_tb)
                 return result
 
             # Validate fragments data structure
@@ -276,26 +280,22 @@ class ResourceProcessor:
 
     def _apply_transformation(
         self, module: Any, data: List[Dict[str, Any]], resource_name: str, transform_func_name: str
-    ) -> List[Dict[str, Any]] | None:
+    ) -> tuple[List[Dict[str, Any]] | None, str | None]:
         """Apply transformation function if available.
 
-        Args:
-            module: The resource module
-            data: Data to transform
-            resource_name: Name of resource for error messages
-            transform_func_name: Name of transformation function
-
         Returns:
-            Transformed data or None if transformation failed
+            A tuple ``(transformed_data, traceback_str)``:
+            - ``(data, None)`` on success (or when no transform function exists)
+            - ``(None, traceback_str)`` when the transform raised
         """
         if hasattr(module, transform_func_name):
             try:
                 transform_func = getattr(module, transform_func_name)
-                return transform_func(data)
+                return transform_func(data), None
             except Exception:
-                return None
+                return None, traceback.format_exc()
         else:
-            return data
+            return data, None
 
     def _validate_data_structure(
         self, data: List[Dict[str, Any]], context: str

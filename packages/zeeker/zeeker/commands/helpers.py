@@ -248,6 +248,7 @@ def _build_report_payload(report: BuildReport) -> dict:
         "resources": [asdict(r) for r in report.resources],
         "fts_error": report.fts_error,
         "fatal_error": report.fatal_error,
+        "post_hook": asdict(report.post_hook) if report.post_hook is not None else None,
     }
     for item in payload["resources"]:
         if item.get("traceback"):
@@ -326,6 +327,24 @@ def _emit_rich(report: BuildReport, *, verbose: bool, console: Console) -> None:
     if report.fts_error:
         console.print(f"[red]FTS setup failed:[/red] {report.fts_error}")
 
+    if report.post_hook is not None:
+        hook = report.post_hook
+        colour = "green" if hook.exit_code == 0 else "red"
+        console.print(
+            f"[bold]post-hook:[/bold] [dim]{hook.command}[/dim] "
+            f"→ [{colour}]exit {hook.exit_code}[/{colour}]"
+        )
+        if verbose and hook.exit_code != 0:
+            body = ""
+            if hook.stdout:
+                body += f"[bold]stdout[/bold]\n{hook.stdout}"
+            if hook.stderr:
+                if body:
+                    body += "\n"
+                body += f"[bold]stderr[/bold]\n{hook.stderr}"
+            if body:
+                console.print(Panel(body, title="[red]post-hook output[/red]", border_style="red"))
+
     if verbose:
         for r in report.failed:
             if r.traceback:
@@ -357,6 +376,19 @@ def _emit_plain(report: BuildReport, *, verbose: bool, console: Console) -> None
 
     if report.fts_error:
         console.print(f"FTS_ERROR: {report.fts_error}", markup=False, highlight=False)
+
+    if report.post_hook is not None:
+        hook = report.post_hook
+        console.print(
+            f"POST_HOOK: {hook.command} exit={hook.exit_code}",
+            markup=False,
+            highlight=False,
+        )
+        if verbose and hook.exit_code != 0:
+            if hook.stdout:
+                console.print(f"POST_HOOK_STDOUT:\n{hook.stdout}", markup=False, highlight=False)
+            if hook.stderr:
+                console.print(f"POST_HOOK_STDERR:\n{hook.stderr}", markup=False, highlight=False)
 
     if verbose:
         for r in report.failed:

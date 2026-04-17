@@ -78,6 +78,11 @@ class BuildReport:
     total_duration_s: float = 0.0
     fts_error: str | None = None
     fatal_error: str | None = None
+    # Set to a PostHookResult dataclass when --post-hook ran. Annotated as
+    # ``object`` to avoid a circular import between this module and
+    # commands/post_hook.py; dataclasses.asdict() still recurses correctly
+    # when the value is itself a dataclass instance.
+    post_hook: object | None = None
 
     @property
     def failed(self) -> list[ResourceOutcome]:

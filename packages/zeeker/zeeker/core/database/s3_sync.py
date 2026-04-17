@@ -2,7 +2,10 @@
 S3 synchronization for Zeeker databases.
 
 This module handles downloading existing databases from S3 before building
-to enable multi-machine workflows and incremental updates.
+to enable multi-machine workflows and incremental updates. It refuses to
+overwrite an existing local DB by default (the user must opt in with
+``force=True``) because any local patches/fixes would otherwise be silently
+discarded.
 """
 
 from pathlib import Path
@@ -13,21 +16,64 @@ from ..types import ValidationResult
 class S3Synchronizer:
     """Handles S3 database synchronization operations."""
 
-    def sync_from_s3(self, database_name: str, local_db_path: Path) -> ValidationResult:
+    def check_local_divergence(self, local_db_path) -> ValidationResult:
+        """Return ``is_valid=False`` when a local DB already exists.
+
+        Deliberately conservative: we don't try to auto-detect whether the
+        local file is "safe to overwrite" (every build writes to meta tables
+        anyway, so a byte-level hash comparison is unreliable). Instead we
+        treat any existing local DB as potentially containing work the user
+        doesn't want to lose and require an explicit ``--force-sync``.
+        """
+        result = ValidationResult(is_valid=True)
+        path = Path(local_db_path)
+        if not path.exists():
+            return result
+
+        result.is_valid = False
+        result.errors.append(
+            f"Local database already exists at {path}. Syncing from "
+            "S3 would overwrite any local changes."
+        )
+        result.errors.append(
+            "Use --force-sync to overwrite, or deploy first to push your " "local changes to S3."
+        )
+        return result
+
+    def sync_from_s3(
+        self,
+        database_name: str,
+        local_db_path: Path,
+        *,
+        force: bool = False,
+    ) -> ValidationResult:
         """Download existing database from S3 if available.
 
         Args:
             database_name: Name of the database file
             local_db_path: Local path where database should be saved
+            force: If True, overwrite an existing local DB without complaint.
 
         Returns:
             ValidationResult with sync results
         """
         result = ValidationResult(is_valid=True)
 
+        path = Path(local_db_path)
         try:
             # Import here to avoid making boto3 a hard dependency
             from ..deployer import ZeekerDeployer
+
+            # Guard against wiping out local changes unless explicitly opted in.
+            if not force:
+                divergence = self.check_local_divergence(path)
+                if not divergence.is_valid:
+                    return divergence
+            elif path.exists():
+                result.warnings.append(
+                    "--force-sync: overwriting local database (any unsynced "
+                    "changes will be lost)."
+                )
 
             deployer = ZeekerDeployer()
             s3_key = f"latest/{database_name}"

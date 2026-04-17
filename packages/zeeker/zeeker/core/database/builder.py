@@ -5,6 +5,7 @@ This module orchestrates the database building process, coordinating
 resource processing, schema management, and S3 synchronization.
 """
 
+import asyncio
 import time
 import traceback
 from pathlib import Path
@@ -20,6 +21,7 @@ from ..types import (
     ZeekerProject,
     ZeekerSchemaConflictError,
 )
+from .async_executor import AsyncExecutor
 from .fts_processor import FTSProcessor
 from .processor import ResourceProcessor
 from .s3_sync import S3Synchronizer
@@ -50,6 +52,8 @@ class DatabaseBuilder:
         resources: list[str] = None,
         setup_fts: bool = False,
         progress_callback: Callable[[str, ResourceOutcome | None], None] | None = None,
+        max_parallel: int = 1,
+        force_sync: bool = False,
     ) -> ValidationResult:
         """Build the SQLite database from resources using sqlite-utils.
 
@@ -81,13 +85,17 @@ class DatabaseBuilder:
 
         # S3 Database Synchronization - Download existing DB if requested
         if sync_from_s3:
-            sync_result = self.s3_sync.sync_from_s3(self.project.database, db_path)
+            sync_result = self.s3_sync.sync_from_s3(
+                self.project.database, db_path, force=force_sync
+            )
             if not sync_result.is_valid:
                 result.errors.extend(sync_result.errors)
                 # Don't fail build if S3 sync fails - just warn
                 result.warnings.append("S3 sync failed but continuing with local build")
             else:
                 result.info.extend(sync_result.info)
+            if sync_result.warnings:
+                result.warnings.extend(sync_result.warnings)
 
         # Open existing database or create new one using sqlite-utils
         # Don't delete existing database - let resources check existing data for duplicates
@@ -100,6 +108,13 @@ class DatabaseBuilder:
 
             # Determine which resources to process
             resources_to_build = resources if resources else list(self.project.resources.keys())
+
+            # Pre-warm fetches concurrently when requested. The per-resource
+            # sequential loop below will then hit pre-warmed data instead of
+            # re-running each fetch_data() serially.
+            if max_parallel > 1 and len(resources_to_build) > 1:
+                prewarm_warnings = self._prewarm_fetches(db, resources_to_build, max_parallel)
+                result.warnings.extend(prewarm_warnings)
 
             # Process each specified resource
             for resource_name in resources_to_build:
@@ -170,6 +185,10 @@ class DatabaseBuilder:
             result.errors.append(msg)
             result.tracebacks.append(traceback.format_exc())
             report.fatal_error = msg
+
+        finally:
+            # Prevent stale pre-warmed data from leaking into a reused builder.
+            self.processor.async_executor.clear_prewarmed()
 
         report.total_duration_s = time.perf_counter() - build_started
         return result
@@ -250,8 +269,13 @@ class DatabaseBuilder:
                 except Exception as e:
                     if isinstance(e, ZeekerSchemaConflictError):
                         raise
-                    # If we can't get sample data, proceed with build
-                    pass
+                    # Couldn't fetch a sample — surface this as a warning so
+                    # the user knows the schema-conflict check ran blind,
+                    # instead of a completely silent pass.
+                    result.warnings.append(
+                        f"Schema sample fetch failed for '{resource_name}' "
+                        f"(continuing with build): {e}"
+                    )
 
             # Process the resource (pass pre-loaded module to avoid redundant load)
             resource_result = self.processor.process_resource(db, resource_name, module)
@@ -318,8 +342,13 @@ class DatabaseBuilder:
             main_data_context = self.processor.async_executor.call_fetch_data(
                 fetch_data, existing_table, resource_name=resource_name
             )
-        except Exception:
-            # If we can't get context, fragments will work without it
+        except Exception as e:
+            # If we can't get context, fragments will work without it — but
+            # surface the reason rather than swallowing the exception silently.
+            result.warnings.append(
+                f"Fragments context fetch failed for '{resource_name}' "
+                f"(fragments will run without main-data context): {e}"
+            )
             main_data_context = None
 
         # Process fragments
@@ -335,3 +364,63 @@ class DatabaseBuilder:
             result.records = fragments_result.records
 
         return result
+
+    def _prewarm_fetches(
+        self,
+        db: sqlite_utils.Database,
+        resources_to_build: list[str],
+        max_parallel: int,
+    ) -> list[str]:
+        """Run ``fetch_data()`` for all resources concurrently and populate
+        the processor's executor with pre-warmed results.
+
+        Returns a list of warning strings (one per resource whose pre-fetch
+        failed; the sequential loop will re-attempt those and record the
+        definitive error).
+        """
+        # Synchronous prep: module loading and existing-table lookup.
+        # Doing this here (not inside the coroutines) avoids racy imports
+        # and lets us skip resources that can't even be loaded.
+        specs: list[tuple[str, object, object]] = []
+        warnings: list[str] = []
+        for name in resources_to_build:
+            mod_result = self.processor._load_resource_module(name)
+            if not mod_result.is_valid:
+                # Let the sequential loop produce the canonical error.
+                continue
+            module = mod_result.data
+            if not hasattr(module, "fetch_data"):
+                continue
+            fetch_data = getattr(module, "fetch_data")
+            existing = db[name] if db[name].exists() else None
+            specs.append((name, fetch_data, existing))
+
+        if not specs:
+            return warnings
+
+        fresh = AsyncExecutor(cache_enabled=False)
+        sem = asyncio.Semaphore(max_parallel)
+
+        async def run_one(name: str, fetch_data, existing):
+            async with sem:
+                try:
+                    data = await fresh.acall_fetch_data(fetch_data, existing, name)
+                    return name, data, None
+                except Exception as e:
+                    return name, None, e
+
+        async def run_all():
+            return await asyncio.gather(*(run_one(*s) for s in specs))
+
+        results = asyncio.run(run_all())
+        for name, data, err in results:
+            if err is not None:
+                warnings.append(
+                    f"Parallel pre-fetch failed for '{name}' "
+                    f"(sequential loop will retry): {err}"
+                )
+                continue
+            if data is not None:
+                self.processor.async_executor.set_prewarmed(name, data)
+
+        return warnings

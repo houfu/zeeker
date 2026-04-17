@@ -77,6 +77,8 @@ class ZeekerProjectManager:
         setup_fts: bool = False,
         *,
         progress_callback: Callable[[str, ResourceOutcome | None], None] | None = None,
+        max_parallel: int = 1,
+        force_sync: bool = False,
     ) -> ValidationResult:
         """Build the SQLite database from resources with optional S3 sync.
 
@@ -87,6 +89,9 @@ class ZeekerProjectManager:
             setup_fts: If True, set up full-text search indexes on configured fields
             progress_callback: Optional callable (resource_name, outcome|None) used by the
                 CLI layer to render progress. See DatabaseBuilder.build_database.
+            max_parallel: Max concurrent fetch_data() calls (default 1 = sequential).
+            force_sync: With sync_from_s3, overwrite an existing local DB instead of
+                refusing.
 
         Returns:
             ValidationResult with build results; the BuildReport is attached as
@@ -116,4 +121,6 @@ class ZeekerProjectManager:
             resources,
             setup_fts,
             progress_callback=progress_callback,
+            max_parallel=max_parallel,
+            force_sync=force_sync,
         )

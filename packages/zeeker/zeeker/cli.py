@@ -197,6 +197,27 @@ def add(
     help="Write a JSON BuildReport snapshot to this path after each resource (atomic overwrite). "
     "Useful for trigger-and-wait callers that poll externally.",
 )
+@click.option(
+    "--parallel",
+    type=int,
+    default=1,
+    show_default=True,
+    metavar="N",
+    help="Run up to N resource fetches concurrently (I/O only; DB writes stay sequential).",
+)
+@click.option(
+    "--post-hook",
+    "post_hook",
+    type=str,
+    default=None,
+    metavar="CMD",
+    help="Shell command to run after a successful build. See `zeeker build --help` for env vars.",
+)
+@click.option(
+    "--force-sync",
+    is_flag=True,
+    help="With --sync-from-s3, overwrite an existing local DB instead of refusing.",
+)
 def build(
     resources,
     force_schema_reset,
@@ -206,6 +227,9 @@ def build(
     as_json,
     fail_on_empty,
     progress_file,
+    parallel,
+    post_hook,
+    force_sync,
 ):
     """Build database from resources using sqlite-utils.
 
@@ -214,18 +238,24 @@ def build(
 
     Exit codes:
         0  all resources succeeded
-        1  one or more resources failed, or FTS setup failed
-        2  fatal error (schema conflict, DB open failure, config error)
+        1  one or more resources failed, FTS setup failed, or post-hook exited non-zero
+        2  fatal error (schema conflict, DB open failure, config error, local-diverged sync)
+
+    The --post-hook command receives these env vars:
+        ZEEKER_DB_PATH, ZEEKER_DB_NAME, ZEEKER_PROJECT_PATH,
+        ZEEKER_BUILD_STATUS (success|partial_failure), ZEEKER_BUILD_REPORT (JSON tempfile)
 
     Examples:
         zeeker build                                  # Build all resources
-        zeeker build --setup-fts                      # Build + FTS indexes
+        zeeker build --parallel 4                     # Fetch 4 resources concurrently
         zeeker build users posts                      # Build specific resources
         zeeker build --json | jq                      # Machine-readable output
         zeeker build --fail-on-empty                  # Empty fetch_data() -> exit 1
         zeeker build --progress-file build.json       # Watchable progress from outside
+        zeeker build --post-hook 'sqlite3 mydb.db < patch.sql'
     """
     from .commands.helpers import write_progress_file
+    from .commands.post_hook import run_post_hook
 
     load_env()
 
@@ -264,6 +294,8 @@ def build(
             resources=resource_list,
             setup_fts=setup_fts,
             progress_callback=progress_callback,
+            max_parallel=parallel,
+            force_sync=force_sync,
         )
     except ZeekerSchemaConflictError as e:
         result = ValidationResult(is_valid=False)
@@ -293,16 +325,36 @@ def build(
     if result.warnings and not as_json:
         echo_warnings(result)
 
-    # Final progress-file snapshot reflects the completed state.
+    report = result.report
+
+    # Run the post-hook after the build settles but before the final render,
+    # so its outcome is part of the reported payload. Skip on fatal state —
+    # there's no coherent DB to patch.
+    if post_hook and not report.fatal_error:
+        project = manager.load_project()
+        db_path = manager.project_path / project.database
+        db_name = Path(project.database).stem
+        hook_outcome = run_post_hook(
+            post_hook,
+            project_path=manager.project_path,
+            db_path=db_path,
+            db_name=db_name,
+            report=report,
+        )
+        report.post_hook = hook_outcome
+
+    # Final progress-file snapshot reflects the completed state (including
+    # any post-hook outcome).
     if progress_file:
-        write_progress_file(progress_file, result.report)
+        write_progress_file(progress_file, report)
 
     render_build_report(result, verbose=verbose, as_json=as_json, console=console)
 
-    report = result.report
     if report.fatal_error:
         raise click.exceptions.Exit(2)
     if report.failed or report.fts_error:
+        raise click.exceptions.Exit(1)
+    if report.post_hook is not None and report.post_hook.exit_code != 0:
         raise click.exceptions.Exit(1)
     if fail_on_empty and report.skipped:
         if not as_json:
