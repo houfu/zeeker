@@ -7,7 +7,12 @@ import pytest
 from click.testing import CliRunner
 
 from zeeker.cli import cli
-from zeeker.core.types import ValidationResult, ZeekerSchemaConflictError
+from zeeker.core.types import (
+    BuildReport,
+    ResourceOutcome,
+    ValidationResult,
+    ZeekerSchemaConflictError,
+)
 
 
 class TestCLIInit:
@@ -181,77 +186,107 @@ class TestCLIBuild:
             mock_class.return_value = mock_instance
             yield mock_instance
 
+    @staticmethod
+    def _assert_build_kwargs(mock_manager, **expected):
+        """Assert build_database was called with the expected kwargs (ignoring the
+        progress_callback, which is a closure the CLI constructs internally)."""
+        assert mock_manager.build_database.call_count == 1
+        kwargs = mock_manager.build_database.call_args.kwargs
+        for key, value in expected.items():
+            assert kwargs[key] == value, f"{key}: expected {value!r}, got {kwargs[key]!r}"
+
     def test_build_successful(self, runner, mock_manager):
         """Test successful database build."""
         mock_result = ValidationResult(is_valid=True)
-        mock_result.info.extend(
-            [
-                "Built table: users (150 records)",
-                "Built table: posts (200 records)",
-                "Generated metadata.json",
-            ]
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=150)],
+            total_duration_s=0.1,
         )
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build"])
 
         assert result.exit_code == 0
-        for info in mock_result.info:
-            assert f"✅ {info}" in result.output
-        mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=False, resources=None, setup_fts=False
+        # Plain-mode renderer emits a SUMMARY line
+        assert "SUMMARY: 1 succeeded" in result.output
+        self._assert_build_kwargs(
+            mock_manager,
+            force_schema_reset=False,
+            sync_from_s3=False,
+            resources=None,
+            setup_fts=False,
         )
 
     def test_build_with_force_schema_reset(self, runner, mock_manager):
         """Test build with force schema reset flag."""
         mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport()
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build", "--force-schema-reset"])
 
         assert result.exit_code == 0
-        mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=True, sync_from_s3=False, resources=None, setup_fts=False
+        self._assert_build_kwargs(
+            mock_manager,
+            force_schema_reset=True,
+            sync_from_s3=False,
+            resources=None,
+            setup_fts=False,
         )
 
     def test_build_with_s3_sync(self, runner, mock_manager):
         """Test build with S3 sync flag."""
         mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport()
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build", "--sync-from-s3"])
 
         assert result.exit_code == 0
-        mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=True, resources=None, setup_fts=False
+        self._assert_build_kwargs(
+            mock_manager,
+            force_schema_reset=False,
+            sync_from_s3=True,
+            resources=None,
+            setup_fts=False,
         )
 
     def test_build_with_both_flags(self, runner, mock_manager):
         """Test build with both flags."""
         mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport()
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build", "--force-schema-reset", "--sync-from-s3"])
 
         assert result.exit_code == 0
-        mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=True, sync_from_s3=True, resources=None, setup_fts=False
+        self._assert_build_kwargs(
+            mock_manager,
+            force_schema_reset=True,
+            sync_from_s3=True,
+            resources=None,
+            setup_fts=False,
         )
 
     def test_build_with_setup_fts(self, runner, mock_manager):
         """Test build with setup-fts flag."""
         mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport()
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build", "--setup-fts"])
 
         assert result.exit_code == 0
-        mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=False, resources=None, setup_fts=True
+        self._assert_build_kwargs(
+            mock_manager,
+            force_schema_reset=False,
+            sync_from_s3=False,
+            resources=None,
+            setup_fts=True,
         )
 
     def test_build_schema_conflict_error(self, runner, mock_manager):
-        """Test build with schema conflict error."""
+        """Schema conflict is a fatal error (exit code 2) routed through the renderer."""
         mock_manager.build_database.side_effect = ZeekerSchemaConflictError(
             "users",
             {"id": "INTEGER", "name": "TEXT"},
@@ -260,44 +295,48 @@ class TestCLIBuild:
 
         result = runner.invoke(cli, ["build"])
 
-        assert result.exit_code == 0  # CLI doesn't exit with error code, just returns early
-        assert "❌ Schema conflict detected" in result.output
+        assert result.exit_code == 2
+        # Plain-mode renderer emits FATAL: prefix with the conflict message
+        assert "FATAL:" in result.output
         assert "users" in result.output
 
     def test_build_general_error(self, runner, mock_manager):
-        """Test build with general error."""
+        """A ValidationResult with errors but no report is treated as fatal."""
         mock_result = ValidationResult(is_valid=False)
         mock_result.errors.append("Database file is locked")
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build"])
 
-        assert result.exit_code == 1  # Build errors should exit with code 1
-        assert "❌ Database build failed" in result.output
+        assert result.exit_code == 2
+        assert "FATAL:" in result.output
         assert "Database file is locked" in result.output
 
-    def test_build_displays_completion_info(self, runner, mock_manager):
-        """Test that build completion info is displayed."""
+    def test_build_displays_summary(self, runner, mock_manager):
+        """Build completion shows the structured SUMMARY line."""
         mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(total_duration_s=0.0)
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build"])
 
         assert result.exit_code == 0
-        assert "Built with sqlite-utils" in result.output
-        assert "Ready for deployment with 'zeeker deploy'" in result.output
+        assert "SUMMARY:" in result.output
 
     def test_build_with_specific_resources(self, runner, mock_manager):
         """Test build with specific resources."""
         mock_result = ValidationResult(is_valid=True)
-        mock_result.info.extend(["Built table: users (150 records)"])
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=150)]
+        )
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build", "users", "posts"])
 
         assert result.exit_code == 0
         assert "Building specific resources: users, posts" in result.output
-        mock_manager.build_database.assert_called_once_with(
+        self._assert_build_kwargs(
+            mock_manager,
             force_schema_reset=False,
             sync_from_s3=False,
             resources=["users", "posts"],
@@ -307,19 +346,25 @@ class TestCLIBuild:
     def test_build_with_single_resource(self, runner, mock_manager):
         """Test build with single resource."""
         mock_result = ValidationResult(is_valid=True)
-        mock_result.info.extend(["Built table: users (150 records)"])
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=150)]
+        )
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build", "users"])
 
         assert result.exit_code == 0
         assert "Building specific resources: users" in result.output
-        mock_manager.build_database.assert_called_once_with(
-            force_schema_reset=False, sync_from_s3=False, resources=["users"], setup_fts=False
+        self._assert_build_kwargs(
+            mock_manager,
+            force_schema_reset=False,
+            sync_from_s3=False,
+            resources=["users"],
+            setup_fts=False,
         )
 
     def test_build_with_invalid_resources(self, runner, mock_manager):
-        """Test build with invalid resource names."""
+        """Unknown resources are pre-flight errors and exit as fatal (code 2)."""
         mock_result = ValidationResult(is_valid=False)
         mock_result.errors.extend(
             ["Unknown resources: invalid_resource", "Available resources: users, posts"]
@@ -328,26 +373,139 @@ class TestCLIBuild:
 
         result = runner.invoke(cli, ["build", "users", "invalid_resource"])
 
-        assert result.exit_code == 1
+        assert result.exit_code == 2
         assert "Unknown resources: invalid_resource" in result.output
-        assert "Available resources: users, posts" in result.output
 
     def test_build_resources_with_options(self, runner, mock_manager):
         """Test build with resources and options combined."""
         mock_result = ValidationResult(is_valid=True)
-        mock_result.info.extend(["Built table: users (150 records)"])
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=150)]
+        )
         mock_manager.build_database.return_value = mock_result
 
         result = runner.invoke(cli, ["build", "--force-schema-reset", "users", "posts"])
 
         assert result.exit_code == 0
         assert "Building specific resources: users, posts" in result.output
-        mock_manager.build_database.assert_called_once_with(
+        self._assert_build_kwargs(
+            mock_manager,
             force_schema_reset=True,
             sync_from_s3=False,
             resources=["users", "posts"],
             setup_fts=False,
         )
+
+    def test_build_json_output(self, runner, mock_manager):
+        """--json emits a single structured payload with fixed schema."""
+        import json as _json
+
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=42, duration_s=0.5)],
+            total_duration_s=0.7,
+        )
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "--json"])
+
+        assert result.exit_code == 0
+        payload = _json.loads(result.output)
+        assert payload["status"] == "success"
+        assert payload["resources"][0]["name"] == "users"
+        assert payload["resources"][0]["records"] == 42
+
+    def test_build_fail_on_empty_exits_one(self, runner, mock_manager):
+        """--fail-on-empty turns a skipped-only build into exit 1."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="skipped", records=0)],
+            total_duration_s=0.1,
+        )
+        mock_manager.build_database.return_value = mock_result
+
+        # Without the flag, skipped is OK
+        result = runner.invoke(cli, ["build"])
+        assert result.exit_code == 0
+
+        # With the flag, skipped is a failure
+        mock_manager.build_database.reset_mock()
+        mock_manager.build_database.return_value = mock_result
+        result = runner.invoke(cli, ["build", "--fail-on-empty"])
+        assert result.exit_code == 1
+
+    def test_build_progress_file_written(self, runner, mock_manager, tmp_path):
+        """--progress-file writes a JSON BuildReport snapshot to the given path."""
+        import json as _json
+
+        progress_path = tmp_path / "progress.json"
+
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=5)],
+            total_duration_s=0.1,
+        )
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "--progress-file", str(progress_path)])
+
+        assert result.exit_code == 0
+        assert progress_path.exists()
+        payload = _json.loads(progress_path.read_text())
+        assert payload["status"] == "success"
+        assert payload["resources"][0]["name"] == "users"
+
+    def test_build_parallel_flag_forwarded(self, runner, mock_manager):
+        """--parallel N reaches the manager as max_parallel."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(total_duration_s=0.1)
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "--parallel", "4"])
+        assert result.exit_code == 0
+        self._assert_build_kwargs(mock_manager, max_parallel=4)
+
+    def test_build_post_hook_success_exits_zero(self, runner, mock_manager, tmp_path):
+        """--post-hook runs after a successful build; zero exit keeps code 0."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=1)],
+            total_duration_s=0.1,
+        )
+        mock_manager.build_database.return_value = mock_result
+        mock_project = MagicMock()
+        mock_project.database = "my.db"
+        mock_manager.load_project.return_value = mock_project
+        mock_manager.project_path = tmp_path
+
+        result = runner.invoke(cli, ["build", "--post-hook", "exit 0"])
+        assert result.exit_code == 0
+
+    def test_build_post_hook_nonzero_exits_one(self, runner, mock_manager, tmp_path):
+        """--post-hook non-zero exit propagates to exit code 1."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(
+            resources=[ResourceOutcome(name="users", status="success", records=1)],
+            total_duration_s=0.1,
+        )
+        mock_manager.build_database.return_value = mock_result
+        mock_project = MagicMock()
+        mock_project.database = "my.db"
+        mock_manager.load_project.return_value = mock_project
+        mock_manager.project_path = tmp_path
+
+        result = runner.invoke(cli, ["build", "--post-hook", "exit 5"])
+        assert result.exit_code == 1
+
+    def test_build_force_sync_flag_forwarded(self, runner, mock_manager):
+        """--force-sync reaches the manager."""
+        mock_result = ValidationResult(is_valid=True)
+        mock_result.report = BuildReport(total_duration_s=0.0)
+        mock_manager.build_database.return_value = mock_result
+
+        result = runner.invoke(cli, ["build", "--sync-from-s3", "--force-sync"])
+        assert result.exit_code == 0
+        self._assert_build_kwargs(mock_manager, force_sync=True, sync_from_s3=True)
 
 
 class TestCLIDeploy:
@@ -375,12 +533,12 @@ class TestCLIDeploy:
             yield mock_instance
 
     def test_deploy_not_in_project(self, runner, mock_manager):
-        """Test deploy when not in a project directory."""
+        """Deploy outside a project is a configuration/fatal error (exit 2)."""
         mock_manager.is_project_root.return_value = False
 
         result = runner.invoke(cli, ["deploy"])
 
-        assert result.exit_code == 0
+        assert result.exit_code == 2
         assert "❌ Not in a Zeeker project directory" in result.output
 
     def test_deploy_successful(self, runner, mock_manager, mock_deployer):
@@ -430,7 +588,7 @@ class TestCLIDeploy:
             assert "Would upload" in result.output
 
     def test_deploy_error(self, runner, mock_manager, mock_deployer):
-        """Test deployment error."""
+        """Missing database file is a setup error (exit 2)."""
         mock_manager.is_project_root.return_value = True
 
         # Mock project loading
@@ -443,7 +601,7 @@ class TestCLIDeploy:
         with patch("pathlib.Path.exists", return_value=False):
             result = runner.invoke(cli, ["deploy"])
 
-            assert result.exit_code == 0
+            assert result.exit_code == 2
             assert "❌ Database not found: nonexistent.db" in result.output
             assert "Run 'zeeker build' first" in result.output
 

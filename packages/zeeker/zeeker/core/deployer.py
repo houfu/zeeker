@@ -4,6 +4,7 @@ S3 deployment for Zeeker databases and assets.
 
 import hashlib
 import os
+import traceback
 from pathlib import Path
 
 import boto3
@@ -69,6 +70,7 @@ class ZeekerDeployer:
             except Exception as e:
                 result.is_valid = False
                 result.errors.append(f"Failed to {action_verb} database: {e}")
+                result.tracebacks.append(traceback.format_exc())
 
         return result
 

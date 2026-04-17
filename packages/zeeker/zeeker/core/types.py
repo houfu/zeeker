@@ -7,7 +7,7 @@ import json
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 # Meta table constants
 META_TABLE_SCHEMAS = "_zeeker_schemas"
@@ -58,6 +58,46 @@ class ZeekerSchemaConflictError(Exception):
 
 
 @dataclass
+class ResourceOutcome:
+    """Per-resource outcome from a build, aggregated by DatabaseBuilder."""
+
+    name: str
+    status: Literal["success", "failed", "skipped"]
+    records: int = 0
+    duration_s: float = 0.0
+    error_message: str | None = None
+    traceback: str | None = None
+    fragments_records: int | None = None
+
+
+@dataclass
+class BuildReport:
+    """Structured report of a full database build, one entry per resource."""
+
+    resources: list[ResourceOutcome] = field(default_factory=list)
+    total_duration_s: float = 0.0
+    fts_error: str | None = None
+    fatal_error: str | None = None
+    # Set to a PostHookResult dataclass when --post-hook ran. Annotated as
+    # ``object`` to avoid a circular import between this module and
+    # commands/post_hook.py; dataclasses.asdict() still recurses correctly
+    # when the value is itself a dataclass instance.
+    post_hook: object | None = None
+
+    @property
+    def failed(self) -> list[ResourceOutcome]:
+        return [r for r in self.resources if r.status == "failed"]
+
+    @property
+    def succeeded(self) -> list[ResourceOutcome]:
+        return [r for r in self.resources if r.status == "success"]
+
+    @property
+    def skipped(self) -> list[ResourceOutcome]:
+        return [r for r in self.resources if r.status == "skipped"]
+
+
+@dataclass
 class ValidationResult:
     """Result of validation operations."""
 
@@ -65,6 +105,9 @@ class ValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     info: list[str] = field(default_factory=list)
+    tracebacks: list[str] = field(default_factory=list)
+    report: "BuildReport | None" = None
+    records: int | None = None
 
 
 @dataclass

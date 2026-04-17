@@ -1,6 +1,6 @@
 [project]
 name = "zeeker"
-version = "0.6.0"
+version = "0.7.0"
 description = "Database management tool for Datasette-based systems"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -21,6 +21,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.2",
+    "rich>=13.0",
     "sqlite-utils>=3.38",
 ]
 

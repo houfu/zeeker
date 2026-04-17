@@ -267,9 +267,10 @@ def fetch_data(existing_table):
         mock_module.transform_data.return_value = [{"id": 1, "transformed": True}]
 
         raw_data = [{"id": 1, "raw": True}]
-        result = processor._apply_transformation(mock_module, raw_data, "test", "transform_data")
+        data, tb = processor._apply_transformation(mock_module, raw_data, "test", "transform_data")
 
-        assert result == [{"id": 1, "transformed": True}]
+        assert data == [{"id": 1, "transformed": True}]
+        assert tb is None
         mock_module.transform_data.assert_called_once_with(raw_data)
 
     def test_apply_transformation_missing_function(self, processor):
@@ -280,10 +281,11 @@ def fetch_data(existing_table):
             delattr(mock_module, "transform_data")
 
         raw_data = [{"id": 1, "raw": True}]
-        result = processor._apply_transformation(mock_module, raw_data, "test", "transform_data")
+        data, tb = processor._apply_transformation(mock_module, raw_data, "test", "transform_data")
 
-        # Should return original data when function is missing
-        assert result == raw_data
+        # Should return original data when function is missing, no traceback.
+        assert data == raw_data
+        assert tb is None
 
     def test_apply_transformation_function_error(self, processor):
         """Test transformation with function that throws error."""
@@ -291,10 +293,12 @@ def fetch_data(existing_table):
         mock_module.transform_data = MagicMock(side_effect=Exception("Transform failed"))
 
         raw_data = [{"id": 1, "raw": True}]
-        result = processor._apply_transformation(mock_module, raw_data, "test", "transform_data")
+        data, tb = processor._apply_transformation(mock_module, raw_data, "test", "transform_data")
 
-        # Should return None when function throws exception
-        assert result is None
+        # Data should be None when function throws; traceback should be captured.
+        assert data is None
+        assert tb is not None
+        assert "Transform failed" in tb
 
 
 class TestDatabaseBuilder:

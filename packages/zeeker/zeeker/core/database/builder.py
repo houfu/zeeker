@@ -5,13 +5,23 @@ This module orchestrates the database building process, coordinating
 resource processing, schema management, and S3 synchronization.
 """
 
+import asyncio
 import time
+import traceback
 from pathlib import Path
+from typing import Callable
 
 import sqlite_utils
 
 from ..schema import SchemaManager
-from ..types import ValidationResult, ZeekerProject, ZeekerSchemaConflictError
+from ..types import (
+    BuildReport,
+    ResourceOutcome,
+    ValidationResult,
+    ZeekerProject,
+    ZeekerSchemaConflictError,
+)
+from .async_executor import AsyncExecutor
 from .fts_processor import FTSProcessor
 from .processor import ResourceProcessor
 from .s3_sync import S3Synchronizer
@@ -41,6 +51,9 @@ class DatabaseBuilder:
         sync_from_s3: bool = False,
         resources: list[str] = None,
         setup_fts: bool = False,
+        progress_callback: Callable[[str, ResourceOutcome | None], None] | None = None,
+        max_parallel: int = 1,
+        force_sync: bool = False,
     ) -> ValidationResult:
         """Build the SQLite database from resources using sqlite-utils.
 
@@ -55,22 +68,34 @@ class DatabaseBuilder:
             sync_from_s3: If True, download existing database from S3 before building
             resources: List of specific resource names to build. If None, builds all resources.
             setup_fts: If True, set up full-text search indexes on configured fields
+            progress_callback: Optional callable invoked as (resource_name, None) when a
+                resource starts and (resource_name, outcome) when it finishes. Allows the
+                CLI layer to drive progress bars or streaming output.
 
         Returns:
-            ValidationResult with build results
+            ValidationResult with build results. `result.report` holds a BuildReport
+            describing per-resource outcomes, timings, and fatal/FTS errors.
         """
         result = ValidationResult(is_valid=True)
+        report = BuildReport()
+        result.report = report
+        build_started = time.perf_counter()
+
         db_path = self.project_path / self.project.database
 
         # S3 Database Synchronization - Download existing DB if requested
         if sync_from_s3:
-            sync_result = self.s3_sync.sync_from_s3(self.project.database, db_path)
+            sync_result = self.s3_sync.sync_from_s3(
+                self.project.database, db_path, force=force_sync
+            )
             if not sync_result.is_valid:
                 result.errors.extend(sync_result.errors)
                 # Don't fail build if S3 sync fails - just warn
                 result.warnings.append("S3 sync failed but continuing with local build")
             else:
                 result.info.extend(sync_result.info)
+            if sync_result.warnings:
+                result.warnings.extend(sync_result.warnings)
 
         # Open existing database or create new one using sqlite-utils
         # Don't delete existing database - let resources check existing data for duplicates
@@ -84,29 +109,59 @@ class DatabaseBuilder:
             # Determine which resources to process
             resources_to_build = resources if resources else list(self.project.resources.keys())
 
+            # Pre-warm fetches concurrently when requested. The per-resource
+            # sequential loop below will then hit pre-warmed data instead of
+            # re-running each fetch_data() serially.
+            if max_parallel > 1 and len(resources_to_build) > 1:
+                prewarm_warnings = self._prewarm_fetches(db, resources_to_build, max_parallel)
+                result.warnings.extend(prewarm_warnings)
+
             # Process each specified resource
             for resource_name in resources_to_build:
+                if progress_callback:
+                    progress_callback(resource_name, None)
+
+                resource_started = time.perf_counter()
                 resource_result = self._process_resource_with_schema_check(
                     db, resource_name, force_schema_reset, build_id
                 )
+                duration = time.perf_counter() - resource_started
+
+                outcome = self._build_resource_outcome(resource_name, resource_result, duration)
 
                 if not resource_result.is_valid:
                     result.errors.extend(resource_result.errors)
+                    result.tracebacks.extend(resource_result.tracebacks)
                     result.is_valid = False
                 else:
                     result.info.extend(resource_result.info)
 
-                    # Process fragments if enabled
-                    resource_config = self.project.resources.get(resource_name, {})
-                    is_fragments_enabled = resource_config.get("fragments", False)
+                    # Process fragments if enabled (main must have succeeded)
+                    if outcome.status == "success":
+                        resource_config = self.project.resources.get(resource_name, {})
+                        if resource_config.get("fragments", False):
+                            fragments_result = self._process_fragments_for_resource(
+                                db, resource_name
+                            )
+                            if not fragments_result.is_valid:
+                                result.errors.extend(fragments_result.errors)
+                                result.tracebacks.extend(fragments_result.tracebacks)
+                                result.is_valid = False
+                                outcome.status = "failed"
+                                outcome.error_message = (
+                                    fragments_result.errors[0]
+                                    if fragments_result.errors
+                                    else "fragments processing failed"
+                                )
+                                if fragments_result.tracebacks:
+                                    outcome.traceback = fragments_result.tracebacks[0]
+                            else:
+                                result.info.extend(fragments_result.info)
+                                outcome.fragments_records = fragments_result.records
 
-                    if is_fragments_enabled:
-                        fragments_result = self._process_fragments_for_resource(db, resource_name)
-                        if not fragments_result.is_valid:
-                            result.errors.extend(fragments_result.errors)
-                            result.is_valid = False
-                        else:
-                            result.info.extend(fragments_result.info)
+                report.resources.append(outcome)
+                if progress_callback:
+                    progress_callback(resource_name, outcome)
 
             # Set up FTS after all resources are processed (only if requested)
             if result.is_valid and setup_fts:
@@ -114,6 +169,9 @@ class DatabaseBuilder:
                 if not fts_result.is_valid:
                     result.errors.extend(fts_result.errors)
                     result.is_valid = False
+                    report.fts_error = (
+                        fts_result.errors[0] if fts_result.errors else "FTS setup failed"
+                    )
                 else:
                     result.info.extend(fts_result.info)
                     if fts_result.warnings:
@@ -123,9 +181,41 @@ class DatabaseBuilder:
 
         except Exception as e:
             result.is_valid = False
-            result.errors.append(f"Database build failed: {e}")
+            msg = f"Database build failed: {e}"
+            result.errors.append(msg)
+            result.tracebacks.append(traceback.format_exc())
+            report.fatal_error = msg
 
+        finally:
+            # Prevent stale pre-warmed data from leaking into a reused builder.
+            self.processor.async_executor.clear_prewarmed()
+
+        report.total_duration_s = time.perf_counter() - build_started
         return result
+
+    @staticmethod
+    def _build_resource_outcome(
+        resource_name: str, resource_result: ValidationResult, duration_s: float
+    ) -> ResourceOutcome:
+        """Construct a ResourceOutcome from a per-resource ValidationResult."""
+        if not resource_result.is_valid:
+            return ResourceOutcome(
+                name=resource_name,
+                status="failed",
+                duration_s=duration_s,
+                error_message=(
+                    resource_result.errors[0] if resource_result.errors else "unknown error"
+                ),
+                traceback=(resource_result.tracebacks[0] if resource_result.tracebacks else None),
+            )
+
+        is_skipped = any("No data returned" in msg for msg in resource_result.info)
+        return ResourceOutcome(
+            name=resource_name,
+            status="skipped" if is_skipped else "success",
+            records=resource_result.records or 0,
+            duration_s=duration_s,
+        )
 
     def _process_resource_with_schema_check(
         self, db: sqlite_utils.Database, resource_name: str, force_schema_reset: bool, build_id: str
@@ -179,16 +269,23 @@ class DatabaseBuilder:
                 except Exception as e:
                     if isinstance(e, ZeekerSchemaConflictError):
                         raise
-                    # If we can't get sample data, proceed with build
-                    pass
+                    # Couldn't fetch a sample — surface this as a warning so
+                    # the user knows the schema-conflict check ran blind,
+                    # instead of a completely silent pass.
+                    result.warnings.append(
+                        f"Schema sample fetch failed for '{resource_name}' "
+                        f"(continuing with build): {e}"
+                    )
 
             # Process the resource (pass pre-loaded module to avoid redundant load)
             resource_result = self.processor.process_resource(db, resource_name, module)
             if not resource_result.is_valid:
                 result.errors.extend(resource_result.errors)
+                result.tracebacks.extend(resource_result.tracebacks)
                 result.is_valid = False
             else:
                 result.info.extend(resource_result.info)
+                result.records = resource_result.records
 
                 # Update resource timestamps
                 duration_ms = int((time.time() - start_time) * 1000)
@@ -199,9 +296,11 @@ class DatabaseBuilder:
         except ZeekerSchemaConflictError as e:
             result.is_valid = False
             result.errors.append(str(e))
+            result.tracebacks.append(traceback.format_exc())
         except Exception as e:
             result.is_valid = False
             result.errors.append(f"Failed to process resource '{resource_name}': {e}")
+            result.tracebacks.append(traceback.format_exc())
 
         return result
 
@@ -243,8 +342,13 @@ class DatabaseBuilder:
             main_data_context = self.processor.async_executor.call_fetch_data(
                 fetch_data, existing_table, resource_name=resource_name
             )
-        except Exception:
-            # If we can't get context, fragments will work without it
+        except Exception as e:
+            # If we can't get context, fragments will work without it — but
+            # surface the reason rather than swallowing the exception silently.
+            result.warnings.append(
+                f"Fragments context fetch failed for '{resource_name}' "
+                f"(fragments will run without main-data context): {e}"
+            )
             main_data_context = None
 
         # Process fragments
@@ -253,8 +357,70 @@ class DatabaseBuilder:
         )
         if not fragments_result.is_valid:
             result.errors.extend(fragments_result.errors)
+            result.tracebacks.extend(fragments_result.tracebacks)
             result.is_valid = False
         else:
             result.info.extend(fragments_result.info)
+            result.records = fragments_result.records
 
         return result
+
+    def _prewarm_fetches(
+        self,
+        db: sqlite_utils.Database,
+        resources_to_build: list[str],
+        max_parallel: int,
+    ) -> list[str]:
+        """Run ``fetch_data()`` for all resources concurrently and populate
+        the processor's executor with pre-warmed results.
+
+        Returns a list of warning strings (one per resource whose pre-fetch
+        failed; the sequential loop will re-attempt those and record the
+        definitive error).
+        """
+        # Synchronous prep: module loading and existing-table lookup.
+        # Doing this here (not inside the coroutines) avoids racy imports
+        # and lets us skip resources that can't even be loaded.
+        specs: list[tuple[str, object, object]] = []
+        warnings: list[str] = []
+        for name in resources_to_build:
+            mod_result = self.processor._load_resource_module(name)
+            if not mod_result.is_valid:
+                # Let the sequential loop produce the canonical error.
+                continue
+            module = mod_result.data
+            if not hasattr(module, "fetch_data"):
+                continue
+            fetch_data = getattr(module, "fetch_data")
+            existing = db[name] if db[name].exists() else None
+            specs.append((name, fetch_data, existing))
+
+        if not specs:
+            return warnings
+
+        fresh = AsyncExecutor(cache_enabled=False)
+        sem = asyncio.Semaphore(max_parallel)
+
+        async def run_one(name: str, fetch_data, existing):
+            async with sem:
+                try:
+                    data = await fresh.acall_fetch_data(fetch_data, existing, name)
+                    return name, data, None
+                except Exception as e:
+                    return name, None, e
+
+        async def run_all():
+            return await asyncio.gather(*(run_one(*s) for s in specs))
+
+        results = asyncio.run(run_all())
+        for name, data, err in results:
+            if err is not None:
+                warnings.append(
+                    f"Parallel pre-fetch failed for '{name}' "
+                    f"(sequential loop will retry): {err}"
+                )
+                continue
+            if data is not None:
+                self.processor.async_executor.set_prewarmed(name, data)
+
+        return warnings
