@@ -8,6 +8,7 @@ applying transformations, and inserting data into SQLite databases.
 import importlib.util
 import inspect
 import sqlite3
+import traceback
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -104,6 +105,7 @@ class ResourceProcessor:
             # Insert all data at once for better performance
             table.insert_all(transformed_data, replace=False)
 
+            result.records = len(transformed_data)
             result.info.append(
                 f"Processed {len(transformed_data)} records for resource '{resource_name}'"
             )
@@ -111,9 +113,11 @@ class ResourceProcessor:
         except sqlite3.IntegrityError as e:
             result.is_valid = False
             result.errors.append(f"Database integrity error in '{resource_name}': {e}")
+            result.tracebacks.append(traceback.format_exc())
         except Exception as e:
             result.is_valid = False
             result.errors.append(f"Failed to process resource '{resource_name}': {e}")
+            result.tracebacks.append(traceback.format_exc())
 
         return result
 
@@ -197,6 +201,7 @@ class ResourceProcessor:
             # Insert all fragments at once for better performance
             fragments_table.insert_all(transformed_fragments, replace=False)
 
+            result.records = len(transformed_fragments)
             result.info.append(
                 f"Processed {len(transformed_fragments)} fragments for resource '{resource_name}'"
             )
@@ -204,9 +209,11 @@ class ResourceProcessor:
         except sqlite3.IntegrityError as e:
             result.is_valid = False
             result.errors.append(f"Database integrity error in '{resource_name}' fragments: {e}")
+            result.tracebacks.append(traceback.format_exc())
         except Exception as e:
             result.is_valid = False
             result.errors.append(f"Failed to process fragments for '{resource_name}': {e}")
+            result.tracebacks.append(traceback.format_exc())
 
         return result
 
@@ -237,6 +244,7 @@ class ResourceProcessor:
         except Exception as e:
             result.is_valid = False
             result.errors.append(f"Failed to load resource module '{resource_name}': {e}")
+            result.tracebacks.append(traceback.format_exc())
 
         return result
 

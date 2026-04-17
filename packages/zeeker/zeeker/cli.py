@@ -5,9 +5,11 @@ Clean CLI interface that imports functionality from core modules.
 """
 
 import subprocess
+import traceback as tb_mod
 from pathlib import Path
 
 import click
+from rich.console import Console
 
 from .commands.assets import assets
 from .commands.backup import backup
@@ -16,12 +18,14 @@ from .commands.helpers import (
     echo_errors,
     echo_warnings,
     load_env,
+    render_build_report,
+    render_resource_event,
     require_database,
     require_project,
 )
 from .commands.metadata import metadata
 from .core.project import ZeekerProjectManager
-from .core.types import ZeekerSchemaConflictError
+from .core.types import BuildReport, ValidationResult, ZeekerSchemaConflictError
 
 
 # Main CLI group
@@ -175,24 +179,83 @@ def add(
 @click.option(
     "--setup-fts", is_flag=True, help="Set up full-text search (FTS) indexes on configured fields"
 )
-def build(resources, force_schema_reset, sync_from_s3, setup_fts):
+@click.option("-v", "--verbose", is_flag=True, help="Show full Python tracebacks for failures")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    help="Emit a single structured JSON BuildReport to stdout (tracebacks always included)",
+)
+@click.option(
+    "--fail-on-empty",
+    is_flag=True,
+    help="Treat resources that returned no data as failures (exit 1 instead of passing)",
+)
+@click.option(
+    "--progress-file",
+    type=click.Path(),
+    help="Write a JSON BuildReport snapshot to this path after each resource (atomic overwrite). "
+    "Useful for trigger-and-wait callers that poll externally.",
+)
+def build(
+    resources,
+    force_schema_reset,
+    sync_from_s3,
+    setup_fts,
+    verbose,
+    as_json,
+    fail_on_empty,
+    progress_file,
+):
     """Build database from resources using sqlite-utils.
 
     Runs fetch_data() for specified resources and creates/updates the SQLite database.
     If no resources are specified, builds all resources in the project.
 
+    Exit codes:
+        0  all resources succeeded
+        1  one or more resources failed, or FTS setup failed
+        2  fatal error (schema conflict, DB open failure, config error)
+
     Examples:
-        zeeker build                    # Build all resources
-        zeeker build --setup-fts        # Build all resources and set up FTS indexes
-        zeeker build users posts        # Build specific resources
+        zeeker build                                  # Build all resources
+        zeeker build --setup-fts                      # Build + FTS indexes
+        zeeker build users posts                      # Build specific resources
+        zeeker build --json | jq                      # Machine-readable output
+        zeeker build --fail-on-empty                  # Empty fetch_data() -> exit 1
+        zeeker build --progress-file build.json       # Watchable progress from outside
     """
+    from .commands.helpers import write_progress_file
+
     load_env()
 
     resource_list = list(resources) if resources else None
-    if resource_list:
-        click.echo(f"Building specific resources: {', '.join(resource_list)}")
+
+    # Route any non-JSON chatter through the console; JSON mode keeps stdout clean.
+    console = Console()
+    if resource_list and not as_json:
+        console.print(f"Building specific resources: {', '.join(resource_list)}")
 
     manager = ZeekerProjectManager()
+
+    # A BuildReport we can mutate progressively for --progress-file watchers.
+    progress_report = BuildReport() if progress_file else None
+
+    def _callback(name, outcome):
+        # Stream per-resource line unless emitting JSON.
+        if not as_json:
+            render_resource_event(name, outcome, console=console)
+
+        # Update the progress file atomically on finish events.
+        if progress_file and outcome is not None and progress_report is not None:
+            progress_report.resources.append(outcome)
+            write_progress_file(progress_file, progress_report)
+
+    # Write an initial (empty) snapshot so watchers see the file exist immediately.
+    if progress_file and progress_report is not None:
+        write_progress_file(progress_file, progress_report)
+
+    progress_callback = None if (as_json and not progress_file) else _callback
 
     try:
         result = manager.build_database(
@@ -200,58 +263,121 @@ def build(resources, force_schema_reset, sync_from_s3, setup_fts):
             sync_from_s3=sync_from_s3,
             resources=resource_list,
             setup_fts=setup_fts,
+            progress_callback=progress_callback,
         )
     except ZeekerSchemaConflictError as e:
-        click.echo("❌ Schema conflict detected:")
-        click.echo(str(e))
-        click.echo("\n💡 To resolve this, you can:")
-        click.echo("   • Use --force-schema-reset flag to ignore conflicts")
-        click.echo("   • Add a migrate_schema() function to handle the change")
-        click.echo("   • Delete the database file to rebuild from scratch")
-        return
+        result = ValidationResult(is_valid=False)
+        result.errors.append(str(e))
+        result.tracebacks.append(tb_mod.format_exc())
+        result.report = BuildReport(fatal_error=str(e))
+        if progress_file:
+            write_progress_file(progress_file, result.report)
+        render_build_report(result, verbose=verbose, as_json=as_json, console=console)
+        raise click.exceptions.Exit(2)
+    except Exception as e:
+        result = ValidationResult(is_valid=False)
+        result.errors.append(f"Build failed: {e}")
+        result.tracebacks.append(tb_mod.format_exc())
+        result.report = BuildReport(fatal_error=f"Build failed: {e}")
+        if progress_file:
+            write_progress_file(progress_file, result.report)
+        render_build_report(result, verbose=verbose, as_json=as_json, console=console)
+        raise click.exceptions.Exit(2)
 
-    if result.errors:
-        click.echo("❌ Database build failed:")
-        echo_errors(result)
-        raise click.ClickException("Build failed")
+    # Pre-flight failures (e.g., "Unknown resources") return a ValidationResult with no
+    # report — treat them as fatal so agents get a structured fatal_error message.
+    if result.report is None:
+        fatal_msg = result.errors[0] if result.errors else "build failed"
+        result.report = BuildReport(fatal_error=fatal_msg)
 
-    if result.warnings:
+    if result.warnings and not as_json:
         echo_warnings(result)
 
-    for info in result.info:
-        click.echo(f"✅ {info}")
+    # Final progress-file snapshot reflects the completed state.
+    if progress_file:
+        write_progress_file(progress_file, result.report)
 
-    click.echo("\n🔧 Built with sqlite-utils for robust schema detection")
-    click.echo("🚀 Ready for deployment with 'zeeker deploy'")
+    render_build_report(result, verbose=verbose, as_json=as_json, console=console)
+
+    report = result.report
+    if report.fatal_error:
+        raise click.exceptions.Exit(2)
+    if report.failed or report.fts_error:
+        raise click.exceptions.Exit(1)
+    if fail_on_empty and report.skipped:
+        if not as_json:
+            console.print(
+                f"[red]Exiting non-zero: {len(report.skipped)} resource(s) returned no data "
+                "and --fail-on-empty is set.[/red]"
+            )
+        raise click.exceptions.Exit(1)
 
 
 @cli.command("deploy")
 @click.option("--dry-run", is_flag=True, help="Show what would be uploaded without uploading")
-def deploy_database(dry_run):
+@click.option("-v", "--verbose", is_flag=True, help="Show full Python traceback on failure")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    help="Emit a single structured JSON deploy result to stdout",
+)
+def deploy_database(dry_run, verbose, as_json):
     """Deploy the project database to S3.
 
     Uploads the generated .db file to S3:
     s3://bucket/latest/{database_name}.db
+
+    Exit codes:
+        0  upload succeeded (or dry-run completed)
+        1  upload failed
+        2  configuration or setup error (missing project, env vars, db file)
     """
+    import json as _json
+
     manager = ZeekerProjectManager()
     project = require_project(manager)
     if not project:
-        return
+        if as_json:
+            click.echo(_json.dumps({"status": "fatal", "error": "not_a_zeeker_project"}))
+        raise click.exceptions.Exit(2)
 
     deployer = create_deployer()
     if not deployer:
-        return
+        if as_json:
+            click.echo(_json.dumps({"status": "fatal", "error": "missing_configuration"}))
+        raise click.exceptions.Exit(2)
 
     db_path = require_database(manager, project)
     if not db_path:
-        return
+        if as_json:
+            click.echo(_json.dumps({"status": "fatal", "error": "database_not_found"}))
+        raise click.exceptions.Exit(2)
 
     database_name = Path(project.database).stem
     result = deployer.upload_database(db_path, database_name, dry_run)
 
+    if as_json:
+        payload = {
+            "status": "success" if result.is_valid else "failed",
+            "dry_run": dry_run,
+            "database": database_name,
+            "destination": f"s3://{deployer.bucket_name}/latest/{database_name}.db",
+            "info": list(result.info),
+            "errors": list(result.errors),
+            "tracebacks": list(result.tracebacks),
+        }
+        click.echo(_json.dumps(payload, indent=2))
+        if not result.is_valid:
+            raise click.exceptions.Exit(1)
+        return
+
     if result.errors:
         echo_errors(result)
-        return
+        if verbose and result.tracebacks:
+            for tb in result.tracebacks:
+                click.echo(tb)
+        raise click.exceptions.Exit(1)
 
     for info in result.info:
         click.echo(f"✅ {info}")

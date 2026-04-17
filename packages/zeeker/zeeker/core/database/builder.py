@@ -6,12 +6,20 @@ resource processing, schema management, and S3 synchronization.
 """
 
 import time
+import traceback
 from pathlib import Path
+from typing import Callable
 
 import sqlite_utils
 
 from ..schema import SchemaManager
-from ..types import ValidationResult, ZeekerProject, ZeekerSchemaConflictError
+from ..types import (
+    BuildReport,
+    ResourceOutcome,
+    ValidationResult,
+    ZeekerProject,
+    ZeekerSchemaConflictError,
+)
 from .fts_processor import FTSProcessor
 from .processor import ResourceProcessor
 from .s3_sync import S3Synchronizer
@@ -41,6 +49,7 @@ class DatabaseBuilder:
         sync_from_s3: bool = False,
         resources: list[str] = None,
         setup_fts: bool = False,
+        progress_callback: Callable[[str, ResourceOutcome | None], None] | None = None,
     ) -> ValidationResult:
         """Build the SQLite database from resources using sqlite-utils.
 
@@ -55,11 +64,19 @@ class DatabaseBuilder:
             sync_from_s3: If True, download existing database from S3 before building
             resources: List of specific resource names to build. If None, builds all resources.
             setup_fts: If True, set up full-text search indexes on configured fields
+            progress_callback: Optional callable invoked as (resource_name, None) when a
+                resource starts and (resource_name, outcome) when it finishes. Allows the
+                CLI layer to drive progress bars or streaming output.
 
         Returns:
-            ValidationResult with build results
+            ValidationResult with build results. `result.report` holds a BuildReport
+            describing per-resource outcomes, timings, and fatal/FTS errors.
         """
         result = ValidationResult(is_valid=True)
+        report = BuildReport()
+        result.report = report
+        build_started = time.perf_counter()
+
         db_path = self.project_path / self.project.database
 
         # S3 Database Synchronization - Download existing DB if requested
@@ -86,27 +103,50 @@ class DatabaseBuilder:
 
             # Process each specified resource
             for resource_name in resources_to_build:
+                if progress_callback:
+                    progress_callback(resource_name, None)
+
+                resource_started = time.perf_counter()
                 resource_result = self._process_resource_with_schema_check(
                     db, resource_name, force_schema_reset, build_id
                 )
+                duration = time.perf_counter() - resource_started
+
+                outcome = self._build_resource_outcome(resource_name, resource_result, duration)
 
                 if not resource_result.is_valid:
                     result.errors.extend(resource_result.errors)
+                    result.tracebacks.extend(resource_result.tracebacks)
                     result.is_valid = False
                 else:
                     result.info.extend(resource_result.info)
 
-                    # Process fragments if enabled
-                    resource_config = self.project.resources.get(resource_name, {})
-                    is_fragments_enabled = resource_config.get("fragments", False)
+                    # Process fragments if enabled (main must have succeeded)
+                    if outcome.status == "success":
+                        resource_config = self.project.resources.get(resource_name, {})
+                        if resource_config.get("fragments", False):
+                            fragments_result = self._process_fragments_for_resource(
+                                db, resource_name
+                            )
+                            if not fragments_result.is_valid:
+                                result.errors.extend(fragments_result.errors)
+                                result.tracebacks.extend(fragments_result.tracebacks)
+                                result.is_valid = False
+                                outcome.status = "failed"
+                                outcome.error_message = (
+                                    fragments_result.errors[0]
+                                    if fragments_result.errors
+                                    else "fragments processing failed"
+                                )
+                                if fragments_result.tracebacks:
+                                    outcome.traceback = fragments_result.tracebacks[0]
+                            else:
+                                result.info.extend(fragments_result.info)
+                                outcome.fragments_records = fragments_result.records
 
-                    if is_fragments_enabled:
-                        fragments_result = self._process_fragments_for_resource(db, resource_name)
-                        if not fragments_result.is_valid:
-                            result.errors.extend(fragments_result.errors)
-                            result.is_valid = False
-                        else:
-                            result.info.extend(fragments_result.info)
+                report.resources.append(outcome)
+                if progress_callback:
+                    progress_callback(resource_name, outcome)
 
             # Set up FTS after all resources are processed (only if requested)
             if result.is_valid and setup_fts:
@@ -114,6 +154,9 @@ class DatabaseBuilder:
                 if not fts_result.is_valid:
                     result.errors.extend(fts_result.errors)
                     result.is_valid = False
+                    report.fts_error = (
+                        fts_result.errors[0] if fts_result.errors else "FTS setup failed"
+                    )
                 else:
                     result.info.extend(fts_result.info)
                     if fts_result.warnings:
@@ -123,9 +166,37 @@ class DatabaseBuilder:
 
         except Exception as e:
             result.is_valid = False
-            result.errors.append(f"Database build failed: {e}")
+            msg = f"Database build failed: {e}"
+            result.errors.append(msg)
+            result.tracebacks.append(traceback.format_exc())
+            report.fatal_error = msg
 
+        report.total_duration_s = time.perf_counter() - build_started
         return result
+
+    @staticmethod
+    def _build_resource_outcome(
+        resource_name: str, resource_result: ValidationResult, duration_s: float
+    ) -> ResourceOutcome:
+        """Construct a ResourceOutcome from a per-resource ValidationResult."""
+        if not resource_result.is_valid:
+            return ResourceOutcome(
+                name=resource_name,
+                status="failed",
+                duration_s=duration_s,
+                error_message=(
+                    resource_result.errors[0] if resource_result.errors else "unknown error"
+                ),
+                traceback=(resource_result.tracebacks[0] if resource_result.tracebacks else None),
+            )
+
+        is_skipped = any("No data returned" in msg for msg in resource_result.info)
+        return ResourceOutcome(
+            name=resource_name,
+            status="skipped" if is_skipped else "success",
+            records=resource_result.records or 0,
+            duration_s=duration_s,
+        )
 
     def _process_resource_with_schema_check(
         self, db: sqlite_utils.Database, resource_name: str, force_schema_reset: bool, build_id: str
@@ -186,9 +257,11 @@ class DatabaseBuilder:
             resource_result = self.processor.process_resource(db, resource_name, module)
             if not resource_result.is_valid:
                 result.errors.extend(resource_result.errors)
+                result.tracebacks.extend(resource_result.tracebacks)
                 result.is_valid = False
             else:
                 result.info.extend(resource_result.info)
+                result.records = resource_result.records
 
                 # Update resource timestamps
                 duration_ms = int((time.time() - start_time) * 1000)
@@ -199,9 +272,11 @@ class DatabaseBuilder:
         except ZeekerSchemaConflictError as e:
             result.is_valid = False
             result.errors.append(str(e))
+            result.tracebacks.append(traceback.format_exc())
         except Exception as e:
             result.is_valid = False
             result.errors.append(f"Failed to process resource '{resource_name}': {e}")
+            result.tracebacks.append(traceback.format_exc())
 
         return result
 
@@ -253,8 +328,10 @@ class DatabaseBuilder:
         )
         if not fragments_result.is_valid:
             result.errors.extend(fragments_result.errors)
+            result.tracebacks.extend(fragments_result.tracebacks)
             result.is_valid = False
         else:
             result.info.extend(fragments_result.info)
+            result.records = fragments_result.records
 
         return result
